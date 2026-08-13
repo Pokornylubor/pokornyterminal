@@ -4,7 +4,7 @@ import os
 
 st.set_page_config(page_title="Insider 4F", page_icon="🕵️", layout="wide")
 st.title("🕵️ Insider 4F Transakce")
-st.markdown("Nejnovější nákupy a prodeje (OpenInsider). Zobrazuje 1000 nejaktuálnějších transakcí.")
+st.markdown("Nejnovější nákupy a prodeje (OpenInsider). Zobrazuje kompletní staženou historii transakcí.")
 
 FILE_PATH = "insider_4f_db.csv"
 
