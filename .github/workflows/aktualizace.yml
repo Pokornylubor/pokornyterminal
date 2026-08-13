@@ -1,0 +1,36 @@
+name: Automatická aktualizace dat (4F + 13F)
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  aktualizuj_data:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+    - name: 1. Stažení kódu
+      uses: actions/checkout@v3
+
+    - name: 2. Příprava Pythonu
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: 3. Instalace potřebných knihoven
+      run: pip install -r requirements.txt
+
+    - name: 4. Spuštění robotů (updater.py)
+      run: python updater.py
+
+    - name: 5. Uložení nových CSV dat do repozitáře
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+        git add *.csv
+        git commit -m "Automatická denní aktualizace CSV dat" || echo "Data se od včerejška nezměnila"
+        git push
