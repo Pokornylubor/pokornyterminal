@@ -1,0 +1,6 @@
+streamlit
+pandas
+cloudscraper
+lxml
+beautifulsoup4
+yfinance
