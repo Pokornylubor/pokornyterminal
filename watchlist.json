@@ -1,11 +1,19 @@
-[
-  "GOOGL",
-  "AMZN",
-  "MSFT",
-  "AMAT",
-  "ASML",
-  "NVDA",
-  "UBER",
-  "SOFI",
-  "APP"
-]
+{
+  "portfolio": [
+    "GOOGL",
+    "AMZN",
+    "MSFT",
+    "AMAT",
+    "ASML",
+    "NVDA",
+    "UBER",
+    "SOFI",
+    "APP"
+  ],
+  "watchlist": [],
+  "superinvestors": [
+    "Mohnish Pabrai",
+    "Li Lu",
+    "Michael Burry"
+  ]
+}
