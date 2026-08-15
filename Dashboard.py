@@ -4,7 +4,7 @@ import yfinance as yf
 import json
 import os
 
-st.set_page_config(page_title="Pokorný Terminal", page_icon="📈", layout="wide")
+st.set_page_config(page_title="Pokorny Terminal", page_icon="📈", layout="wide")
 
 # --- NASTAVENÍ JAZYKA (PAMĚŤ) ---
 if "lang" not in st.session_state:
@@ -23,7 +23,7 @@ with st.sidebar:
 # --- SLOVNÍK PŘEKLADŮ ---
 t = {
     "CZ": {
-        "title": "📈 Pokorný Terminal - Přehled Trhu",
+        "title": "📈 Pokorny Terminal - Přehled Trhu",
         "desc": "Tvůj osobní přehled v reálném čase. Hodnoty se načítají živě z burzy.",
         "tab_port": "💼 Moje Portfolio",
         "tab_watch": "👀 Můj Watchlist",
