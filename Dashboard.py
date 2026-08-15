@@ -23,7 +23,7 @@ with st.sidebar:
 # --- SLOVNÍK PŘEKLADŮ ---
 t = {
     "CZ": {
-        "title": "📈 Pokorny Terminal - Přehled Trhu",
+        "title": "📈 Pokorny Terminal",
         "desc": "Tvůj osobní přehled v reálném čase. Hodnoty se načítají živě z burzy.",
         "tab_port": "💼 Moje Portfolio",
         "tab_watch": "👀 Můj Watchlist",
@@ -39,7 +39,7 @@ t = {
         "success_save": "✅ Úspěšně uloženo!"
     },
     "EN": {
-        "title": "📈 Pokorny Terminal - Market Overview",
+        "title": "📈 Pokorny Terminal",
         "desc": "Your personal real-time overview. Live data loaded directly from the market.",
         "tab_port": "💼 My Portfolio",
         "tab_watch": "👀 My Watchlist",
