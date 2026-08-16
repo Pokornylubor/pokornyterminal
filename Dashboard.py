@@ -4,7 +4,7 @@ import yfinance as yf
 import json
 import os
 
-st.set_page_config(page_title="Pokorny Terminal", page_icon="📈", layout="wide")
+st.set_page_config(page_title="Pokorny Terminal", page_icon="icon.png", layout="wide")
 
 # --- NASTAVENÍ JAZYKA (PAMĚŤ) ---
 if "lang" not in st.session_state:
