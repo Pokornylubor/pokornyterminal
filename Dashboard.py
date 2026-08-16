@@ -5,6 +5,28 @@ import json
 import os
 
 st.set_page_config(page_title="Pokorny Terminal", page_icon="icon.png", layout="wide")
+import streamlit.components.v1 as components
+
+# Tady vlož tu zkopírovanou URL adresu z GitHubu:
+MOJE_LOGO_URL = "https://raw.githubusercontent.com/Pokornylubor/pokornyterminal/refs/heads/main/icon.png.ico"
+
+# Skrytý JavaScript Injektor pro Apple zařízení
+components.html(
+    f"""
+    <script>
+        const doc = window.parent.document;
+        let link = doc.querySelector("link[rel~='apple-touch-icon']");
+        if (!link) {{
+            link = doc.createElement('link');
+            link.rel = 'apple-touch-icon';
+            doc.head.appendChild(link);
+        }}
+        link.href = '{MOJE_LOGO_URL}';
+    </script>
+    """,
+    height=0,
+    width=0,
+)
 
 # --- NASTAVENÍ JAZYKA (PAMĚŤ) ---
 if "lang" not in st.session_state:
