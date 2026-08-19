@@ -30,7 +30,7 @@ col1, col2 = st.columns(2)
 with col1:
     vyber_ticker = st.selectbox("Moje pozice:", ["--- Vyber ---"] + sorted(my_tickers))
 with col2:
-    hledany_ticker = st.text_input("🔍 Vyhledat akcii :").strip().upper()
+    hledany_ticker = st.text_input("🔍 Vyhledat akcii podle tickeru :").strip().upper()
 
 # Určíme, jaký ticker se má hledat
 aktualni_ticker = hledany_ticker if hledany_ticker else (vyber_ticker if vyber_ticker != "--- Vyber ---" else None)
