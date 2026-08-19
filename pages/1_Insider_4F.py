@@ -20,20 +20,31 @@ def load_watchlist():
     return {"portfolio": [], "watchlist": []}
 
 data = load_watchlist()
-my_tickers = list(set(data.get("portfolio", []) + data.get("watchlist", [])))
+# ROZDĚLENÍ NA PORTFOLIO A WATCHLIST
+port_tickers = sorted(list(set(data.get("portfolio", []))))
+watch_tickers = sorted(list(set(data.get("watchlist", []))))
 
 st.title("🕵️‍♂️ Insider Tracker")
 st.markdown("4F reporty - nákupy a prodeje insiderů")
 st.markdown("---")
 
-col1, col2 = st.columns(2)
+# TŘI SLOUPCE PRO LEPŠÍ PŘEHLEDNOST
+col1, col2, col3 = st.columns(3)
 with col1:
-    vyber_ticker = st.selectbox("Moje pozice:", ["--- Vyber ---"] + sorted(my_tickers))
+    vyber_port = st.selectbox("💼 Moje pozice:", ["--- Vyber ---"] + port_tickers)
 with col2:
-    hledany_ticker = st.text_input("🔍 Vyhledat akcii podle tickeru :").strip().upper()
+    vyber_watch = st.selectbox("👀 Můj Watchlist:", ["--- Vyber ---"] + watch_tickers)
+with col3:
+    hledany_ticker = st.text_input("🔍 Vyhledat akcii podle tickeru:").strip().upper()
 
-# Určíme, jaký ticker se má hledat
-aktualni_ticker = hledany_ticker if hledany_ticker else (vyber_ticker if vyber_ticker != "--- Vyber ---" else None)
+# Určíme, jaký ticker se má hledat (Přednost má ruční zadání, pak Watchlist, pak Portfolio)
+aktualni_ticker = None
+if hledany_ticker:
+    aktualni_ticker = hledany_ticker
+elif vyber_watch != "--- Vyber ---":
+    aktualni_ticker = vyber_watch
+elif vyber_port != "--- Vyber ---":
+    aktualni_ticker = vyber_port
 
 if aktualni_ticker:
     if st.button(f"Stáhnout Insidery pro {aktualni_ticker}", type="primary"):
