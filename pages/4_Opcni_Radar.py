@@ -18,13 +18,12 @@ t = {
     "CZ": {
         "title": "🎲 Opční Sentiment & Zdi",
         "desc": "Univerzální radar pro hledání opčních zdí 'Smart Money'. Vyhledej jakoukoliv akcii nebo vyber ze svých seznamů.",
-        "h_univ": "🔍 Univerzální vyhledávač",
-        "search_lbl": "Napiš jakýkoliv Ticker (např. TSLA, PLTR):",
-        "btn_add_port": "💼 Přidat do Portfolia",
-        "btn_add_watch": "👀 Přidat do Watchlistu",
-        "succ_add": "✅ Ticker {} přidán!",
-        "h_watch": "📂 Moje seznamy",
-        "sel_tkr": "Rychlý výběr z mých akcií:",
+        "sel_port": "💼 Moje pozice:",
+        "sel_watch": "👀 Můj Watchlist:",
+        "search_lbl": "🔍 Vyhledat akcii (např. TSLA):",
+        "btn_add_port": "💼 Uložit do Portfolia",
+        "btn_add_watch": "👀 Uložit do Watchlistu",
+        "succ_add": "✅ Ticker {} přidán a uložen napořád!",
         "btn_opt": "Stáhnout Opce pro {}",
         "spin_opt": "Analyzuji opční řetězec...",
         "warn_opt": "Pro tuto akcii nejsou k dispozici žádná opční data.",
@@ -42,13 +41,12 @@ t = {
     "EN": {
         "title": "🎲 Options Sentiment & Walls",
         "desc": "Universal radar for finding 'Smart Money' option walls. Search any stock or select from your lists.",
-        "h_univ": "🔍 Universal Search",
-        "search_lbl": "Type any Ticker (e.g. TSLA, PLTR):",
+        "sel_port": "💼 My Portfolio:",
+        "sel_watch": "👀 My Watchlist:",
+        "search_lbl": "🔍 Search ticker (e.g. TSLA):",
         "btn_add_port": "💼 Add to Portfolio",
         "btn_add_watch": "👀 Add to Watchlist",
-        "succ_add": "✅ Ticker {} added!",
-        "h_watch": "📂 My Lists",
-        "sel_tkr": "Quick select from my stocks:",
+        "succ_add": "✅ Ticker {} permanently added!",
         "btn_opt": "Download Options for {}",
         "spin_opt": "Analyzing option chain...",
         "warn_opt": "No options data available for this stock.",
@@ -71,7 +69,7 @@ st.markdown(_["desc"])
 
 WATCHLIST_FILE = "watchlist.json"
 
-# --- Načtení dat ---
+# --- Načtení dat a rozdělení seznamů ---
 def load_data():
     try:
         with open(WATCHLIST_FILE, "r") as f:
@@ -84,47 +82,53 @@ def save_data(data):
         json.dump(data, f, indent=4)
 
 data = load_data()
-my_tickers = list(set(data.get("portfolio", []) + data.get("watchlist", [])))
+port_tickers = sorted(list(set(data.get("portfolio", []))))
+watch_tickers = sorted(list(set(data.get("watchlist", []))))
 
-col1, col2 = st.columns(2)
-vybrany_ticker = None
+st.markdown("---")
 
+# --- Tři sjednocené sloupce pro výběr ---
+col1, col2, col3 = st.columns(3)
 with col1:
-    st.markdown(f"### {_['h_univ']}")
-    search_tkr = st.text_input(_["search_lbl"], "").strip().upper()
-    
-    if search_tkr:
-        vybrany_ticker = search_tkr
-        
-        # Tlačítka pro rychlé přidání, pokud ticker ještě nemáme uložený
-        if search_tkr not in data.get("portfolio", []):
-            if st.button(_["btn_add_port"]):
-                data.setdefault("portfolio", []).append(search_tkr)
-                save_data(data)
-                st.success(_["succ_add"].format(search_tkr))
-                st.rerun()
-                
-        if search_tkr not in data.get("watchlist", []):
-            if st.button(_["btn_add_watch"]):
-                data.setdefault("watchlist", []).append(search_tkr)
-                save_data(data)
-                st.success(_["succ_add"].format(search_tkr))
-                st.rerun()
-
+    vyber_port = st.selectbox(_["sel_port"], ["--- Vyber ---"] + port_tickers)
 with col2:
-    st.markdown(f"### {_['h_watch']}")
-    if my_tickers:
-        combo_tkr = st.selectbox(_["sel_tkr"], ["--- Vyber ---"] + sorted(my_tickers))
-        if combo_tkr != "--- Vyber ---":
-            # Pokud uživatel zrovna nic nehledá textem, použijeme výběr ze seznamu
-            if not search_tkr: 
-                vybrany_ticker = combo_tkr
+    vyber_watch = st.selectbox(_["sel_watch"], ["--- Vyber ---"] + watch_tickers)
+with col3:
+    hledany_ticker = st.text_input(_["search_lbl"], "").strip().upper()
+
+# Hierarchie výběru (přednost má ruční hledání)
+vybrany_ticker = None
+if hledany_ticker:
+    vybrany_ticker = hledany_ticker
+elif vyber_watch != "--- Vyber ---":
+    vybrany_ticker = vyber_watch
+elif vyber_port != "--- Vyber ---":
+    vybrany_ticker = vyber_port
+
+# --- Možnost trvalého uložení nového Tickeru ---
+if hledany_ticker:
+    st.write("") # Odřádkování pro čistší vzhled
+    c1, c2, c3 = st.columns([1, 1, 2])
+    
+    if hledany_ticker not in data.get("portfolio", []):
+        if c1.button(_["btn_add_port"]):
+            data.setdefault("portfolio", []).append(hledany_ticker)
+            save_data(data)
+            st.success(_["succ_add"].format(hledany_ticker))
+            st.rerun()
+            
+    if hledany_ticker not in data.get("watchlist", []):
+        if c2.button(_["btn_add_watch"]):
+            data.setdefault("watchlist", []).append(hledany_ticker)
+            save_data(data)
+            st.success(_["succ_add"].format(hledany_ticker))
+            st.rerun()
 
 st.markdown("---")
 
 # --- Analýza a vykreslení opcí ---
 if vybrany_ticker:
-    if st.button(_["btn_opt"].format(vybrany_ticker)):
+    if st.button(_["btn_opt"].format(vybrany_ticker), type="primary"):
         with st.spinner(_["spin_opt"]):
             try:
                 tkr_obj = yf.Ticker(vybrany_ticker)
