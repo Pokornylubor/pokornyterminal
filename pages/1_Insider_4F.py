@@ -22,15 +22,15 @@ def load_watchlist():
 data = load_watchlist()
 my_tickers = list(set(data.get("portfolio", []) + data.get("watchlist", [])))
 
-st.title("🕵️‍♂️ Insider Tracker")
-st.markdown("4F - nákupy a prodeje insiderů 
+st.title("🕵️‍♂️ Insider Tracker (Live)")
+st.markdown("Sleduj nákupy a prodeje ředitelů a manažerů v reálném čase.")
 st.markdown("---")
 
 col1, col2 = st.columns(2)
 with col1:
     vyber_ticker = st.selectbox("Vyber akcii ze seznamu:", ["--- Vyber ---"] + sorted(my_tickers))
 with col2:
-    hledany_ticker = st.text_input("🔍 Vyhledat:").strip().upper()
+    hledany_ticker = st.text_input("🔍 Nebo napiš jiný Ticker (např. MSFT, PLTR):").strip().upper()
 
 # Určíme, jaký ticker se má hledat
 aktualni_ticker = hledany_ticker if hledany_ticker else (vyber_ticker if vyber_ticker != "--- Vyber ---" else None)
