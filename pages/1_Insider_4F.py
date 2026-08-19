@@ -23,7 +23,7 @@ data = load_watchlist()
 my_tickers = list(set(data.get("portfolio", []) + data.get("watchlist", [])))
 
 st.title("🕵️‍♂️ Insider Tracker (Live)")
-st.markdown("Sleduj nákupy a prodeje ředitelů a manažerů v reálném čase.")
+st.markdown("4F reporty - nákupy a prodeje insiderů")
 st.markdown("---")
 
 col1, col2 = st.columns(2)
