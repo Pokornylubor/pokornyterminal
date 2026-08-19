@@ -22,7 +22,7 @@ def load_watchlist():
 data = load_watchlist()
 my_tickers = list(set(data.get("portfolio", []) + data.get("watchlist", [])))
 
-st.title("🕵️‍♂️ Insider Tracker (Live)")
+st.title("🕵️‍♂️ Insider Tracker")
 st.markdown("4F reporty - nákupy a prodeje insiderů")
 st.markdown("---")
 
