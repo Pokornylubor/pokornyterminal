@@ -4,6 +4,7 @@ import requests
 from bs4 import BeautifulSoup
 import json
 import os
+from io import StringIO  # <--- TADY JE PŘIDANÁ TA OPRAVA
 
 st.set_page_config(page_title="Insider Tracker", page_icon="🕵️‍♂️", layout="wide")
 
@@ -37,7 +38,6 @@ elif vyber_ticker != "--- Vyber ---":
 if aktualni_ticker:
     if st.button(f"Stáhnout Insidery pro {aktualni_ticker}", type="primary"):
         with st.spinner("Stahuji data o insiderech..."):
-            # Přímé vyhledání na OpenInsider
             url = f"http://openinsider.com/search?q={aktualni_ticker}"
             headers = {"User-Agent": "Mozilla/5.0"}
             res = requests.get(url, headers=headers)
@@ -47,13 +47,11 @@ if aktualni_ticker:
                 table = soup.find('table', {'class': 'tinytable'})
                 
                 if table:
-                    # Rozluštění tabulky přes Pandas (umí číst HTML tabulky!)
-                    dfs = pd.read_html(str(table))
-                    if dfs:
-                        df = dfs[0]
-                        # Vezmeme jen to nejdůležitější, co nás zajímá
-                        try:
-                            # Názvy sloupců z OpenInsider se občas mění, bereme to bezpečně přes indexy
+                    # TADY JE TA ZMĚNA: Přidáno StringIO(str(table))
+                    try:
+                        dfs = pd.read_html(StringIO(str(table)))
+                        if dfs:
+                            df = dfs[0]
                             clean_df = df.iloc[:, [1, 3, 4, 5, 7, 8, 11]].copy()
                             clean_df.columns = ["Datum obchodu", "Ticker", "Jméno", "Pozice", "Typ transakce", "Ks Akcií", "Hodnota (USD)"]
                             
@@ -69,8 +67,8 @@ if aktualni_ticker:
                                 return ''
                                 
                             st.dataframe(clean_df.style.map(style_trade, subset=["Typ transakce"]), use_container_width=True)
-                        except Exception as e:
-                            st.error(f"Nepodařilo se zpracovat tabulku. {e}")
+                    except Exception as e:
+                        st.error(f"Nepodařilo se zpracovat tabulku. {e}")
                 else:
                     st.info("Tato společnost nemá za poslední dobu žádné hlášené transakce insiderů.")
             else:
