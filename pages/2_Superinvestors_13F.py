@@ -3,6 +3,8 @@ import pandas as pd
 import json
 import os
 import sys
+import base64
+import requests
 
 # --- CENTRÁLNÍ PAMĚŤ A MENU ---
 aktualni_slozka = os.path.dirname(os.path.abspath(__file__))
@@ -15,13 +17,25 @@ import menu
 menu.vykresli_menu()
 
 t = {
-    "CZ": {"title": "🐋 13F Superinvestoři", "desc": "Historická data portfolií (Dataroma).", "empty": "Databáze je prázdná.", "exp": "⭐ Nastavit oblíbené", "fav": "Moji oblíbenci:", "save": "💾 Uložit", "all": "Zobrazit všechny", "sel": "Vyber superinvestora:"},
-    "EN": {"title": "🐋 13F Superinvestors", "desc": "Historical portfolio data (Dataroma).", "empty": "Database is empty.", "exp": "⭐ Set Favorites", "fav": "My favorites:", "save": "💾 Save", "all": "Show all", "sel": "Select superinvestor:"}
+    "CZ": {"title": "🐋 13F Superinvestoři", "desc": "Historická data portfolií (Dataroma).", "empty": "Databáze je prázdná.", "exp": "⭐ Nastavit oblíbené", "fav": "Moji oblíbenci:", "save": "💾 Uložit na Cloud", "all": "Zobrazit všechny", "sel": "Vyber superinvestora:"},
+    "EN": {"title": "🐋 13F Superinvestors", "desc": "Historical portfolio data (Dataroma).", "empty": "Database is empty.", "exp": "⭐ Set Favorites", "fav": "My favorites:", "save": "💾 Save to Cloud", "all": "Show all", "sel": "Select superinvestor:"}
 }
 _ = t.get(st.session_state.lang, t["CZ"])
 
 st.title(_["title"])
 st.markdown(_["desc"])
+
+def save_data(data):
+    with open(WATCHLIST_FILE, "w") as f: json.dump(data, f, indent=4)
+    try:
+        if "GITHUB_TOKEN" in st.secrets:
+            token, owner, repo = st.secrets["GITHUB_TOKEN"], st.secrets["GITHUB_OWNER"], st.secrets["GITHUB_REPO"]
+            url, headers = f"https://api.github.com/repos/{owner}/{repo}/contents/watchlist.json", {"Authorization": f"token {token}", "Accept": "application/vnd.github.v3+json"}
+            sha = requests.get(url, headers=headers).json().get("sha")
+            payload = {"message": "Cloud sync 13F Favorites", "content": base64.b64encode(json.dumps(data, indent=4).encode("utf-8")).decode("utf-8"), "branch": "main"}
+            if sha: payload["sha"] = sha
+            requests.put(url, headers=headers, json=payload)
+    except Exception: pass
 
 FILE_PATH = os.path.join(hlavni_slozka, "superinvestors_db.csv")
 
@@ -40,11 +54,10 @@ else:
             vybrani = st.multiselect(_["fav"], options=investors, default=vychozi_vyber)
             if st.button(_["save"], use_container_width=True):
                 data["superinvestors"] = vybrani
-                with open(WATCHLIST_FILE, "w") as f: json.dump(data, f, indent=4)
+                save_data(data)
                 st.rerun()
         st.markdown("---")
         nabidka = investors if (not vychozi_vyber or st.checkbox(_["all"])) else vychozi_vyber
         selected = st.selectbox(_["sel"], nabidka)
-        
         if selected:
             st.dataframe(df[df['Investor'] == selected].drop(columns=['Investor', 'Kvartal_Aktualizace', 'Investor_Code'], errors='ignore'), use_container_width=True)
