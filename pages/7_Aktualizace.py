@@ -11,7 +11,7 @@ if st.button("🚀 Odeslat povel k aktualizaci dat", use_container_width=True):
     with st.spinner("Odesílám signál na GitHub..."):
         try:
             # Tady vložíš ten svůj klíč přímo sem do uvozovek! 
-            token = "TADY_VLOZ_SVUJ_PLATNY_TOKEN_Z_GITHUB_A_NECH_HO_V_UVOZOVKACH"
+            token = "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"
             owner = "Pokornylubor"
             repo = "pokornyterminal"
             
