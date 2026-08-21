@@ -11,9 +11,9 @@ if st.button("🚀 Odeslat povel k aktualizaci dat", use_container_width=True):
     with st.spinner("Odesílám signál na GitHub..."):
         try:
             # Tady si Python sám sáhne do složky .streamlit pro tvůj klíč
-            token = st.secrets["GITHUB_TOKEN"]
-            owner = st.secrets["GITHUB_OWNER"]
-            repo = st.secrets["GITHUB_REPO"]
+            token = st.secrets["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"]
+            owner = st.secrets["Pokornylubor"]
+            repo = st.secrets["pokornyterminal"]
             
             url = f"https://api.github.com/repos/{owner}/{repo}/actions/workflows/aktualizace.yml/dispatches"
             
