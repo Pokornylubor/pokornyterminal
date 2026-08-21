@@ -3,22 +3,18 @@ import pandas as pd
 import yfinance as yf
 import json
 import os
+import sys
+
+# --- CENTRÁLNÍ PAMĚŤ A MENU ---
+aktualni_slozka = os.path.dirname(os.path.abspath(__file__))
+hlavni_slozka = os.path.dirname(aktualni_slozka) if os.path.basename(aktualni_slozka) == "pages" else aktualni_slozka
+sys.path.append(hlavni_slozka)
+WATCHLIST_FILE = os.path.join(hlavni_slozka, "watchlist.json")
 
 st.set_page_config(page_title="Pokorny Terminal", page_icon="icon.png", layout="wide")
 
-# --- NASTAVENÍ JAZYKA (PAMĚŤ) ---
-if "lang" not in st.session_state:
-    st.session_state.lang = "CZ" # Výchozí jazyk je čeština
-
-with st.sidebar:
-    st.markdown("🌐 **Jazyk / Language**")
-    # Přepínač jazyka
-    lang_choice = st.radio("Vyber jazyk / Select language:", ["CZ", "EN"], index=0 if st.session_state.lang == "CZ" else 1)
-    
-    # Pokud uživatel jazyk změní, uložíme ho a bleskově obnovíme stránku
-    if lang_choice != st.session_state.lang:
-        st.session_state.lang = lang_choice
-        st.rerun()
+import menu
+menu.vykresli_menu() # Vykreslí levý panel a chytré menu
 
 # --- SLOVNÍK PŘEKLADŮ ---
 t = {
@@ -56,14 +52,12 @@ t = {
     }
 }
 
-# Pro zjednodušení si jazykový balíček uložíme do proměnné "_" (podtržítko)
-_ = t[st.session_state.lang]
+_ = t.get(st.session_state.lang, t["CZ"])
 
 # --- VYKRESLENÍ TITULKU PŘES SLOVNÍK ---
 st.title(_["title"])
 st.markdown(_["desc"])
 
-WATCHLIST_FILE = "watchlist.json"
 DEFAULT_DATA = {"portfolio": ["GOOGL", "AMZN", "MSFT", "AMAT", "ASML", "NVDA", "UBER", "SOFI", "APP"], "watchlist": [], "superinvestors": ["Mohnish Pabrai", "Li Lu", "Michael Burry"]}
 
 def load_data():
@@ -152,4 +146,3 @@ with tab3:
         save_data(data)
             
         st.success(_["success_save"])
-        st.rerun()
