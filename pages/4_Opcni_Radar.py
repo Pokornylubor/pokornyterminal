@@ -3,8 +3,19 @@ import pandas as pd
 import yfinance as yf
 import json
 import os
+import requests
 
 st.set_page_config(page_title="Opční Radar", page_icon="🎲", layout="wide")
+
+# --- CENTRÁLNÍ PEVNÁ PAMĚŤ NAPOŘÁD ---
+aktualni_slozka = os.path.dirname(os.path.abspath(__file__))
+if os.path.basename(aktualni_slozka) == "pages":
+    hlavni_slozka = os.path.dirname(aktualni_slozka)
+else:
+    hlavni_slozka = aktualni_slozka
+
+WATCHLIST_FILE = os.path.join(hlavni_slozka, "watchlist.json")
+# -------------------------------------
 
 if "lang" not in st.session_state:
     st.session_state.lang = "CZ"
@@ -62,12 +73,10 @@ t = {
         "err_opt": "Error occurred while downloading options:"
     }
 }
-_ = t[st.session_state.lang]
+_ = t.get(st.session_state.lang, t["CZ"])
 
 st.title(_["title"])
 st.markdown(_["desc"])
-
-WATCHLIST_FILE = "watchlist.json"
 
 # --- Načtení dat a rozdělení seznamů ---
 def load_data():
@@ -96,7 +105,6 @@ with col2:
 with col3:
     hledany_ticker = st.text_input(_["search_lbl"], "").strip().upper()
 
-# Hierarchie výběru (přednost má ruční hledání)
 vybrany_ticker = None
 if hledany_ticker:
     vybrany_ticker = hledany_ticker
@@ -105,9 +113,8 @@ elif vyber_watch != "--- Vyber ---":
 elif vyber_port != "--- Vyber ---":
     vybrany_ticker = vyber_port
 
-# --- Možnost trvalého uložení nového Tickeru ---
 if hledany_ticker:
-    st.write("") # Odřádkování pro čistší vzhled
+    st.write("") 
     c1, c2, c3 = st.columns([1, 1, 2])
     
     if hledany_ticker not in data.get("portfolio", []):
@@ -126,23 +133,36 @@ if hledany_ticker:
 
 st.markdown("---")
 
+# ==========================================
+# PROFESIONÁLNÍ CACHING A MASKOVÁNÍ (PROTI YAHOO BANŮM)
+# ==========================================
+@st.cache_data(ttl=900, show_spinner=False)
+def fetch_options_cached(ticker):
+    session = requests.Session()
+    session.headers.update({
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    })
+    
+    tkr_obj = yf.Ticker(ticker, session=session)
+    expirations = tkr_obj.options
+    
+    if not expirations:
+        return None, None, None
+    
+    nearest_exp = expirations[0]
+    chain = tkr_obj.option_chain(nearest_exp)
+    return nearest_exp, chain.calls, chain.puts
+
 # --- Analýza a vykreslení opcí ---
 if vybrany_ticker:
     if st.button(_["btn_opt"].format(vybrany_ticker), type="primary"):
         with st.spinner(_["spin_opt"]):
             try:
-                tkr_obj = yf.Ticker(vybrany_ticker)
-                expirations = tkr_obj.options
+                nearest_exp, calls, puts = fetch_options_cached(vybrany_ticker)
                 
-                if not expirations:
+                if nearest_exp is None:
                     st.warning(_["warn_opt"])
                 else:
-                    nearest_exp = expirations[0]
-                    chain = tkr_obj.option_chain(nearest_exp)
-                    
-                    calls = chain.calls
-                    puts = chain.puts
-                    
                     total_call_oi = calls['openInterest'].sum()
                     total_put_oi = puts['openInterest'].sum()
                     
@@ -157,12 +177,18 @@ if vybrany_ticker:
                     sentiment = _["bear"] if pcr_oi > 1 else _["bull"]
                     c3.metric(_["pcr"], f"{pcr_oi:.2f}", sentiment)
                     
-                    max_call_strike = calls.loc[calls['openInterest'].idxmax()]['strike']
-                    max_put_strike = puts.loc[puts['openInterest'].idxmax()]['strike']
-                    
-                    st.markdown(_["walls_h"])
-                    st.write(_["call_w"].format(max_call_strike))
-                    st.write(_["put_w"].format(max_put_strike))
+                    if not calls.empty and not puts.empty:
+                        max_call_strike = calls.loc[calls['openInterest'].idxmax()]['strike']
+                        max_put_strike = puts.loc[puts['openInterest'].idxmax()]['strike']
+                        
+                        st.markdown(_["walls_h"])
+                        st.write(_["call_w"].format(max_call_strike))
+                        st.write(_["put_w"].format(max_put_strike))
+                    else:
+                        st.write("Nedostatek dat pro výpočet opčních zdí u této expirace.")
 
             except Exception as e:
-                st.error(f"{_['err_opt']} {e}")
+                if "Too Many Requests" in str(e):
+                    st.error("Yahoo Finance má stále dočasně zablokovanou tvou IP. Dej si na pár minut pauzu, maskovací kód už je nasazený.")
+                else:
+                    st.error(f"{_['err_opt']} {e}")
