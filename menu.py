@@ -19,24 +19,23 @@ def vykresli_menu():
             
         st.markdown("---")
         
-        # ODKAZY PŘESNĚ PODLE TVÝCH SOUBORŮ NA GITHUBŮ
         if st.session_state.lang == "CZ":
             st.markdown("### 🧭 Navigace")
             st.page_link("Dashboard.py", label="🏠 Hlavní Dashboard")
-            st.page_link("pages/1_Insider_4F.py", label="🕵️‍♂️ Insider Tracker")
+            st.page_link("pages/1_Insider_4F.py", label="🕵️‍♂️ Insider Tracker (4F)")
             st.page_link("pages/2_Superinvestors_13F.py", label="🐋 13F Superinvestoři")
             st.page_link("pages/3_Valuacni_Screener.py", label="📊 Valuační Screener")
             st.page_link("pages/4_Opcni_Radar.py", label="🎲 Opční Radar")
             st.page_link("pages/5_COT_Reporty.py", label="🏛️ COT Reporty")
-            st.page_link("pages/6_Aktualizace.py", label="🎛️ Aktualizace Dat")
-            # Pokud už máš v pages i ten 7_SEC_13F_Radar.py, odmaž křížek na dalším řádku:
-            # st.page_link("pages/7_SEC_13F_Radar.py", label="🏛️ SEC 13F Radar")
+            st.page_link("pages/6_SEC_13F_Radar.py", label="🏛️ SEC 13F Radar")
+            st.page_link("pages/7_Aktualizace.py", label="🎛️ Aktualizace Dat")
         else:
             st.markdown("### 🧭 Navigation")
             st.page_link("Dashboard.py", label="🏠 Main Dashboard")
-            st.page_link("pages/1_Insider_4F.py", label="🕵️‍♂️ Insider Tracker")
+            st.page_link("pages/1_Insider_4F.py", label="🕵️‍♂️ Insider Tracker (4F)")
             st.page_link("pages/2_Superinvestors_13F.py", label="🐋 13F Superinvestors")
             st.page_link("pages/3_Valuacni_Screener.py", label="📊 Valuation Screener")
             st.page_link("pages/4_Opcni_Radar.py", label="🎲 Options Radar")
             st.page_link("pages/5_COT_Reporty.py", label="🏛️ COT Reports")
-            st.page_link("pages/6_Aktualizace.py", label="🎛️ Data Update")
+            st.page_link("pages/6_SEC_13F_Radar.py", label="🏛️ SEC 13F Radar")
+            st.page_link("pages/7_Aktualizace.py", label="🎛️ Data Update")
