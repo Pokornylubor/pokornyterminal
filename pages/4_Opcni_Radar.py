@@ -24,7 +24,7 @@ t = {
         "btn_add_port": "💼 Uložit do Portfolia", "btn_add_watch": "👀 Uložit do Watchlistu", "succ_add": "✅ Uloženo a posláno do cloudu!",
         "btn_opt": "Stáhnout Opce pro {}", "spin_opt": "Analyzuji řetězec...", "warn_opt": "Žádná opční data.",
         "exp": "📅 Expirace:", "call_open": "Otevřené Call", "put_open": "Otevřené Put",
-        "bear": "🔴 Bearish", "bull": "🟢 Bullish", "pcr": "Put/Call Ratio",
+        "bear": "-🔴 Bearish", "bull": "🟢 Bullish", "pcr": "Put/Call Ratio",
         "walls_h": "### 🧱 Opční zdi", "call_w": "📈 Nejsilnější Call Wall: ${}", "put_w": "📉 Nejsilnější Put Wall: ${}", "err_opt": "Chyba:"
     },
     "EN": {
@@ -33,7 +33,7 @@ t = {
         "btn_add_port": "💼 Add to Portfolio", "btn_add_watch": "👀 Add to Watchlist", "succ_add": "✅ Saved and synced!",
         "btn_opt": "Download Options for {}", "spin_opt": "Analyzing chain...", "warn_opt": "No options data.",
         "exp": "📅 Expiration:", "call_open": "Open Calls", "put_open": "Open Puts",
-        "bear": "🔴 Bearish", "bull": "🟢 Bullish", "pcr": "Put/Call Ratio",
+        "bear": "-🔴 Bearish", "bull": "🟢 Bullish", "pcr": "Put/Call Ratio",
         "walls_h": "### 🧱 Option Walls", "call_w": "📈 Strongest Call Wall: ${}", "put_w": "📉 Strongest Put Wall: ${}", "err_opt": "Error:"
     }
 }
