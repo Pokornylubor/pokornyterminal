@@ -136,7 +136,6 @@ def get_13f_df(cik, acc_no_hyphens):
                 try:
                     pos.append({
                         "Stock": issuer.group(1).strip().upper(), 
-                        # Změna pravidel SEC: Hodnoty už nejsou v tisících, ale v přesných dolarech (žádné * 1000)
                         "Value": float(val.group(1).strip().replace(',', '')),
                         "Shares": float(shares.group(1).strip().replace(',', ''))
                     })
@@ -242,10 +241,8 @@ if st.button(_["btn_down"], type="primary"):
                         axis=1
                     )
                     
-                    # Čistý oddělovací sloupec beze slova "None"
-                    df_latest[" "] = ""
-                    
-                    final_cols = ["Stock", "% of Portfolio", "RecentActivity", "Shares", "ReportedPrice*", "Value", " ", "Current Price", "+/-Reported Price", "52Week Low", "52Week High"]
+                    # Odstraněn prázdný oddělovací sloupec
+                    final_cols = ["Stock", "% of Portfolio", "RecentActivity", "Shares", "ReportedPrice*", "Value", "Current Price", "+/-Reported Price", "52Week Low", "52Week High"]
                     df_final = df_latest[final_cols].sort_values(by="% of Portfolio", ascending=False)
                     
                     def style_df(row):
@@ -257,12 +254,11 @@ if st.button(_["btn_down"], type="primary"):
                         
                         if pd.notnull(row['+/-Reported Price']):
                             val = float(row['+/-Reported Price'])
-                            if val > 0: styles[8] = 'color: #00ff00;'
-                            elif val < 0: styles[8] = 'color: #ff4b4b;'
+                            if val > 0: styles[7] = 'color: #00ff00;' # Posunuto na index 7
+                            elif val < 0: styles[7] = 'color: #ff4b4b;' # Posunuto na index 7
                         
                         return styles
                     
-                    # Ošetření, aby chybějící data (None) nepsala hnusné texty do tabulky
                     styled_df = df_final.style.apply(style_df, axis=1).format({
                         "% of Portfolio": "{:.2f}%",
                         "Shares": "{:,.0f}",
