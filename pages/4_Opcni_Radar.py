@@ -27,11 +27,11 @@ if selected_lang != st.session_state.lang:
 
 t = {
     "CZ": {
-        "title": "🎲 Opční Sentiment & Zdi",
-        "desc": "Univerzální radar pro hledání opčních zdí 'Smart Money'. Vyhledej jakoukoliv akcii nebo vyber ze svých seznamů.",
+        "title": "🎲 Opční Radar",
+        "desc": "Opční Radar pro hledání opčních zdí.",
         "sel_port": "💼 Moje pozice:",
         "sel_watch": "👀 Můj Watchlist:",
-        "search_lbl": "🔍 Vyhledat akcii (např. TSLA):",
+        "search_lbl": "🔍 Vyhledat akcii :",
         "btn_add_port": "💼 Uložit do Portfolia",
         "btn_add_watch": "👀 Uložit do Watchlistu",
         "succ_add": "✅ Ticker {} přidán a uložen napořád!",
