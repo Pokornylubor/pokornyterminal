@@ -6,6 +6,7 @@ import json
 import os
 import sys
 import base64
+import time
 
 # --- CENTRÁLNÍ PAMĚŤ A MENU ---
 aktualni_slozka = os.path.dirname(os.path.abspath(__file__))
@@ -58,7 +59,6 @@ def load_watchlist():
 data = load_watchlist()
 if "saved_ciks" not in data: data["saved_ciks"] = {}
 
-# --- PŘEDPŘIPRAVENÍ SUPERINVESTOŘI ---
 SUPERINVESTORS = {
     "Warren Buffett (Berkshire Hathaway)": "1067983",
     "Michael Burry (Scion Asset Management)": "1649339",
@@ -71,9 +71,7 @@ SUPERINVESTORS = {
     "Jim Simons (Renaissance Technologies)": "1037389",
     "Carl Icahn (Icahn Capital)": "921669"
 }
-# Připojí tvé vlastní uložené fondy z Watchlistu
 SUPERINVESTORS.update(data["saved_ciks"])
-# Přidá možnost vyhledat úplně někoho jiného
 SUPERINVESTORS["🔍 Jiný fond (Zadat CIK manuálně)"] = "CUSTOM"
 
 with st.expander(_["exp_feed"]):
@@ -97,22 +95,41 @@ with col3:
 if st.button(_["btn_down"], type="primary"):
     cik = cik_input.zfill(10)
     with st.spinner("Pátrám v hlubinách SEC EDGAR..."):
+        time.sleep(0.5) # Bezpečnostní pauza proti zablokování
         res = requests.get(f"https://data.sec.gov/submissions/CIK{cik}.json", headers=SEC_HEADERS)
+        
         if res.status_code == 200:
             filings = res.json().get("filings", {}).get("recent", {})
-            hr_indices = [i for i, f in enumerate(filings.get("form", [])) if "13F-HR" in f]
+            
+            # Varování, pokud tě SEC na chvíli omezila
+            if not filings or not filings.get("form"):
+                st.error("❌ SEC API tě dočasně zablokovalo za příliš rychlé klikání. Počkej 30 vteřin a zkus to znovu.")
+                st.stop()
+                
+            # Chytrý vyhledávač formulářů (bere vše kolem 13F)
+            hr_indices = [i for i, f in enumerate(filings.get("form", [])) if "13F" in str(f).upper() and "NT" not in str(f).upper()]
             
             if hr_indices:
                 acc_no_hyphens = filings['accessionNumber'][hr_indices[0]]
                 acc_no_clean = acc_no_hyphens.replace('-', '')
                 
                 txt_url = f"https://www.sec.gov/Archives/edgar/data/{cik}/{acc_no_clean}/{acc_no_hyphens}.txt"
-                
                 txt_res = requests.get(txt_url, headers=SEC_HEADERS)
                 
                 if txt_res.status_code == 200:
                     soup = BeautifulSoup(txt_res.content, 'html.parser')
-                    pos = [{"Akcie": i.find('nameofissuer').text, "Hodnota ($)": float(i.find('value').text)*1000} for i in soup.find_all('infotable') if i.find('nameofissuer') and i.find('value')]
+                    
+                    # Nezničítejná čtečka - ignoruje zvláštní názvy a mezery v XML
+                    items = soup.find_all(lambda tag: tag.name and 'infotable' in tag.name.lower())
+                    pos = []
+                    for item in items:
+                        issuer = item.find(lambda tag: tag.name and 'nameofissuer' in tag.name.lower())
+                        val = item.find(lambda tag: tag.name and 'value' in tag.name.lower())
+                        if issuer and val:
+                            try:
+                                pos.append({"Akcie": issuer.text.strip(), "Hodnota ($)": float(val.text.strip()) * 1000})
+                            except:
+                                pass
                     
                     if pos:
                         df = pd.DataFrame(pos).groupby("Akcie").sum().reset_index()
@@ -120,7 +137,7 @@ if st.button(_["btn_down"], type="primary"):
                         st.success(_["succ_down"])
                         st.dataframe(df.sort_values(by="%", ascending=False).style.format({"Hodnota ($)": "${:,.0f}", "%": "{:.2f}%"}), use_container_width=True)
                     else:
-                        st.error(_["err_xml"])
+                        st.error("❌ Nalezený report má naprosto nestandardní strukturu nebo neobsahuje akcie.")
                 else:
                     st.error("❌ Nepodařilo se stáhnout Master soubor.")
             else:
