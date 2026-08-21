@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import requests
+import cloudscraper
 from bs4 import BeautifulSoup
 import json
 import os
@@ -19,17 +20,24 @@ st.set_page_config(page_title="SEC 13F Radar", page_icon="🏛️", layout="wide
 import menu
 menu.vykresli_menu() 
 
-SEC_HEADERS = {"User-Agent": "Lubor Pokorny (pokornyl98@gmail.com)"} 
+# Přesný formát, který SEC vyžaduje, aby tě neblokovali
+SEC_HEADERS = {
+    "User-Agent": "PokornyTerminal pokornyl98@gmail.com",
+    "Accept-Encoding": "gzip, deflate"
+} 
+
+# Tímto nasadíme na aplikaci masku skutečného prohlížeče
+scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'windows', 'mobile': False})
 
 t = {
     "CZ": {
-        "title": "🏛️ SEC EDGAR 13F Radar", "desc": "Živá vládní data z EDGAR (Přímé napojení na centrálu).", "exp_feed": "🔥 Live Feed z trhu", "btn_feed": "Stáhnout 40 reportů",
+        "title": "🏛️ SEC EDGAR 13F Radar", "desc": "Živá vládní data z EDGAR (Chytrý extraktor).", "exp_feed": "🔥 Live Feed z trhu", "btn_feed": "Stáhnout 40 reportů",
         "spin_feed": "Stahuji...", "sel_fund": "Vyber Fond:", "cik_input": "Zadej CIK:", "name_input": "Název pro uložení:",
         "btn_save": "💾 Uložit na Cloud", "succ_save": "✅ Uloženo!", "btn_down": "Stáhnout Data",
-        "err_no13f": "❌ Žádný report nebyl nalezen (fond asi ještě nepodal 13F).", "err_xml": "❌ Nelze přečíst data z reportu.", "succ_down": "✅ Nalezeno."
+        "err_no13f": "❌ Žádný report nebyl nalezen.", "err_xml": "❌ Nelze přečíst data z reportu.", "succ_down": "✅ Nalezeno."
     },
     "EN": {
-        "title": "🏛️ SEC EDGAR 13F Radar", "desc": "Live government data from EDGAR (Direct feed).", "exp_feed": "🔥 Live Market Feed", "btn_feed": "Download 40 reports",
+        "title": "🏛️ SEC EDGAR 13F Radar", "desc": "Live government data from EDGAR (Smart Extractor).", "exp_feed": "🔥 Live Market Feed", "btn_feed": "Download 40 reports",
         "spin_feed": "Downloading...", "sel_fund": "Select Fund:", "cik_input": "Enter CIK:", "name_input": "Name to save:",
         "btn_save": "💾 Save to Cloud", "succ_save": "✅ Saved!", "btn_down": "Download Data",
         "err_no13f": "❌ No report found.", "err_xml": "❌ Cannot read data.", "succ_down": "✅ Found."
@@ -78,10 +86,12 @@ SUPERINVESTORS["🔍 Jiný fond (Zadat CIK manuálně)"] = "CUSTOM"
 with st.expander(_["exp_feed"]):
     if st.button(_["btn_feed"]):
         with st.spinner(_["spin_feed"]):
-            res = requests.get("https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=13F-HR&count=40&output=atom", headers=SEC_HEADERS)
+            res = scraper.get("https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=13F-HR&count=40&output=atom", headers=SEC_HEADERS)
             if res.status_code == 200:
                 feed = [{"Datum": e.find('updated').text[:10], "Fond": e.find('title').text.split('-')[0].strip()} for e in BeautifulSoup(res.content, 'xml').find_all('entry')]
                 st.dataframe(pd.DataFrame(feed), use_container_width=True)
+            else:
+                st.error("❌ SEC tě dočasně zablokoval na 10 minut za rychlé klikání. Zkus to později.")
 
 col1, col2, col3 = st.columns([2, 2, 1])
 with col1: vyber = st.selectbox(_["sel_fund"], list(SUPERINVESTORS.keys()))
@@ -95,64 +105,73 @@ with col3:
 
 if st.button(_["btn_down"], type="primary"):
     cik = cik_input.zfill(10)
-    with st.spinner("Vytahuji data přímo z centrály EDGAR..."):
-        time.sleep(0.5) 
+    with st.spinner("Pátrám v hlubinách SEC EDGAR (Bypass režim)..."):
+        time.sleep(1) # Extra pauza proti zablokování
         
-        # 1. KROK: Místo chybového API použijeme surový RSS vyhledávač, ten nelže.
-        rss_url = f"https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK={cik}&type=13F-HR&count=5&output=atom"
-        rss_res = requests.get(rss_url, headers=SEC_HEADERS)
+        url_json = f"https://data.sec.gov/submissions/CIK{cik}.json"
+        res = scraper.get(url_json, headers=SEC_HEADERS)
         
-        if rss_res.status_code == 200:
-            soup_rss = BeautifulSoup(rss_res.content, 'xml')
-            entries = soup_rss.find_all('entry')
+        # Detekce blokace od vlády
+        if res.status_code == 403 or res.status_code == 429:
+            st.error("🚨 OCHRANA SEC: Americká vláda zablokovala tvou IP adresu na 10 minut za rychlé klikání. Běž si uvařit kávu a zkus to za chvíli!")
+            st.stop()
             
-            if entries:
-                # 2. KROK: Najdeme unikátní kód posledního reportu
-                acc_no_hyphens = None
-                for entry in entries:
-                    id_tag = entry.find('id')
-                    if id_tag and 'accession' in id_tag.text:
-                        acc_no_hyphens = id_tag.text.split(':')[-1]
-                        break
-                        
-                if acc_no_hyphens:
-                    acc_no_clean = acc_no_hyphens.replace('-', '')
+        if res.status_code == 200:
+            filings = res.json().get("filings", {}).get("recent", {})
+            hr_indices = [i for i, f in enumerate(filings.get("form", [])) if "13F" in str(f).upper() and "NT" not in str(f).upper()]
+            
+            if hr_indices:
+                acc_no_hyphens = filings['accessionNumber'][hr_indices[0]]
+                acc_no_clean = acc_no_hyphens.replace('-', '')
+                
+                # CHYTRÝ KROK: Místo hádání jména XML se podíváme přímo do indexu složky na serveru!
+                idx_url = f"https://www.sec.gov/Archives/edgar/data/{cik}/{acc_no_clean}/index.json"
+                idx_res = scraper.get(idx_url, headers=SEC_HEADERS)
+                
+                xml_filename = None
+                if idx_res.status_code == 200:
+                    files = idx_res.json().get("directory", {}).get("item", [])
+                    for file in files:
+                        name = file.get("name", "").lower()
+                        # Hledáme soubor, který má příponu .xml a je to tabulka
+                        if name.endswith(".xml") and ("table" in name or "info" in name or "13f" in name):
+                            xml_filename = file.get("name")
+                            if "table" in name: break # Ideální přesná shoda
+                
+                if not xml_filename: xml_filename = "infotable.xml" # Nouzová záloha
+                
+                xml_url = f"https://www.sec.gov/Archives/edgar/data/{cik}/{acc_no_clean}/{xml_filename}"
+                xml_res = scraper.get(xml_url, headers=SEC_HEADERS)
+                
+                if xml_res.status_code == 200:
+                    content = xml_res.text
                     
-                    # 3. KROK: Stáhneme hrubý Master textový soubor
-                    txt_url = f"https://www.sec.gov/Archives/edgar/data/{cik}/{acc_no_clean}/{acc_no_hyphens}.txt"
-                    txt_res = requests.get(txt_url, headers=SEC_HEADERS)
+                    # REGEX: Nezničítejný textový rentgen, který vyseká akcie i z toho největšího chaosu
+                    blocks = re.findall(r'(?is)<[^>]*?infoTable[^>]*>(.*?)</[^>]*?infoTable>', content)
                     
-                    if txt_res.status_code == 200:
-                        content = txt_res.text
+                    pos = []
+                    for block in blocks:
+                        issuer_match = re.search(r'(?is)<[^>]*?nameOfIssuer[^>]*>(.*?)</[^>]*?nameOfIssuer>', block)
+                        value_match = re.search(r'(?is)<[^>]*?value[^>]*>(.*?)</[^>]*?value>', block)
                         
-                        # 4. KROK: Nezničítejný Regex (Rentgen), který vyseká akcie i z toho největšího chaosu
-                        blocks = re.findall(r'(?is)<[^>]*?infoTable[^>]*>(.*?)</[^>]*?infoTable>', content)
-                        
-                        pos = []
-                        for block in blocks:
-                            issuer_match = re.search(r'(?is)<[^>]*?nameOfIssuer[^>]*>(.*?)</[^>]*?nameOfIssuer>', block)
-                            value_match = re.search(r'(?is)<[^>]*?value[^>]*>(.*?)</[^>]*?value>', block)
-                            
-                            if issuer_match and value_match:
-                                try:
-                                    issuer = issuer_match.group(1).strip()
-                                    val = float(value_match.group(1).strip()) * 1000
-                                    pos.append({"Akcie": issuer, "Hodnota ($)": val})
-                                except:
-                                    pass
-                        
-                        if pos:
-                            df = pd.DataFrame(pos).groupby("Akcie").sum().reset_index()
-                            df["%"] = (df["Hodnota ($)"] / df["Hodnota ($)"].sum()) * 100
-                            st.success(_["succ_down"])
-                            st.dataframe(df.sort_values(by="%", ascending=False).style.format({"Hodnota ($)": "${:,.0f}", "%": "{:.2f}%"}), use_container_width=True)
-                        else:
-                            st.error("❌ Nalezený report je pravděpodobně prázdný, nebo fond požádal SEC o utajení pozic.")
+                        if issuer_match and value_match:
+                            try:
+                                issuer = issuer_match.group(1).strip()
+                                val = float(value_match.group(1).strip().replace(',', '')) * 1000
+                                pos.append({"Akcie": issuer, "Hodnota ($)": val})
+                            except:
+                                pass
+                    
+                    if pos:
+                        df = pd.DataFrame(pos).groupby("Akcie").sum().reset_index()
+                        df["%"] = (df["Hodnota ($)"] / df["Hodnota ($)"].sum()) * 100
+                        st.success(f"✅ Staženo ze souboru: {xml_filename}")
+                        st.dataframe(df.sort_values(by="%", ascending=False).style.format({"Hodnota ($)": "${:,.0f}", "%": "{:.2f}%"}), use_container_width=True)
                     else:
-                        st.error("❌ Nepodařilo se stáhnout Master soubor.")
+                        st.error("❌ Nalezený XML soubor je pravděpodobně prázdný, nebo fond požádal o utajení pozic.")
                 else:
-                    st.error("❌ Nepodařilo se najít identifikační číslo reportu.")
+                    st.error("❌ Nepodařilo se stáhnout tabulku s pozicemi.")
             else:
-                st.error(_["err_no13f"])
+                st.error("❌ Tento fond za poslední období nepodal žádný 13F formulář (nebo používá jiné CIK).")
         else:
-            st.error("❌ Nelze se připojit na vyhledávač SEC EDGAR.")
+            st.error("❌ API americké vlády neodpovídá.")
