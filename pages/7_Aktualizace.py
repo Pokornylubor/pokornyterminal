@@ -11,9 +11,9 @@ st.markdown("---")
 if st.button("🚀 Odeslat povel k aktualizaci všech dat", use_container_width=True):
     with st.spinner("Navazuji spojení se servery GitHubu..."):
         try:
-            token = st.secrets["GITHUB_TOKEN"]
-            owner = st.secrets["GITHUB_OWNER"]
-            repo = st.secrets["GITHUB_REPO"]
+            token = st.secrets["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"]
+            owner = st.secrets["Pokornylubor"]
+            repo = st.secrets["pokornyterminal"]
             
             url = f"https://api.github.com/repos/{owner}/{repo}/actions/workflows/aktualizace.yml/dispatches"
             res = requests.post(
