@@ -1,100 +1,50 @@
 import streamlit as st
 import pandas as pd
-import os
 import json
+import os
+import sys
+
+# --- CENTRÁLNÍ PAMĚŤ A MENU ---
+aktualni_slozka = os.path.dirname(os.path.abspath(__file__))
+hlavni_slozka = os.path.dirname(aktualni_slozka) if os.path.basename(aktualni_slozka) == "pages" else aktualni_slozka
+sys.path.append(hlavni_slozka)
+WATCHLIST_FILE = os.path.join(hlavni_slozka, "watchlist.json")
 
 st.set_page_config(page_title="13F Superinvestors", page_icon="🐋", layout="wide")
-
-if "lang" not in st.session_state:
-    st.session_state.lang = "CZ"
-
-selected_lang = st.sidebar.radio("🌐 Jazyk / Language:", ["CZ", "EN"], index=0 if st.session_state.lang == "CZ" else 1)
-if selected_lang != st.session_state.lang:
-    st.session_state.lang = selected_lang
-    st.rerun()
+import menu
+menu.vykresli_menu()
 
 t = {
-    "CZ": {
-        "title": "🐋 13F Superinvestoři",
-        "desc": "Historická data portfolií největších investorů na světě (z Dataromy).",
-        "warn_file": "⚠️ Datový soubor nebyl nalezen. Spusť nejprve program `updater.py`.",
-        "empty_db": "Databáze je prázdná.",
-        "exp_title": "⭐ Nastavit oblíbené Superinvestory",
-        "exp_desc": "Vyber si legendy, které chceš mít vždy po ruce jako první.",
-        "multi_fav": "Moji oblíbenci:",
-        "btn_save": "💾 Uložit výběr",
-        "succ_save": "✅ Tvoji oblíbenci byli uloženi!",
-        "check_all": "Zobrazit všechny (i ty, co nemám v oblíbených)",
-        "sel_inv": "Vyber superinvestora k analýze:",
-        "last_upd": "📅 **Poslední známá aktualizace portfolia:**"
-    },
-    "EN": {
-        "title": "🐋 13F Superinvestors",
-        "desc": "Historical portfolio data of the world's greatest investors (from Dataroma).",
-        "warn_file": "⚠️ Data file not found. Run `updater.py` first.",
-        "empty_db": "Database is empty.",
-        "exp_title": "⭐ Set Favorite Superinvestors",
-        "exp_desc": "Select the legends you want to keep handy.",
-        "multi_fav": "My favorites:",
-        "btn_save": "💾 Save Selection",
-        "succ_save": "✅ Your favorites have been saved!",
-        "check_all": "Show all (including non-favorites)",
-        "sel_inv": "Select a superinvestor for analysis:",
-        "last_upd": "📅 **Last known portfolio update:**"
-    }
+    "CZ": {"title": "🐋 13F Superinvestoři", "desc": "Historická data portfolií (Dataroma).", "empty": "Databáze je prázdná.", "exp": "⭐ Nastavit oblíbené", "fav": "Moji oblíbenci:", "save": "💾 Uložit", "all": "Zobrazit všechny", "sel": "Vyber superinvestora:"},
+    "EN": {"title": "🐋 13F Superinvestors", "desc": "Historical portfolio data (Dataroma).", "empty": "Database is empty.", "exp": "⭐ Set Favorites", "fav": "My favorites:", "save": "💾 Save", "all": "Show all", "sel": "Select superinvestor:"}
 }
-_ = t[st.session_state.lang]
+_ = t.get(st.session_state.lang, t["CZ"])
 
 st.title(_["title"])
 st.markdown(_["desc"])
 
-WATCHLIST_FILE = "watchlist.json"
-FILE_PATH = "superinvestors_db.csv"
+FILE_PATH = os.path.join(hlavni_slozka, "superinvestors_db.csv")
 
-if not os.path.exists(FILE_PATH):
-    st.warning(_["warn_file"])
+if not os.path.exists(FILE_PATH): st.warning("⚠️ Data file not found. Run updater.py first.")
 else:
     df = pd.read_csv(FILE_PATH)
-    if df.empty:
-        st.info(_["empty_db"])
+    if df.empty: st.info(_["empty"])
     else:
         investors = sorted(df['Investor'].dropna().unique())
-        
         try:
-            with open(WATCHLIST_FILE, "r") as f:
-                data = json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError):
-            data = {"portfolio": [], "watchlist": [], "superinvestors": []}
-            
-        ulozeni_investori = data.get("superinvestors", [])
-        vychozi_vyber = [inv for inv in ulozeni_investori if inv in investors]
+            with open(WATCHLIST_FILE, "r") as f: data = json.load(f)
+        except: data = {"superinvestors": []}
         
-        with st.expander(_["exp_title"], expanded=False):
-            st.markdown(_["exp_desc"])
-            vybrani_oblibenci = st.multiselect(_["multi_fav"], options=investors, default=vychozi_vyber)
-            
-            if st.button(_["btn_save"], use_container_width=True):
-                data["superinvestors"] = vybrani_oblibenci
-                with open(WATCHLIST_FILE, "w") as f:
-                    json.dump(data, f, indent=4)
-                st.success(_["succ_save"])
+        vychozi_vyber = [inv for inv in data.get("superinvestors", []) if inv in investors]
+        with st.expander(_["exp"], expanded=False):
+            vybrani = st.multiselect(_["fav"], options=investors, default=vychozi_vyber)
+            if st.button(_["save"], use_container_width=True):
+                data["superinvestors"] = vybrani
+                with open(WATCHLIST_FILE, "w") as f: json.dump(data, f, indent=4)
                 st.rerun()
-                
         st.markdown("---")
+        nabidka = investors if (not vychozi_vyber or st.checkbox(_["all"])) else vychozi_vyber
+        selected = st.selectbox(_["sel"], nabidka)
         
-        if vychozi_vyber:
-            zobrazit_vse = st.checkbox(_["check_all"])
-            nabidka = investors if zobrazit_vse else vychozi_vyber
-        else:
-            nabidka = investors
-            
-        selected_investor = st.selectbox(_["sel_inv"], nabidka)
-        
-        if selected_investor:
-            investor_data = df[df['Investor'] == selected_investor]
-            if 'Kvartal_Aktualizace' in investor_data.columns:
-                kvartal = investor_data['Kvartal_Aktualizace'].iloc[0]
-                st.info(f"{_['last_upd']} {kvartal}")
-            
-            display_df = investor_data.drop(columns=['Investor', 'Kvartal_Aktualizace', 'Investor_Code'], errors='ignore')
-            st.dataframe(display_df, use_container_width=True)
+        if selected:
+            st.dataframe(df[df['Investor'] == selected].drop(columns=['Investor', 'Kvartal_Aktualizace', 'Investor_Code'], errors='ignore'), use_container_width=True)
