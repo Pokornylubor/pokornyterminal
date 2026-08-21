@@ -21,7 +21,7 @@ menu.vykresli_menu()
 t = {
     "CZ": {
         "title": "🏛️ COT Reporty (Commitments of Traders)",
-        "desc": "Sleduj pozice 'Smart Money' a velkých fondů. Data se stahují přímo z americké komise CFTC.",
+        "desc": "Sledování pozic Commercials (Zajišťovatelů/Smart Money) a Non-Commercials (Fondů a Spekulantů).",
         "spin_data": "Stahuji data z vládních serverů CFTC (tohle může trvat pár vteřin)...",
         "err_data": "❌ Nelze stáhnout data z CFTC. Komise pravděpodobně blokuje spojení.",
         "h_univ": "🔍 Univerzální vyhledávač",
@@ -38,7 +38,7 @@ t = {
     },
     "EN": {
         "title": "🏛️ COT Reports (Commitments of Traders)",
-        "desc": "Track positions of 'Smart Money' and large funds. Data downloaded directly from the US CFTC.",
+        "desc": "Tracking positions of Commercials (Hedgers/Smart Money) and Non-Commercials (Funds and Speculators).",
         "spin_data": "Downloading data from CFTC government servers (may take a few seconds)...",
         "err_data": "❌ Failed to download CFTC data. Connection blocked.",
         "h_univ": "🔍 Universal Search",
