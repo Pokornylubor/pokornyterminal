@@ -21,8 +21,8 @@ menu.vykresli_menu()
 t = {
     "CZ": {
         "title": "🎛️ Dálkové ovládání cloudu & SEC", 
-        "desc": "Manuálně spusť masivní stahování dat (13F Dataroma, 20 000 4F Insiderů a přímé vládní spojení SEC).",
-        "btn": "🚀 Odeslat povel k aktualizaci (13F + 4F + SEC EDGAR)", 
+        "desc": "Manuálně spusť masivní stahování dat (13F Dataroma, 40 000 4F Insiderů a přímé vládní spojení SEC).",
+        "btn": "🚀 Odeslat povel k aktualizaci (13F + 40k 4F + SEC EDGAR)", 
         "spin": "Stahuji aktuální SEC data (to může trvat minutu) a odesílám signál cloudu...", 
         "succ": "✅ SEC data stažena lokálně a povel cloudu odeslán na GitHub!",
         "err_gh": "❌ Chyba GitHubu: ", 
@@ -30,8 +30,8 @@ t = {
     },
     "EN": {
         "title": "🎛️ Cloud & SEC Remote Control", 
-        "desc": "Manually trigger massive data download (13F Dataroma, 20,000 4F Insiders, and direct SEC Radar).",
-        "btn": "🚀 Send Update Command (13F + 4F + SEC EDGAR)", 
+        "desc": "Manually trigger massive data download (13F Dataroma, 40,000 4F Insiders, and direct SEC Radar).",
+        "btn": "🚀 Send Update Command (13F + 40k 4F + SEC EDGAR)", 
         "spin": "Downloading SEC data (may take a minute) and sending signal to cloud...", 
         "succ": "✅ SEC data downloaded locally and command sent to GitHub!",
         "err_gh": "❌ GitHub error: ", 
