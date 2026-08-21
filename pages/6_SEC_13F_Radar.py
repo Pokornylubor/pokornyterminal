@@ -7,6 +7,7 @@ import os
 import sys
 import base64
 import time
+import re
 
 # --- CENTRÁLNÍ PAMĚŤ A MENU ---
 aktualni_slozka = os.path.dirname(os.path.abspath(__file__))
@@ -95,18 +96,16 @@ with col3:
 if st.button(_["btn_down"], type="primary"):
     cik = cik_input.zfill(10)
     with st.spinner("Pátrám v hlubinách SEC EDGAR..."):
-        time.sleep(0.5) # Bezpečnostní pauza proti zablokování
+        time.sleep(0.5) 
         res = requests.get(f"https://data.sec.gov/submissions/CIK{cik}.json", headers=SEC_HEADERS)
         
         if res.status_code == 200:
             filings = res.json().get("filings", {}).get("recent", {})
             
-            # Varování, pokud tě SEC na chvíli omezila
             if not filings or not filings.get("form"):
                 st.error("❌ SEC API tě dočasně zablokovalo za příliš rychlé klikání. Počkej 30 vteřin a zkus to znovu.")
                 st.stop()
                 
-            # Chytrý vyhledávač formulářů (bere vše kolem 13F)
             hr_indices = [i for i, f in enumerate(filings.get("form", [])) if "13F" in str(f).upper() and "NT" not in str(f).upper()]
             
             if hr_indices:
@@ -117,17 +116,21 @@ if st.button(_["btn_down"], type="primary"):
                 txt_res = requests.get(txt_url, headers=SEC_HEADERS)
                 
                 if txt_res.status_code == 200:
-                    soup = BeautifulSoup(txt_res.content, 'html.parser')
+                    content = txt_res.text
                     
-                    # Nezničítejná čtečka - ignoruje zvláštní názvy a mezery v XML
-                    items = soup.find_all(lambda tag: tag.name and 'infotable' in tag.name.lower())
+                    # REGEX: Nezničítejný textový rentgen (ignoruje všechno kolem, vytáhne jen bloky akcií)
+                    blocks = re.findall(r'(?is)<[^>]*?infoTable[^>]*>(.*?)</[^>]*?infoTable>', content)
+                    
                     pos = []
-                    for item in items:
-                        issuer = item.find(lambda tag: tag.name and 'nameofissuer' in tag.name.lower())
-                        val = item.find(lambda tag: tag.name and 'value' in tag.name.lower())
-                        if issuer and val:
+                    for block in blocks:
+                        issuer_match = re.search(r'(?is)<[^>]*?nameOfIssuer[^>]*>(.*?)</[^>]*?nameOfIssuer>', block)
+                        value_match = re.search(r'(?is)<[^>]*?value[^>]*>(.*?)</[^>]*?value>', block)
+                        
+                        if issuer_match and value_match:
                             try:
-                                pos.append({"Akcie": issuer.text.strip(), "Hodnota ($)": float(val.text.strip()) * 1000})
+                                issuer = issuer_match.group(1).strip()
+                                val = float(value_match.group(1).strip()) * 1000
+                                pos.append({"Akcie": issuer, "Hodnota ($)": val})
                             except:
                                 pass
                     
@@ -137,7 +140,7 @@ if st.button(_["btn_down"], type="primary"):
                         st.success(_["succ_down"])
                         st.dataframe(df.sort_values(by="%", ascending=False).style.format({"Hodnota ($)": "${:,.0f}", "%": "{:.2f}%"}), use_container_width=True)
                     else:
-                        st.error("❌ Nalezený report má naprosto nestandardní strukturu nebo neobsahuje akcie.")
+                        st.error("❌ Nalezený report je pravděpodobně prázdný, nebo fond požádal o utajení pozic.")
                 else:
                     st.error("❌ Nepodařilo se stáhnout Master soubor.")
             else:
