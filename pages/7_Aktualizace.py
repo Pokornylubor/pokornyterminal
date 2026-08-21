@@ -14,13 +14,13 @@ menu.vykresli_menu()
 
 t = {
     "CZ": {
-        "title": "🎛️ Dálkové ovládání cloudu", "desc": "Manuálně spusť stahování 13F z Dataromy (GitHub zátěž).",
-        "btn": "🚀 Odeslat povel k aktualizaci", "spin": "Odesílám signál...", "succ": "✅ Povel odeslán!",
+        "title": "🎛️ Dálkové ovládání cloudu", "desc": "Manuálně spusť masivní stahování dat (13F Dataroma + 20 000 4F Insiderů).",
+        "btn": "🚀 Odeslat povel k aktualizaci (13F + 4F)", "spin": "Odesílám signál...", "succ": "✅ Povel odeslán na GitHub!",
         "err_gh": "❌ Chyba GitHubu: ", "err_ex": "❌ Chyba Secrets: "
     },
     "EN": {
-        "title": "🎛️ Cloud Remote Control", "desc": "Manually trigger 13F download from Dataroma.",
-        "btn": "🚀 Send Update Command", "spin": "Sending signal...", "succ": "✅ Command sent!",
+        "title": "🎛️ Cloud Remote Control", "desc": "Manually trigger massive data download (13F Dataroma + 20,000 4F Insiders).",
+        "btn": "🚀 Send Update Command (13F + 4F)", "spin": "Sending signal...", "succ": "✅ Command sent to GitHub!",
         "err_gh": "❌ GitHub error: ", "err_ex": "❌ Secrets error: "
     }
 }
