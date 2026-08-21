@@ -22,21 +22,21 @@ menu.vykresli_menu()
 t = {
     "CZ": {
         "title": "🏛️ COT Reporty (Commitments of Traders)",
-        "desc": "Tracking positions of Commercials (Hedgers/Smart Money) and Non-Commercials (Funds and Speculators). Data z CFTC.",
-        "spin_data": "Stahuji data...", "err_data": "❌ Nelze stáhnout data z CFTC.", "h_univ": "🔍 Univerzální vyhledávač",
-        "search_lbl": "✍️ Napiš, co hledáš (např. S&P, GOLD):", "sel_univ": "Vyber trh z výsledků:",
-        "btn_add": "⭐ Přidat a uložit do Cloudu", "succ_add": "✅ Přidáno a synchronizováno!",
-        "h_watch": "👀 Můj COT Watchlist", "sel_watch": "Vyber trh z Watchlistu:",
+        "desc": "Tracking positions of Commercials (Hedgers/Smart Money) and Non-Commercials (Funds and Speculators).",
+        "spin_data": "Stahuji data...", "err_data": "❌ Nelze stáhnout data z CFTC.", "h_univ": "🔍 Vyhledávač",
+        "search_lbl": "✍️ Hledat:", "sel_univ": "Vyber trh:",
+        "btn_add": "⭐ Přidat na Watchlist", "succ_add": "✅ Přidáno a synchronizováno!",
+        "h_watch": "👀 Můj COT Watchlist", "sel_watch": "Watchlist:",
         "btn_rem": "🗑️ Odebrat", "succ_rem": "✅ Odebráno!", "h_chart": "📈 Vývoj pozic (Net)",
         "chart_desc": "**Zeleně:** Commercials. **Červeně:** Non-Commercials."
     },
     "EN": {
         "title": "🏛️ COT Reports",
-        "desc": "Tracking positions of Commercials (Hedgers/Smart Money) and Non-Commercials (Funds and Speculators). CFTC data.",
-        "spin_data": "Downloading...", "err_data": "❌ Connection blocked.", "h_univ": "🔍 Universal Search",
-        "search_lbl": "✍️ Search (e.g. S&P, GOLD):", "sel_univ": "Select market:",
-        "btn_add": "⭐ Add & Save to Cloud", "succ_add": "✅ Added and synced!",
-        "h_watch": "👀 My COT Watchlist", "sel_watch": "Select market:",
+        "desc": "Tracking positions of Commercials (Hedgers/Smart Money) and Non-Commercials (Funds and Speculators).",
+        "spin_data": "Downloading...", "err_data": "❌ Connection blocked.", "h_univ": "🔍 Search",
+        "search_lbl": "✍️ Search:", "sel_univ": "Select market:",
+        "btn_add": "⭐ Add to Watchlist", "succ_add": "✅ Added and synced!",
+        "h_watch": "👀 My COT Watchlist", "sel_watch": "Watchlist:",
         "btn_rem": "🗑️ Remove", "succ_rem": "✅ Removed!", "h_chart": "📈 Positions History",
         "chart_desc": "**Green:** Commercials. **Red:** Non-Commercials."
     }
