@@ -1,37 +1,34 @@
-name: Automatická aktualizace dat (4F + 13F)
+name: Cloudový Motor (SEC, Dataroma, Insider)
 
 on:
-  schedule:
-    - cron: '0 2 * * *'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
-  aktualizuj_data:
+  aktualizace:
     runs-on: ubuntu-latest
-
-    permissions:
-      contents: write
-
     steps:
-    - name: 1. Stažení kódu
-      uses: actions/checkout@v3
+      - name: Stáhnout kód repozitáře
+        uses: actions/checkout@v3
 
-    - name: 2. Příprava Pythonu
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'
+      - name: Nastavit Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
 
-    - name: 3. Instalace potřebných knihoven
-      run: pip install -r requirements.txt
+      - name: Instalace knihoven
+        run: |
+          pip install pandas requests cloudscraper yfinance beautifulsoup4 lxml
 
-    - name: 4. Spuštění robotů (updater.py)
-      run: python updater.py
+      - name: Nastavení Git identity
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-    - name: 5. Uložení nových CSV dat do repozitáře
-      run: |
-        git config --global user.name "github-actions[bot]"
-        git config --global user.email "github-actions[bot]@users.noreply.github.com"
-        git add *.csv
-        git commit -m "Automatická denní aktualizace CSV dat" || echo "Data se od včerejška nezměnila"
-        git pull --rebase origin main
-        git push
+      - name: Spuštění SEC motoru a stažení tržních dat
+        run: python sec_updater.py
+        
+      # (Pokud máš i skript na Dataromu/Insidery, můžeš ho přidat pod tento řádek)
+      # run: python tvuj_skript_na_insidery.py
