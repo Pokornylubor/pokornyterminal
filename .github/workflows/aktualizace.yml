@@ -33,7 +33,7 @@ jobs:
         run: |
           python sec_updater.py
           python 2_Superinvestors_13F
-          python 1_Insider_4F
+          python updater
         
       # (Pokud máš i skript na Dataromu/Insidery, můžeš ho přidat pod tento řádek)
       # run: python tvuj_skript_na_insidery.py
