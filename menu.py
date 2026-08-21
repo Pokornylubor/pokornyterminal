@@ -20,7 +20,6 @@ def vykresli_menu():
         st.markdown("---")
         
         if st.session_state.lang == "CZ":
-            st.markdown("### 🧭 Navigace")
             st.page_link("Dashboard.py", label="🏠 Hlavní Dashboard")
             st.page_link("pages/1_Insider_4F.py", label="🕵️‍♂️ Insider Tracker (4F)")
             st.page_link("pages/2_Superinvestors_13F.py", label="🐋 13F Superinvestoři")
@@ -30,7 +29,6 @@ def vykresli_menu():
             st.page_link("pages/6_SEC_13F_Radar.py", label="🏛️ SEC 13F Radar")
             st.page_link("pages/7_Aktualizace.py", label="🎛️ Aktualizace Dat")
         else:
-            st.markdown("### 🧭 Navigation")
             st.page_link("Dashboard.py", label="🏠 Main Dashboard")
             st.page_link("pages/1_Insider_4F.py", label="🕵️‍♂️ Insider Tracker (4F)")
             st.page_link("pages/2_Superinvestors_13F.py", label="🐋 13F Superinvestors")
