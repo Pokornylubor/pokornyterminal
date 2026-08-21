@@ -58,9 +58,23 @@ def load_watchlist():
 data = load_watchlist()
 if "saved_ciks" not in data: data["saved_ciks"] = {}
 
-SUPERINVESTORS = {"Warren Buffett (Berkshire)": "1067983", "Michael Burry (Scion)": "1649339"}
+# --- PŘEDPŘIPRAVENÍ SUPERINVESTOŘI ---
+SUPERINVESTORS = {
+    "Warren Buffett (Berkshire Hathaway)": "1067983",
+    "Michael Burry (Scion Asset Management)": "1649339",
+    "Stanley Druckenmiller (Duquesne)": "1502579",
+    "Chris Hohn (TCI Fund Management)": "1642871",
+    "Bill Ackman (Pershing Square)": "1336528",
+    "Ray Dalio (Bridgewater Associates)": "1350694",
+    "David Tepper (Appaloosa)": "1009207",
+    "Seth Klarman (Baupost Group)": "1061768",
+    "Jim Simons (Renaissance Technologies)": "1037389",
+    "Carl Icahn (Icahn Capital)": "921669"
+}
+# Připojí tvé vlastní uložené fondy z Watchlistu
 SUPERINVESTORS.update(data["saved_ciks"])
-SUPERINVESTORS["🔍 Jiný fond (CIK)"] = "CUSTOM"
+# Přidá možnost vyhledat úplně někoho jiného
+SUPERINVESTORS["🔍 Jiný fond (Zadat CIK manuálně)"] = "CUSTOM"
 
 with st.expander(_["exp_feed"]):
     if st.button(_["btn_feed"]):
@@ -89,7 +103,6 @@ if st.button(_["btn_down"], type="primary"):
             hr_indices = [i for i, f in enumerate(filings.get("form", [])) if "13F-HR" in f]
             
             if hr_indices:
-                # Tohle je ten fígl! Stáhneme celý "Master" .txt soubor, který existuje VŽDY a má jasně daný název.
                 acc_no_hyphens = filings['accessionNumber'][hr_indices[0]]
                 acc_no_clean = acc_no_hyphens.replace('-', '')
                 
@@ -98,7 +111,6 @@ if st.button(_["btn_down"], type="primary"):
                 txt_res = requests.get(txt_url, headers=SEC_HEADERS)
                 
                 if txt_res.status_code == 200:
-                    # Necháme naši čtečku prolézt ten hrubý text a vytahat z něj políčka <infotable>
                     soup = BeautifulSoup(txt_res.content, 'html.parser')
                     pos = [{"Akcie": i.find('nameofissuer').text, "Hodnota ($)": float(i.find('value').text)*1000} for i in soup.find_all('infotable') if i.find('nameofissuer') and i.find('value')]
                     
