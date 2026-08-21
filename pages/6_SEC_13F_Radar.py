@@ -27,10 +27,10 @@ scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 
 
 t = {
     "CZ": {
-        "title": "🏛️ SEC EDGAR 13F Radar", "desc": "Živá vládní data z EDGAR (Klon Dataromy).", "exp_feed": "🔥 Live Feed z trhu", "btn_feed": "Stáhnout 40 reportů",
-        "spin_feed": "Stahuji...", "sel_fund": "Vyber Fond:", "cik_input": "Zadej CIK:", "name_input": "Název pro uložení:",
-        "btn_save": "💾 Uložit nový fond na Cloud", "succ_save": "✅ Uloženo!", "btn_down": "Stáhnout Data",
-        "err_no13f": "❌ Žádný report nebyl nalezen.", "err_xml": "❌ Nelze přečíst data z reportu.", 
+        "title": "🏛️ SEC EDGAR 13F Radar", "desc": "Živá vládní data z EDGAR (Dataroma Design).", "exp_feed": "🔥 Live Feed z trhu",
+        "btn_feed": "Stáhnout 40 reportů", "spin_feed": "Stahuji...", "sel_fund": "Vyber Fond:", "cik_input": "Zadej CIK:", 
+        "name_input": "Název pro uložení:", "btn_save": "💾 Uložit nový fond na Cloud", "succ_save": "✅ Uloženo!", 
+        "btn_down": "Stáhnout Data", "err_no13f": "❌ Žádný report nebyl nalezen.", "err_xml": "❌ Nelze přečíst data z reportu.", 
         "succ_down": "✅ Nalezeno!", "exp_fav": "⭐ Nastavit oblíbené", "fav_lbl": "Moji oblíbenci:", 
         "save_fav": "💾 Uložit oblíbené na Cloud", "show_all": "Zobrazit všechny"
     }
@@ -100,11 +100,9 @@ with st.expander(_["exp_fav"], expanded=False):
         st.rerun()
 
 st.markdown("---")
-
 zobrazit_vse = st.checkbox(_["show_all"], value=False)
 nabidka = fund_names if (not vychozi_vyber or zobrazit_vse) else vychozi_vyber
 nabidka.append("🔍 Jiný fond (Zadat CIK manuálně)")
-
 vyber = st.selectbox(_["sel_fund"], nabidka)
 
 if vyber == "🔍 Jiný fond (Zadat CIK manuálně)":
@@ -121,7 +119,7 @@ if vyber == "🔍 Jiný fond (Zadat CIK manuálně)":
 else:
     cik_input = ALL_FUNDS[vyber]
 
-# Funkce pro extrakci dat z 13F textu
+# Funkce pro stažení hrubých dat (Nezničitelný Regex)
 def get_13f_df(cik, acc_no_hyphens):
     acc_no_clean = acc_no_hyphens.replace('-', '')
     txt_url = f"https://www.sec.gov/Archives/edgar/data/{cik}/{acc_no_clean}/{acc_no_hyphens}.txt"
@@ -136,18 +134,18 @@ def get_13f_df(cik, acc_no_hyphens):
             if issuer and val and shares:
                 try:
                     pos.append({
-                        "Akcie": issuer.group(1).strip().upper(), 
-                        "Hodnota ($)": float(val.group(1).strip().replace(',', '')) * 1000,
-                        "Počet Akcií": float(shares.group(1).strip().replace(',', ''))
+                        "Stock": issuer.group(1).strip().upper(), 
+                        "Value": float(val.group(1).strip().replace(',', '')) * 1000,
+                        "Shares": float(shares.group(1).strip().replace(',', ''))
                     })
                 except: pass
         if pos:
-            return pd.DataFrame(pos).groupby("Akcie").sum().reset_index()
+            return pd.DataFrame(pos).groupby("Stock").sum().reset_index()
     return None
 
 if st.button(_["btn_down"], type="primary"):
     cik = cik_input.zfill(10)
-    with st.spinner("Pátrám v hlubinách a počítám procentuální změny (Dataroma Režim)..."):
+    with st.spinner("Pátrám v hlubinách a transformuji do Dataroma Designu..."):
         time.sleep(0.5)
         res = scraper.get(f"https://data.sec.gov/submissions/CIK{cik}.json", headers=SEC_HEADERS)
         
@@ -166,60 +164,74 @@ if st.button(_["btn_down"], type="primary"):
             for i in range(len(forms)):
                 f_type = str(forms[i]).upper()
                 if "13F" in f_type and "NT" not in f_type:
-                    # NEROZBITNÁ POJISTKA PRO ACKMANA: Když chybí datum reportu, použije se datum odeslání
+                    # Ochrana pro prázdná data (např. u Ackmana)
                     r_date = report_dates[i] if (i < len(report_dates) and report_dates[i]) else (filing_dates[i] if i < len(filing_dates) else "1900-01-01")
-                    valid_filings.append({"acc_num": acc_nums[i], "report_date": r_date})
+                    valid_filings.append({"acc_num": acc_nums[i], "report_date": r_date, "filing_date": filing_dates[i]})
             
             if valid_filings:
-                valid_filings.sort(key=lambda x: x["report_date"], reverse=True)
-                latest_filing = valid_filings[0]
+                # DOKONALÉ TŘÍDĚNÍ: Seskupíme reporty podle data kvartálu a vždy vezmeme tu nejnovější opravu!
+                valid_filings.sort(key=lambda x: x["filing_date"], reverse=True)
+                unique_quarters = {}
+                for f in valid_filings:
+                    if f["report_date"] not in unique_quarters:
+                        unique_quarters[f["report_date"]] = f
                 
+                # Seřadíme kvartály od nejnovějšího
+                sorted_quarters = sorted(list(unique_quarters.values()), key=lambda x: x["report_date"], reverse=True)
+                
+                latest_filing = sorted_quarters[0]
                 df_latest = get_13f_df(cik, latest_filing["acc_num"])
                 
                 if df_latest is not None and not df_latest.empty:
-                    # Výpočty pro aktuální kvartál
-                    df_latest["% Portfolia"] = (df_latest["Hodnota ($)"] / df_latest["Hodnota ($)"].sum()) * 100
-                    df_latest["Odhad. Cena"] = df_latest.apply(lambda r: (r["Hodnota ($)"] / r["Počet Akcií"]) if r["Počet Akcií"] > 0 else 0, axis=1)
-                    df_latest["Aktivita (Změna)"] = "➖ N/A"
+                    # Výpočty pro aktuální kvartál (Struktura Dataromy)
+                    df_latest["% of Portfolio"] = (df_latest["Value"] / df_latest["Value"].sum()) * 100
+                    df_latest["ReportedPrice*"] = df_latest.apply(lambda r: (r["Value"] / r["Shares"]) if r["Shares"] > 0 else 0, axis=1)
+                    df_latest["RecentActivity"] = ""
                     
-                    # Pokus o srovnání s minulým kvartálem (pokud existuje)
-                    if len(valid_filings) > 1:
-                        prev_filing = valid_filings[1]
+                    # Porovnání s předchozím kvartálem (druhý v seřazeném seznamu unikátních kvartálů)
+                    if len(sorted_quarters) > 1:
+                        prev_filing = sorted_quarters[1]
                         df_prev = get_13f_df(cik, prev_filing["acc_num"])
                         
                         if df_prev is not None and not df_prev.empty:
-                            df_merged = pd.merge(df_latest, df_prev[["Akcie", "Počet Akcií"]], on="Akcie", how="left", suffixes=("", "_prev"))
+                            df_merged = pd.merge(df_latest, df_prev[["Stock", "Shares"]], on="Stock", how="left", suffixes=("", "_prev"))
                             
                             def calc_activity(row):
-                                if pd.isna(row["Počet Akcií_prev"]) or row["Počet Akcií_prev"] == 0:
-                                    return "🌟 Nová pozice (Buy 100%)"
-                                diff = row["Počet Akcií"] - row["Počet Akcií_prev"]
-                                if diff == 0: return "➖ Beze změny"
+                                if pd.isna(row["Shares_prev"]) or row["Shares_prev"] == 0:
+                                    return "Buy 100%"
+                                diff = row["Shares"] - row["Shares_prev"]
+                                if diff == 0: return ""
                                 
-                                pct_change = (diff / row["Počet Akcií_prev"]) * 100
-                                if pct_change > 0: return f"🟢 Přikoupeno +{pct_change:,.1f}%"
-                                else: return f"🔴 Prodáno {pct_change:,.1f}%"
+                                pct_change = (diff / row["Shares_prev"]) * 100
+                                if pct_change > 0: return f"Add {pct_change:,.2f}%"
+                                else: return f"Reduce {abs(pct_change):,.2f}%"
                                 
-                            df_latest["Aktivita (Změna)"] = df_merged.apply(calc_activity, axis=1)
+                            df_latest["RecentActivity"] = df_merged.apply(calc_activity, axis=1)
                     
-                    # Formátování tabulky přesně podle designu Dataromy
-                    final_cols = ["Akcie", "% Portfolia", "Aktivita (Změna)", "Počet Akcií", "Odhad. Cena", "Hodnota ($)"]
-                    df_final = df_latest[final_cols].sort_values(by="% Portfolia", ascending=False)
+                    # Falešné sloupce pro dokonalou vizuální iluzi Dataromy (SEC živá data neznají aktuální ticker ceny)
+                    df_latest["Current Price"] = "N/A"
+                    df_latest["+/-Reported Price"] = "N/A"
                     
+                    # Seřazení sloupců přesně podle tvého screenshotu
+                    final_cols = ["Stock", "% of Portfolio", "RecentActivity", "Shares", "ReportedPrice*", "Value", "Current Price", "+/-Reported Price"]
+                    df_final = df_latest[final_cols].sort_values(by="% of Portfolio", ascending=False)
+                    
+                    # Barvičky pro slova Add, Buy a Reduce
                     def style_activity(val):
-                        if "🟢" in str(val) or "🌟" in str(val): return 'color: #00ff00; font-weight: bold;'
-                        if "🔴" in str(val): return 'color: #ff4b4b; font-weight: bold;'
+                        v = str(val)
+                        if "Buy" in v or "Add" in v: return 'color: #00ff00;'
+                        if "Reduce" in v: return 'color: #ff4b4b;'
                         return 'color: gray;'
                         
                     styled_df = df_final.style.format({
-                        "% Portfolia": "{:.2f}%",
-                        "Počet Akcií": "{:,.0f}",
-                        "Odhad. Cena": "${:,.2f}",
-                        "Hodnota ($)": "${:,.0f}"
-                    }).map(style_activity, subset=["Aktivita (Změna)"])
+                        "% of Portfolio": "{:.2f}%",
+                        "Shares": "{:,.0f}",
+                        "ReportedPrice*": "${:,.2f}",
+                        "Value": "${:,.0f}"
+                    }).map(style_activity, subset=["RecentActivity"])
                     
                     kvartal = preved_na_kvartal(latest_filing['report_date'])
-                    st.success(f"{_['succ_down']} Zobrazen nejnovější report: **{kvartal}** (Ke dni {latest_filing['report_date']})")
+                    st.success(f"✅ Stažen report pro: **{vyber.split('(')[0].strip()}** | {kvartal} (Reportováno ke dni {latest_filing['report_date']})")
                     st.dataframe(styled_df, use_container_width=True)
                 else: st.error(_["err_xml"])
             else: st.error(_["err_no13f"])
