@@ -5,6 +5,7 @@ import json
 import os
 import sys
 import requests
+import base64
 
 # --- CENTRÁLNÍ PAMĚŤ A MENU ---
 aktualni_slozka = os.path.dirname(os.path.abspath(__file__))
@@ -18,18 +19,18 @@ menu.vykresli_menu()
 
 t = {
     "CZ": {
-        "title": "🎲 Opční Radar", "desc": "Univerzální radar pro hledání opčních zdí 'Smart Money'.",
+        "title": "🎲 Opční Sentiment & Zdi", "desc": "Univerzální radar pro hledání opčních zdí 'Smart Money'.",
         "sel_port": "💼 Moje pozice:", "sel_watch": "👀 Můj Watchlist:", "search_lbl": "🔍 Vyhledat akcii:",
-        "btn_add_port": "💼 Uložit do Portfolia", "btn_add_watch": "👀 Uložit do Watchlistu", "succ_add": "✅ Uloženo!",
+        "btn_add_port": "💼 Uložit do Portfolia", "btn_add_watch": "👀 Uložit do Watchlistu", "succ_add": "✅ Uloženo a posláno do cloudu!",
         "btn_opt": "Stáhnout Opce pro {}", "spin_opt": "Analyzuji řetězec...", "warn_opt": "Žádná opční data.",
         "exp": "📅 Expirace:", "call_open": "Otevřené Call", "put_open": "Otevřené Put",
         "bear": "🔴 Bearish", "bull": "🟢 Bullish", "pcr": "Put/Call Ratio",
         "walls_h": "### 🧱 Opční zdi", "call_w": "📈 Nejsilnější Call Wall: ${}", "put_w": "📉 Nejsilnější Put Wall: ${}", "err_opt": "Chyba:"
     },
     "EN": {
-        "title": "🎲 Options Radar", "desc": "Universal radar for finding 'Smart Money' option walls.",
+        "title": "🎲 Options Sentiment & Walls", "desc": "Universal radar for finding 'Smart Money' option walls.",
         "sel_port": "💼 My Portfolio:", "sel_watch": "👀 My Watchlist:", "search_lbl": "🔍 Search ticker:",
-        "btn_add_port": "💼 Add to Portfolio", "btn_add_watch": "👀 Add to Watchlist", "succ_add": "✅ Saved!",
+        "btn_add_port": "💼 Add to Portfolio", "btn_add_watch": "👀 Add to Watchlist", "succ_add": "✅ Saved and synced!",
         "btn_opt": "Download Options for {}", "spin_opt": "Analyzing chain...", "warn_opt": "No options data.",
         "exp": "📅 Expiration:", "call_open": "Open Calls", "put_open": "Open Puts",
         "bear": "🔴 Bearish", "bull": "🟢 Bullish", "pcr": "Put/Call Ratio",
@@ -41,13 +42,22 @@ _ = t.get(st.session_state.lang, t["CZ"])
 st.title(_["title"])
 st.markdown(_["desc"])
 
+def save_data(data):
+    with open(WATCHLIST_FILE, "w") as f: json.dump(data, f, indent=4)
+    try:
+        if "GITHUB_TOKEN" in st.secrets:
+            token, owner, repo = st.secrets["GITHUB_TOKEN"], st.secrets["GITHUB_OWNER"], st.secrets["GITHUB_REPO"]
+            url, headers = f"https://api.github.com/repos/{owner}/{repo}/contents/watchlist.json", {"Authorization": f"token {token}", "Accept": "application/vnd.github.v3+json"}
+            sha = requests.get(url, headers=headers).json().get("sha")
+            payload = {"message": "Cloud sync z Opcniho Radaru", "content": base64.b64encode(json.dumps(data, indent=4).encode("utf-8")).decode("utf-8"), "branch": "main"}
+            if sha: payload["sha"] = sha
+            requests.put(url, headers=headers, json=payload)
+    except Exception: pass
+
 def load_data():
     try:
         with open(WATCHLIST_FILE, "r") as f: return json.load(f)
     except: return {"portfolio": [], "watchlist": []}
-
-def save_data(data):
-    with open(WATCHLIST_FILE, "w") as f: json.dump(data, f, indent=4)
 
 data = load_data()
 port_tickers = sorted(list(set(data.get("portfolio", []))))
@@ -87,22 +97,18 @@ if vybrany_ticker and st.button(_["btn_opt"].format(vybrany_ticker), type="prima
             nearest_exp, calls, puts = fetch_options_cached(vybrany_ticker)
             if nearest_exp is None: st.warning(_["warn_opt"])
             else:
-                total_call_oi = calls['openInterest'].sum()
-                total_put_oi = puts['openInterest'].sum()
+                total_call_oi, total_put_oi = calls['openInterest'].sum(), puts['openInterest'].sum()
                 pcr_oi = total_put_oi / total_call_oi if total_call_oi > 0 else 0
                 
                 st.subheader(f"{_['exp']} {nearest_exp}")
                 c1, c2, c3 = st.columns(3)
                 c1.metric(_["call_open"], f"{int(total_call_oi):,}")
                 c2.metric(_["put_open"], f"{int(total_put_oi):,}")
-                sentiment = _["bear"] if pcr_oi > 1 else _["bull"]
-                c3.metric(_["pcr"], f"{pcr_oi:.2f}", sentiment)
+                c3.metric(_["pcr"], f"{pcr_oi:.2f}", _["bear"] if pcr_oi > 1 else _["bull"])
                 
                 if not calls.empty and not puts.empty:
-                    max_call_strike = calls.loc[calls['openInterest'].idxmax()]['strike']
-                    max_put_strike = puts.loc[puts['openInterest'].idxmax()]['strike']
                     st.markdown(_["walls_h"])
-                    st.write(_["call_w"].format(max_call_strike))
-                    st.write(_["put_w"].format(max_put_strike))
+                    st.write(_["call_w"].format(calls.loc[calls['openInterest'].idxmax()]['strike']))
+                    st.write(_["put_w"].format(puts.loc[puts['openInterest'].idxmax()]['strike']))
         except Exception as e:
             st.error(f"{_['err_opt']} {e}")
