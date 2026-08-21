@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import requests
 import cloudscraper
-from bs4 import BeautifulSoup
 import json
 import os
 import sys
@@ -20,27 +19,19 @@ st.set_page_config(page_title="SEC 13F Radar", page_icon="🏛️", layout="wide
 import menu
 menu.vykresli_menu() 
 
-# Přesný formát, který SEC vyžaduje, aby tě neblokovali
+# Přesný formát, který SEC vyžaduje (jinak dává okamžitý ban)
 SEC_HEADERS = {
     "User-Agent": "PokornyTerminal pokornyl98@gmail.com",
     "Accept-Encoding": "gzip, deflate"
 } 
-
-# Tímto nasadíme na aplikaci masku skutečného prohlížeče
 scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'windows', 'mobile': False})
 
 t = {
     "CZ": {
-        "title": "🏛️ SEC EDGAR 13F Radar", "desc": "Živá vládní data z EDGAR (Chytrý extraktor).", "exp_feed": "🔥 Live Feed z trhu", "btn_feed": "Stáhnout 40 reportů",
+        "title": "🏛️ SEC EDGAR 13F Radar", "desc": "Živá vládní data z EDGAR (Anti-Ban verze).", "exp_feed": "🔥 Live Feed z trhu", "btn_feed": "Stáhnout 40 reportů",
         "spin_feed": "Stahuji...", "sel_fund": "Vyber Fond:", "cik_input": "Zadej CIK:", "name_input": "Název pro uložení:",
         "btn_save": "💾 Uložit na Cloud", "succ_save": "✅ Uloženo!", "btn_down": "Stáhnout Data",
-        "err_no13f": "❌ Žádný report nebyl nalezen.", "err_xml": "❌ Nelze přečíst data z reportu.", "succ_down": "✅ Nalezeno."
-    },
-    "EN": {
-        "title": "🏛️ SEC EDGAR 13F Radar", "desc": "Live government data from EDGAR (Smart Extractor).", "exp_feed": "🔥 Live Market Feed", "btn_feed": "Download 40 reports",
-        "spin_feed": "Downloading...", "sel_fund": "Select Fund:", "cik_input": "Enter CIK:", "name_input": "Name to save:",
-        "btn_save": "💾 Save to Cloud", "succ_save": "✅ Saved!", "btn_down": "Download Data",
-        "err_no13f": "❌ No report found.", "err_xml": "❌ Cannot read data.", "succ_down": "✅ Found."
+        "err_no13f": "❌ Žádný report nebyl nalezen (fond asi ještě nepodal 13F).", "err_xml": "❌ Nelze přečíst data z reportu.", "succ_down": "✅ Nalezeno."
     }
 }
 _ = t.get(st.session_state.lang, t["CZ"])
@@ -68,11 +59,12 @@ def load_watchlist():
 data = load_watchlist()
 if "saved_ciks" not in data: data["saved_ciks"] = {}
 
+# Opravené CIK kódy aktuálních fondů
 SUPERINVESTORS = {
     "Warren Buffett (Berkshire Hathaway)": "1067983",
     "Michael Burry (Scion Asset Management)": "1649339",
-    "Stanley Druckenmiller (Duquesne)": "1502579",
-    "Chris Hohn (TCI Fund Management)": "1642871",
+    "Stanley Druckenmiller (Duquesne Family Office)": "1536411",
+    "Chris Hohn (TCI Fund Management)": "1647251",
     "Bill Ackman (Pershing Square)": "1336528",
     "Ray Dalio (Bridgewater Associates)": "1350694",
     "David Tepper (Appaloosa)": "1009207",
@@ -88,10 +80,8 @@ with st.expander(_["exp_feed"]):
         with st.spinner(_["spin_feed"]):
             res = scraper.get("https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=13F-HR&count=40&output=atom", headers=SEC_HEADERS)
             if res.status_code == 200:
-                feed = [{"Datum": e.find('updated').text[:10], "Fond": e.find('title').text.split('-')[0].strip()} for e in BeautifulSoup(res.content, 'xml').find_all('entry')]
+                feed = [{"Datum": e.split('<updated>')[1][:10], "Fond": e.split('<title>')[1].split('-')[0].strip()} for e in res.text.split('<entry>')[1:]]
                 st.dataframe(pd.DataFrame(feed), use_container_width=True)
-            else:
-                st.error("❌ SEC tě dočasně zablokoval na 10 minut za rychlé klikání. Zkus to později.")
 
 col1, col2, col3 = st.columns([2, 2, 1])
 with col1: vyber = st.selectbox(_["sel_fund"], list(SUPERINVESTORS.keys()))
@@ -105,15 +95,12 @@ with col3:
 
 if st.button(_["btn_down"], type="primary"):
     cik = cik_input.zfill(10)
-    with st.spinner("Pátrám v hlubinách SEC EDGAR (Bypass režim)..."):
-        time.sleep(1) # Extra pauza proti zablokování
+    with st.spinner("Pátrám v hlubinách SEC EDGAR..."):
+        time.sleep(0.5) 
+        res = scraper.get(f"https://data.sec.gov/submissions/CIK{cik}.json", headers=SEC_HEADERS)
         
-        url_json = f"https://data.sec.gov/submissions/CIK{cik}.json"
-        res = scraper.get(url_json, headers=SEC_HEADERS)
-        
-        # Detekce blokace od vlády
-        if res.status_code == 403 or res.status_code == 429:
-            st.error("🚨 OCHRANA SEC: Americká vláda zablokovala tvou IP adresu na 10 minut za rychlé klikání. Běž si uvařit kávu a zkus to za chvíli!")
+        if res.status_code in [403, 429]:
+            st.error("🚨 OCHRANA SEC: Tvoje IP je dočasně zablokovaná za rychlé klikání. Připoj PC na minutu přes Hotspot z mobilu, nebo chvíli počkej.")
             st.stop()
             
         if res.status_code == 200:
@@ -124,54 +111,27 @@ if st.button(_["btn_down"], type="primary"):
                 acc_no_hyphens = filings['accessionNumber'][hr_indices[0]]
                 acc_no_clean = acc_no_hyphens.replace('-', '')
                 
-                # CHYTRÝ KROK: Místo hádání jména XML se podíváme přímo do indexu složky na serveru!
-                idx_url = f"https://www.sec.gov/Archives/edgar/data/{cik}/{acc_no_clean}/index.json"
-                idx_res = scraper.get(idx_url, headers=SEC_HEADERS)
+                txt_url = f"https://www.sec.gov/Archives/edgar/data/{cik}/{acc_no_clean}/{acc_no_hyphens}.txt"
+                txt_res = scraper.get(txt_url, headers=SEC_HEADERS)
                 
-                xml_filename = None
-                if idx_res.status_code == 200:
-                    files = idx_res.json().get("directory", {}).get("item", [])
-                    for file in files:
-                        name = file.get("name", "").lower()
-                        # Hledáme soubor, který má příponu .xml a je to tabulka
-                        if name.endswith(".xml") and ("table" in name or "info" in name or "13f" in name):
-                            xml_filename = file.get("name")
-                            if "table" in name: break # Ideální přesná shoda
-                
-                if not xml_filename: xml_filename = "infotable.xml" # Nouzová záloha
-                
-                xml_url = f"https://www.sec.gov/Archives/edgar/data/{cik}/{acc_no_clean}/{xml_filename}"
-                xml_res = scraper.get(xml_url, headers=SEC_HEADERS)
-                
-                if xml_res.status_code == 200:
-                    content = xml_res.text
-                    
-                    # REGEX: Nezničítejný textový rentgen, který vyseká akcie i z toho největšího chaosu
-                    blocks = re.findall(r'(?is)<[^>]*?infoTable[^>]*>(.*?)</[^>]*?infoTable>', content)
-                    
+                if txt_res.status_code == 200:
+                    # Nezničítejný Regex Rentgen
+                    blocks = re.findall(r'(?is)<[^>]*?infoTable[^>]*>(.*?)</[^>]*?infoTable>', txt_res.text)
                     pos = []
                     for block in blocks:
-                        issuer_match = re.search(r'(?is)<[^>]*?nameOfIssuer[^>]*>(.*?)</[^>]*?nameOfIssuer>', block)
-                        value_match = re.search(r'(?is)<[^>]*?value[^>]*>(.*?)</[^>]*?value>', block)
-                        
-                        if issuer_match and value_match:
+                        issuer = re.search(r'(?is)<[^>]*?nameOfIssuer[^>]*>(.*?)</[^>]*?nameOfIssuer>', block)
+                        val = re.search(r'(?is)<[^>]*?value[^>]*>(.*?)</[^>]*?value>', block)
+                        if issuer and val:
                             try:
-                                issuer = issuer_match.group(1).strip()
-                                val = float(value_match.group(1).strip().replace(',', '')) * 1000
-                                pos.append({"Akcie": issuer, "Hodnota ($)": val})
-                            except:
-                                pass
+                                pos.append({"Akcie": issuer.group(1).strip(), "Hodnota ($)": float(val.group(1).strip().replace(',', '')) * 1000})
+                            except: pass
                     
                     if pos:
                         df = pd.DataFrame(pos).groupby("Akcie").sum().reset_index()
                         df["%"] = (df["Hodnota ($)"] / df["Hodnota ($)"].sum()) * 100
-                        st.success(f"✅ Staženo ze souboru: {xml_filename}")
+                        st.success(_["succ_down"])
                         st.dataframe(df.sort_values(by="%", ascending=False).style.format({"Hodnota ($)": "${:,.0f}", "%": "{:.2f}%"}), use_container_width=True)
-                    else:
-                        st.error("❌ Nalezený XML soubor je pravděpodobně prázdný, nebo fond požádal o utajení pozic.")
-                else:
-                    st.error("❌ Nepodařilo se stáhnout tabulku s pozicemi.")
-            else:
-                st.error("❌ Tento fond za poslední období nepodal žádný 13F formulář (nebo používá jiné CIK).")
-        else:
-            st.error("❌ API americké vlády neodpovídá.")
+                    else: st.error(_["err_xml"])
+                else: st.error("❌ Master soubor nelze stáhnout.")
+            else: st.error(_["err_no13f"])
+        else: st.error("❌ Nelze se připojit na SEC API.")
