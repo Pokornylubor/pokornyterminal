@@ -18,7 +18,7 @@ menu.vykresli_menu()
 
 t = {
     "CZ": {
-        "title": "🎲 Opční Sentiment & Zdi", "desc": "Univerzální radar pro hledání opčních zdí 'Smart Money'.",
+        "title": "🎲 Opční Radar", "desc": "Univerzální radar pro hledání opčních zdí 'Smart Money'.",
         "sel_port": "💼 Moje pozice:", "sel_watch": "👀 Můj Watchlist:", "search_lbl": "🔍 Vyhledat akcii:",
         "btn_add_port": "💼 Uložit do Portfolia", "btn_add_watch": "👀 Uložit do Watchlistu", "succ_add": "✅ Uloženo!",
         "btn_opt": "Stáhnout Opce pro {}", "spin_opt": "Analyzuji řetězec...", "warn_opt": "Žádná opční data.",
@@ -27,7 +27,7 @@ t = {
         "walls_h": "### 🧱 Opční zdi", "call_w": "📈 Nejsilnější Call Wall: ${}", "put_w": "📉 Nejsilnější Put Wall: ${}", "err_opt": "Chyba:"
     },
     "EN": {
-        "title": "🎲 Options Sentiment & Walls", "desc": "Universal radar for finding 'Smart Money' option walls.",
+        "title": "🎲 Options Radar", "desc": "Universal radar for finding 'Smart Money' option walls.",
         "sel_port": "💼 My Portfolio:", "sel_watch": "👀 My Watchlist:", "search_lbl": "🔍 Search ticker:",
         "btn_add_port": "💼 Add to Portfolio", "btn_add_watch": "👀 Add to Watchlist", "succ_add": "✅ Saved!",
         "btn_opt": "Download Options for {}", "spin_opt": "Analyzing chain...", "warn_opt": "No options data.",
