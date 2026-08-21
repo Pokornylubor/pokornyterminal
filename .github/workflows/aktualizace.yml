@@ -23,6 +23,7 @@ jobs:
 
       - name: Spuštění stahování
         run: python updater.py
+        python sec_updater.py
 
       - name: Uložení nových dat do cloudu
         run: |
