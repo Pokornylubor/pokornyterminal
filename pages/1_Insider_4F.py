@@ -16,8 +16,8 @@ import menu
 menu.vykresli_menu()
 
 t = {
-    "CZ": {"title": "🕵️‍♂️ Insider Tracker (Offline DB)", "desc": "4F reporty - bleskové vyhledávání v lokální databázi.", "port": "💼 Moje pozice:", "watch": "👀 Můj Watchlist:", "search": "🔍 Vyhledat akcii:"},
-    "EN": {"title": "🕵️‍♂️ Insider Tracker (Offline DB)", "desc": "Form 4 reports - lightning fast search in local database.", "port": "💼 My Portfolio:", "watch": "👀 My Watchlist:", "search": "🔍 Search ticker:"}
+    "CZ": {"title": "🕵️‍♂️ Insider Tracker", "desc": "4F reporty - bleskové vyhledávání v lokální databázi.", "port": "💼 Moje pozice:", "watch": "👀 Můj Watchlist:", "search": "🔍 Vyhledat akcii:"},
+    "EN": {"title": "🕵️‍♂️ Insider Tracker", "desc": "Form 4 reports - lightning fast search in local database.", "port": "💼 My Portfolio:", "watch": "👀 My Watchlist:", "search": "🔍 Search ticker:"}
 }
 _ = t.get(st.session_state.lang, t["CZ"])
 
