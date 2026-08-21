@@ -8,7 +8,6 @@ aktualni_slozka = os.path.dirname(os.path.abspath(__file__))
 hlavni_slozka = os.path.dirname(aktualni_slozka) if os.path.basename(aktualni_slozka) == "pages" else aktualni_slozka
 sys.path.append(hlavni_slozka)
 
-# Import našeho lokálního motoru pro SEC
 try:
     import sec_updater
 except Exception:
@@ -22,20 +21,12 @@ t = {
     "CZ": {
         "title": "🎛️ Dálkové ovládání cloudu & SEC", 
         "desc": "Manuálně spusť masivní stahování dat (13F Dataroma, 40 000 4F Insiderů a přímé vládní spojení SEC).",
-        "btn": "🚀 Odeslat povel k aktualizaci (13F + 40k 4F + SEC EDGAR)", 
-        "spin": "Stahuji aktuální SEC data (to může trvat minutu) a odesílám signál cloudu...", 
-        "succ": "✅ SEC data stažena lokálně a povel cloudu odeslán na GitHub!",
+        "btn": "🚀 Odeslat povel na Cloud a aktualizovat SEC", 
+        "spin_cloud": "Odesílám signál na GitHub...", 
+        "spin_sec": "Cloud běží! Nyní stahuji SEC data lokálně (Nechte okno chvíli otevřené)...",
+        "succ": "✅ Vše hotovo! Cloud stahuje Insidery a SEC data máš aktuální v PC.",
         "err_gh": "❌ Chyba GitHubu: ", 
         "err_ex": "❌ Chyba Secrets: "
-    },
-    "EN": {
-        "title": "🎛️ Cloud & SEC Remote Control", 
-        "desc": "Manually trigger massive data download (13F Dataroma, 40,000 4F Insiders, and direct SEC Radar).",
-        "btn": "🚀 Send Update Command (13F + 40k 4F + SEC EDGAR)", 
-        "spin": "Downloading SEC data (may take a minute) and sending signal to cloud...", 
-        "succ": "✅ SEC data downloaded locally and command sent to GitHub!",
-        "err_gh": "❌ GitHub error: ", 
-        "err_ex": "❌ Secrets error: "
     }
 }
 _ = t.get(st.session_state.lang, t["CZ"])
@@ -44,24 +35,28 @@ st.title(_["title"])
 st.markdown(_["desc"])
 
 if st.button(_["btn"], use_container_width=True):
-    with st.spinner(_["spin"]):
-        
-        # 1. KROK: Spustíme náš nový motor na pozadí, který potichu stáhne čerstvá data přímo od vlády
-        try:
-            sec_updater.update_sec_funds()
-        except Exception as e:
-            st.warning(f"⚠️ SEC motor narazil na problém: {e}")
-
-        # 2. KROK: Odeslání původního povelu na GitHub (pro Dataromu a Insidery)
+    
+    # 1. KROK: Odeslání povelu na GitHub (Bleskové, cloud běží nezávisle)
+    with st.spinner(_["spin_cloud"]):
+        cloud_success = False
         try:
             token, owner, repo = st.secrets["GITHUB_TOKEN"], st.secrets["GITHUB_OWNER"], st.secrets["GITHUB_REPO"]
             url = f"https://api.github.com/repos/{owner}/{repo}/actions/workflows/aktualizace.yml/dispatches"
             res = requests.post(url, headers={"Accept": "application/vnd.github.v3+json", "Authorization": f"token {token}"}, json={"ref": "main"})
             
             if res.status_code == 204: 
-                st.success(_["succ"])
-                st.balloons()
+                cloud_success = True
             else: 
                 st.error(_["err_gh"] + res.text)
         except Exception as e:
             st.error(_["err_ex"] + str(e))
+
+    # 2. KROK: Lokální stahování SEC (Vyžaduje otevřené okno)
+    if cloud_success:
+        with st.spinner(_["spin_sec"]):
+            try:
+                sec_updater.update_sec_funds()
+                st.success(_["succ"])
+                st.balloons()
+            except Exception as e:
+                st.warning(f"⚠️ Cloud běží, ale SEC motor v PC narazil na problém: {e}")
