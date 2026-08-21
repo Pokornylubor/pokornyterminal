@@ -76,7 +76,6 @@ def update_superinvestors(scraper):
             # Náhodná pauza pro zmatení obrany Dataromy
             time.sleep(random.uniform(4, 8)) 
             
-        # I kdyby se stáhla jen půlka, uložíme to, co máme!
         if all_holdings:
             final_db = pd.concat(all_holdings, ignore_index=True)
             final_db.to_csv('superinvestors_db.csv', index=False)
@@ -87,60 +86,10 @@ def update_superinvestors(scraper):
     except Exception as e:
         print(f"❌ Kritická chyba při načítání hlavní stránky: {e}")
 
-def update_insiders(scraper):
-    print("\n--- FÁZE 2: STAHUJI MASIVNÍ DATA 4F INSIDERŮ (OPENINSIDER) ---")
-    all_insider_data = []
-    
-    # TADY MŮŽEŠ MĚNIT MNOŽSTVÍ HISTORIE:
-    # Změň číslo 20 na cokoliv chceš (např. 15 pro 15 000 transakcí / cca 2 měsíce)
-    pages_to_scrape = 20 
-    
-    for page in range(1, pages_to_scrape + 1):
-        print(f"Stahuji stranu {page}/{pages_to_scrape} (1000 transakcí na stranu)...")
-        
-        # URL, do kterého dynamicky vkládáme číslo strany (page={page})
-        url = f"http://openinsider.com/screener?s=&o=&pl=&ph=&ll=&lh=&fd=730&fdr=&td=0&tdr=&fdlyl=&fdlyh=&daysago=&xp=1&xs=1&vl=&vh=&ocl=&och=&sic1=-1&sicl=100&sich=9999&grp=0&nfl=&nfh=&nil=&nih=&nol=&noh=&v2l=&v2h=&oc2l=&oc2h=&sortcol=0&cnt=1000&page={page}"
-        
-        try:
-            response = scraper.get(url, timeout=15)
-            html_data = io.StringIO(response.text)
-            tables = pd.read_html(html_data)
-            
-            if tables:
-                df = max(tables, key=len)
-                
-                if isinstance(df.columns, pd.Index):
-                    df.columns = df.columns.astype(str).str.strip()
-                
-                cols_to_drop = ['X', '1d', '1w', '1m', '6m']
-                for col in cols_to_drop:
-                    if col in df.columns:
-                        df = df.drop(columns=[col])
-                        
-                all_insider_data.append(df)
-            else:
-                print(f"⚠️ Na straně {page} nebyly nalezeny žádné tabulky.")
-            
-            # Krátká pauza, ať server nedostane šok
-            time.sleep(random.uniform(2, 4))
-            
-        except Exception as e:
-            print(f"❌ Chyba při stahování strany {page}: {e}")
-            break # Při chybě se cyklus zastaví, ale nezahodí to, co už máme!
-
-    # Spojíme všechny stažené stránky do jedné gigantické tabulky
-    if all_insider_data:
-        final_df = pd.concat(all_insider_data, ignore_index=True)
-        final_df.to_csv('insider_4f_db.csv', index=False)
-        print(f"✅ HOTOVO! Úspěšně uloženo {len(final_df)} Insider transakcí do 'insider_4f_db.csv'.")
-    else:
-        print("❌ Nepodařilo se stáhnout žádná data z OpenInsider.")
-
 if __name__ == "__main__":
-    # Vytvoříme jeden silný scraper, který se maskuje jako Chrome, a použijeme ho na vše
     master_scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'windows', 'mobile': False})
     
     print("Spouštím hlavní aktualizační program Pokorný Terminal...")
     update_superinvestors(master_scraper)
-    update_insiders(master_scraper)
+    
     print("\nCELÝ PROCES DOKONČEN. Data jsou připravena pro aplikaci.")
