@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
-import time
 import json
 import os
 import sys
@@ -25,13 +24,13 @@ t = {
         "title": "🏛️ SEC EDGAR 13F Radar", "desc": "Živá vládní data z EDGAR.", "exp_feed": "🔥 Live Feed z trhu", "btn_feed": "Stáhnout 40 reportů",
         "spin_feed": "Stahuji...", "sel_fund": "Vyber Fond:", "cik_input": "Zadej CIK:", "name_input": "Název pro uložení:",
         "btn_save": "💾 Uložit na Cloud", "succ_save": "✅ Uloženo!", "btn_down": "Stáhnout Data",
-        "err_no13f": "❌ Žádný report nebyl nalezen (nebo má fond jiný formát souboru).", "err_xml": "❌ Nelze přečíst XML.", "succ_down": "✅ Nalezeno."
+        "err_no13f": "❌ Žádný report nebyl nalezen (fond asi ještě nepodal 13F).", "err_xml": "❌ Nelze přečíst data z reportu.", "succ_down": "✅ Nalezeno."
     },
     "EN": {
         "title": "🏛️ SEC EDGAR 13F Radar", "desc": "Live government data from EDGAR.", "exp_feed": "🔥 Live Market Feed", "btn_feed": "Download 40 reports",
         "spin_feed": "Downloading...", "sel_fund": "Select Fund:", "cik_input": "Enter CIK:", "name_input": "Name to save:",
         "btn_save": "💾 Save to Cloud", "succ_save": "✅ Saved!", "btn_down": "Download Data",
-        "err_no13f": "❌ No report found.", "err_xml": "❌ Cannot read XML.", "succ_down": "✅ Found."
+        "err_no13f": "❌ No report found.", "err_xml": "❌ Cannot read data.", "succ_down": "✅ Found."
     }
 }
 _ = t.get(st.session_state.lang, t["CZ"])
@@ -83,32 +82,24 @@ with col3:
 
 if st.button(_["btn_down"], type="primary"):
     cik = cik_input.zfill(10)
-    with st.spinner("..."):
+    with st.spinner("Pátrám v hlubinách SEC EDGAR..."):
         res = requests.get(f"https://data.sec.gov/submissions/CIK{cik}.json", headers=SEC_HEADERS)
         if res.status_code == 200:
             filings = res.json().get("filings", {}).get("recent", {})
             hr_indices = [i for i, f in enumerate(filings.get("form", [])) if "13F-HR" in f]
             
             if hr_indices:
-                acc_no_clean = filings['accessionNumber'][hr_indices[0]].replace('-', '')
+                # Tohle je ten fígl! Stáhneme celý "Master" .txt soubor, který existuje VŽDY a má jasně daný název.
+                acc_no_hyphens = filings['accessionNumber'][hr_indices[0]]
+                acc_no_clean = acc_no_hyphens.replace('-', '')
                 
-                # Zkusíme 3 nejčastější formáty, které fondy posílají vládní komisi
-                xml_urls = [
-                    f"https://www.sec.gov/Archives/edgar/data/{cik}/{acc_no_clean}/infotable.xml",
-                    f"https://www.sec.gov/Archives/edgar/data/{cik}/{acc_no_clean}/form13fInfoTable.xml",
-                    f"https://www.sec.gov/Archives/edgar/data/{cik}/{acc_no_clean}/Form13FInfoTable.xml"
-                ]
+                txt_url = f"https://www.sec.gov/Archives/edgar/data/{cik}/{acc_no_clean}/{acc_no_hyphens}.txt"
                 
-                xml_content = None
-                for url in xml_urls:
-                    xml_res = requests.get(url, headers=SEC_HEADERS)
-                    if xml_res.status_code == 200:
-                        xml_content = xml_res.content
-                        break
-                        
-                if xml_content:
-                    # 'html.parser' srovná všechna písmena na malá, takže ho nezmate, když fond použije velká písmena
-                    soup = BeautifulSoup(xml_content, 'html.parser')
+                txt_res = requests.get(txt_url, headers=SEC_HEADERS)
+                
+                if txt_res.status_code == 200:
+                    # Necháme naši čtečku prolézt ten hrubý text a vytahat z něj políčka <infotable>
+                    soup = BeautifulSoup(txt_res.content, 'html.parser')
                     pos = [{"Akcie": i.find('nameofissuer').text, "Hodnota ($)": float(i.find('value').text)*1000} for i in soup.find_all('infotable') if i.find('nameofissuer') and i.find('value')]
                     
                     if pos:
@@ -119,4 +110,8 @@ if st.button(_["btn_down"], type="primary"):
                     else:
                         st.error(_["err_xml"])
                 else:
-                    st.error(_["err_no13f"])
+                    st.error("❌ Nepodařilo se stáhnout Master soubor.")
+            else:
+                st.error(_["err_no13f"])
+        else:
+            st.error("❌ Nelze se připojit na SEC API.")
