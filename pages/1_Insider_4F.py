@@ -4,102 +4,80 @@ import requests
 from bs4 import BeautifulSoup
 import json
 import os
+import sys
 from io import StringIO
 
-st.set_page_config(page_title="Insider Tracker", page_icon="🕵️‍♂️", layout="wide")
+# --- CENTRÁLNÍ PAMĚŤ A MENU ---
+aktualni_slozka = os.path.dirname(os.path.abspath(__file__))
+hlavni_slozka = os.path.dirname(aktualni_slozka) if os.path.basename(aktualni_slozka) == "pages" else aktualni_slozka
+sys.path.append(hlavni_slozka)
+WATCHLIST_FILE = os.path.join(hlavni_slozka, "watchlist.json")
 
-WATCHLIST_FILE = "watchlist.json"
+st.set_page_config(page_title="Insider Tracker", page_icon="🕵️‍♂️", layout="wide")
+import menu
+menu.vykresli_menu()
+
+t = {
+    "CZ": {"title": "🕵️‍♂️ Insider Tracker", "desc": "4F reporty - nákupy a prodeje insiderů", "port": "💼 Moje pozice:", "watch": "👀 Můj Watchlist:", "search": "🔍 Vyhledat akcii:", "btn": "Stáhnout Insidery pro {}", "spin": "Stahuji data...", "succ": "✅ Data úspěšně nalezena!"},
+    "EN": {"title": "🕵️‍♂️ Insider Tracker", "desc": "Form 4 reports - Insider activity", "port": "💼 My Portfolio:", "watch": "👀 My Watchlist:", "search": "🔍 Search ticker:", "btn": "Download Insiders for {}", "spin": "Downloading data...", "succ": "✅ Data successfully found!"}
+}
+_ = t.get(st.session_state.lang, t["CZ"])
 
 def load_watchlist():
     if os.path.exists(WATCHLIST_FILE):
         try:
-            with open(WATCHLIST_FILE, "r") as f:
-                return json.load(f)
-        except:
-            pass
+            with open(WATCHLIST_FILE, "r") as f: return json.load(f)
+        except: pass
     return {"portfolio": [], "watchlist": []}
 
 data = load_watchlist()
-# ROZDĚLENÍ NA PORTFOLIO A WATCHLIST
 port_tickers = sorted(list(set(data.get("portfolio", []))))
 watch_tickers = sorted(list(set(data.get("watchlist", []))))
 
-st.title("🕵️‍♂️ Insider Tracker")
-st.markdown("4F reporty - nákupy a prodeje insiderů")
+st.title(_["title"])
+st.markdown(_["desc"])
 st.markdown("---")
 
-# TŘI SLOUPCE PRO LEPŠÍ PŘEHLEDNOST
 col1, col2, col3 = st.columns(3)
-with col1:
-    vyber_port = st.selectbox("💼 Moje pozice:", ["--- Vyber ---"] + port_tickers)
-with col2:
-    vyber_watch = st.selectbox("👀 Můj Watchlist:", ["--- Vyber ---"] + watch_tickers)
-with col3:
-    hledany_ticker = st.text_input("🔍 Vyhledat akcii podle tickeru:").strip().upper()
+with col1: vyber_port = st.selectbox(_["port"], ["--- Vyber ---"] + port_tickers)
+with col2: vyber_watch = st.selectbox(_["watch"], ["--- Vyber ---"] + watch_tickers)
+with col3: hledany_ticker = st.text_input(_["search"]).strip().upper()
 
-# Určíme, jaký ticker se má hledat (Přednost má ruční zadání, pak Watchlist, pak Portfolio)
-aktualni_ticker = None
-if hledany_ticker:
-    aktualni_ticker = hledany_ticker
-elif vyber_watch != "--- Vyber ---":
-    aktualni_ticker = vyber_watch
-elif vyber_port != "--- Vyber ---":
-    aktualni_ticker = vyber_port
+aktualni_ticker = hledany_ticker if hledany_ticker else (vyber_watch if vyber_watch != "--- Vyber ---" else (vyber_port if vyber_port != "--- Vyber ---" else None))
 
 if aktualni_ticker:
-    if st.button(f"Stáhnout Insidery pro {aktualni_ticker}", type="primary"):
-        with st.spinner("Stahuji a čistím data o insiderech..."):
+    if st.button(_["btn"].format(aktualni_ticker), type="primary"):
+        with st.spinner(_["spin"]):
             url = f"http://openinsider.com/search?q={aktualni_ticker}"
-            headers = {"User-Agent": "Mozilla/5.0"}
+            headers = {"User-Agent": "Lubor Pokorny (pokornyl98@gmail.com)"}
             res = requests.get(url, headers=headers)
-            
             if res.status_code == 200:
                 soup = BeautifulSoup(res.content, 'html.parser')
                 table = soup.find('table', {'class': 'tinytable'})
-                
                 if table:
                     try:
                         dfs = pd.read_html(StringIO(str(table)))
                         if dfs:
                             df = dfs[0]
-                            
-                            # Správné indexy z OpenInsideru: 2=Datum, 4=Jméno, 5=Pozice, 6=Buy/Sell, 7=Cena, 8=Kusy, 11=Hodnota
                             clean_df = df.iloc[:, [2, 4, 5, 6, 7, 8, 11]].copy()
-                            clean_df.columns = ["Datum", "Jméno", "Pozice", "Typ (Buy/Sell)", "Cena za ks ($)", "Počet kusů", "Hodnota (USD)"]
-                            
-                            # Očištění čísel od znaků dolarů a čárek, aby se daly formátovat
-                            clean_df["Cena za ks ($)"] = clean_df["Cena za ks ($)"].replace('[\$,]', '', regex=True).astype(float)
+                            clean_df.columns = ["Datum", "Jméno", "Pozice", "Typ", "Cena ($)", "Kusy", "Hodnota (USD)"]
+                            clean_df["Cena ($)"] = clean_df["Cena ($)"].replace('[\$,]', '', regex=True).astype(float)
                             clean_df["Hodnota (USD)"] = clean_df["Hodnota (USD)"].replace('[\$,]', '', regex=True).astype(float)
-                            clean_df["Počet kusů"] = clean_df["Počet kusů"].astype(str).str.replace(',', '').str.replace('+', '').astype(float)
+                            clean_df["Kusy"] = clean_df["Kusy"].astype(str).str.replace(',', '').str.replace('+', '').astype(float)
                             
-                            # Překlad a vizualizace typu transakce
                             def preloz_typ(val):
                                 v = str(val).lower()
-                                if "purchase" in v or "p - " in v: return "🟢 NÁKUP"
-                                if "sale" in v or "s - " in v: return "🔴 PRODEJ"
-                                if "option" in v or "oe - " in v: return "⚪ OPCE (Execute)"
+                                if "purchase" in v or "p - " in v: return "🟢 BUY" if st.session_state.lang == "EN" else "🟢 NÁKUP"
+                                if "sale" in v or "s - " in v: return "🔴 SELL" if st.session_state.lang == "EN" else "🔴 PRODEJ"
                                 return val
-                                
-                            clean_df["Typ (Buy/Sell)"] = clean_df["Typ (Buy/Sell)"].apply(preloz_typ)
+                            clean_df["Typ"] = clean_df["Typ"].apply(preloz_typ)
+                            st.success(_["succ"])
                             
-                            st.success(f"✅ Data pro {aktualni_ticker} úspěšně nalezena!")
-                            
-                            # Barvičkář a formátování
                             def style_trade(val):
                                 if "🟢" in str(val): return 'color: #00ff00; font-weight: bold;'
                                 if "🔴" in str(val): return 'color: #ff4b4b; font-weight: bold;'
                                 return 'color: gray;'
 
-                            formatted_df = clean_df.style.format({
-                                "Cena za ks ($)": "${:,.2f}",
-                                "Počet kusů": "{:,.0f}",
-                                "Hodnota (USD)": "${:,.0f}"
-                            }).map(style_trade, subset=["Typ (Buy/Sell)"])
-                            
-                            st.dataframe(formatted_df, use_container_width=True, height=500)
-                    except Exception as e:
-                        st.error(f"Nepodařilo se zpracovat tabulku. {e}")
-                else:
-                    st.info(f"Pro společnost {aktualni_ticker} nejsou za poslední dobu hlášené žádné transakce insiderů.")
-            else:
-                st.error("Chyba při spojení s OpenInsider.")
+                            st.dataframe(clean_df.style.format({"Cena ($)": "${:,.2f}", "Kusy": "{:,.0f}", "Hodnota (USD)": "${:,.0f}"}).map(style_trade, subset=["Typ"]), use_container_width=True)
+                    except: st.error("Chyba dat.")
+                else: st.info("Žádná data.")
