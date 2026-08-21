@@ -29,6 +29,11 @@ jobs:
 
       - name: Spuštění SEC motoru a stažení tržních dat
         run: python sec_updater.py
+        - name: Spuštění všech motorů (SEC, Dataroma, Insiders)
+        run: |
+          python sec_updater.py
+          python 2_Superinvestors_13F
+          python 1_Insider_4F
         
       # (Pokud máš i skript na Dataromu/Insidery, můžeš ho přidat pod tento řádek)
       # run: python tvuj_skript_na_insidery.py
