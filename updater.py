@@ -66,7 +66,7 @@ def update_superinvestors(scraper):
 def update_insiders(scraper):
     print("\n--- FÁZE 2: STAHUJI MASIVNÍ DATA 4F INSIDERŮ (OPENINSIDER) ---")
     all_insider_data = []
-    pages_to_scrape = 20 
+    pages_to_scrape = 40 
     
     for page in range(1, pages_to_scrape + 1):
         print(f"Stahuji stranu {page}/{pages_to_scrape} (1000 transakcí na stranu)...")
