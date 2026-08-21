@@ -8,6 +8,7 @@ import sys
 import base64
 import time
 import re
+import yfinance as yf
 
 # --- CENTRÁLNÍ PAMĚŤ A MENU ---
 aktualni_slozka = os.path.dirname(os.path.abspath(__file__))
@@ -15,7 +16,7 @@ hlavni_slozka = os.path.dirname(aktualni_slozka) if os.path.basename(aktualni_sl
 sys.path.append(hlavni_slozka)
 WATCHLIST_FILE = os.path.join(hlavni_slozka, "watchlist.json")
 
-st.set_page_config(page_title="SEC 13F Radar", page_icon="🏛️", layout="wide")
+st.set_page_config(page_title="13F Superinvestoři", page_icon="🐋", layout="wide")
 import menu
 menu.vykresli_menu() 
 
@@ -27,12 +28,13 @@ scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 
 
 t = {
     "CZ": {
-        "title": "🏛️ SEC EDGAR 13F Radar", "desc": "Živá vládní data z EDGAR (Klon Dataromy).", "exp_feed": "🔥 Live Feed z trhu",
-        "btn_feed": "Stáhnout 40 reportů", "spin_feed": "Stahuji...", "sel_fund": "Vyber Fond:", "cik_input": "Zadej CIK:", 
-        "name_input": "Název pro uložení:", "btn_save": "💾 Uložit nový fond na Cloud", "succ_save": "✅ Uloženo!", 
-        "btn_down": "Stáhnout Data", "err_no13f": "❌ Žádný report nebyl nalezen.", "err_xml": "❌ Nelze přečíst data z reportu.", 
-        "succ_down": "✅ Nalezeno!", "exp_fav": "⭐ Nastavit oblíbené", "fav_lbl": "Moji oblíbenci:", 
-        "save_fav": "💾 Uložit oblíbené na Cloud", "show_all": "Zobrazit všechny"
+        "title": "🐋 13F Superinvestoři", "desc": "Historická data portfolií (Přímé napojení na SEC EDGAR).", 
+        "exp_feed": "🔥 Live Feed z trhu", "btn_feed": "Stáhnout 40 reportů", "spin_feed": "Stahuji...", 
+        "sel_fund": "Vyber superinvestora:", "cik_input": "Zadej CIK:", "name_input": "Název pro uložení:",
+        "btn_save": "💾 Uložit nový fond na Cloud", "succ_save": "✅ Uloženo!", "btn_down": "Načíst a analyzovat portfolio",
+        "err_no13f": "❌ Žádný report nebyl nalezen.", "err_xml": "❌ Nelze přečíst data z reportu.", 
+        "exp_fav": "⭐ Nastavit oblíbené", "fav_lbl": "Moji oblíbenci:", "save_fav": "💾 Uložit", 
+        "show_all": "Zobrazit všechny"
     }
 }
 _ = t.get(st.session_state.lang, t["CZ"])
@@ -47,7 +49,7 @@ def save_data(data):
             token, owner, repo = st.secrets["GITHUB_TOKEN"], st.secrets["GITHUB_OWNER"], st.secrets["GITHUB_REPO"]
             url, headers = f"https://api.github.com/repos/{owner}/{repo}/contents/watchlist.json", {"Authorization": f"token {token}", "Accept": "application/vnd.github.v3+json"}
             sha = requests.get(url, headers=headers).json().get("sha")
-            payload = {"message": "Cloud sync SEC 13F Radar", "content": base64.b64encode(json.dumps(data, indent=4).encode("utf-8")).decode("utf-8"), "branch": "main"}
+            payload = {"message": "Cloud sync SEC Radar", "content": base64.b64encode(json.dumps(data, indent=4).encode("utf-8")).decode("utf-8"), "branch": "main"}
             if sha: payload["sha"] = sha
             requests.put(url, headers=headers, json=payload)
     except Exception: pass
@@ -78,7 +80,7 @@ PREDEFINED_FUNDS = {
     "Michael Burry (Scion Asset Management)": "1649339",
     "Stanley Druckenmiller (Duquesne Family Office)": "1536411",
     "Chris Hohn (TCI Fund Management)": "1647251",
-    "Bill Ackman (Pershing Square)": "0002026053",  # ZDE JE TVÉ NOVÉ CIK
+    "Bill Ackman (Pershing Square)": "0002026053",
     "Ray Dalio (Bridgewater Associates)": "1350694",
     "David Tepper (Appaloosa)": "1009207",
     "Seth Klarman (Baupost Group)": "1061768",
@@ -142,9 +144,24 @@ def get_13f_df(cik, acc_no_hyphens):
             return pd.DataFrame(pos).groupby("Stock").sum().reset_index()
     return None
 
+# Nástroj na překlad SEC názvů na burzovní tickery
+@st.cache_data(ttl=86400, show_spinner=False)
+def guess_ticker(company_name):
+    clean_name = re.sub(r'\b(COM|CL A|CLASS A|INC|CORP|LLC|PLC|LTD|HOLDINGS|GROUP|NEW|NV)\b', '', company_name).strip()
+    try:
+        url = f"https://query2.finance.yahoo.com/v1/finance/search?q={requests.utils.quote(clean_name)}"
+        res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=2)
+        if res.status_code == 200:
+            quotes = res.json().get('quotes', [])
+            for q in quotes:
+                if q.get('quoteType') in ['EQUITY', 'ETF'] and '.' not in q.get('symbol', ''):
+                    return q['symbol']
+    except: pass
+    return None
+
 if st.button(_["btn_down"], type="primary"):
     cik = cik_input.zfill(10)
-    with st.spinner("Pátrám v hlubinách a transformuji do Dataroma Designu..."):
+    with st.spinner("Stahuji vládní data ze SEC a propojuji je s živým trhem (YFinance)..."):
         time.sleep(0.5)
         res = scraper.get(f"https://data.sec.gov/submissions/CIK{cik}.json", headers=SEC_HEADERS)
         
@@ -174,7 +191,6 @@ if st.button(_["btn_down"], type="primary"):
                         unique_quarters[f["report_date"]] = f
                 
                 sorted_quarters = sorted(list(unique_quarters.values()), key=lambda x: x["report_date"], reverse=True)
-                
                 latest_filing = sorted_quarters[0]
                 df_latest = get_13f_df(cik, latest_filing["acc_num"])
                 
@@ -189,40 +205,81 @@ if st.button(_["btn_down"], type="primary"):
                         
                         if df_prev is not None and not df_prev.empty:
                             df_merged = pd.merge(df_latest, df_prev[["Stock", "Shares"]], on="Stock", how="left", suffixes=("", "_prev"))
-                            
                             def calc_activity(row):
-                                if pd.isna(row["Shares_prev"]) or row["Shares_prev"] == 0:
-                                    return "Buy 100%"
+                                if pd.isna(row["Shares_prev"]) or row["Shares_prev"] == 0: return "Buy 100%"
                                 diff = row["Shares"] - row["Shares_prev"]
                                 if diff == 0: return ""
-                                
                                 pct_change = (diff / row["Shares_prev"]) * 100
                                 if pct_change > 0: return f"Add {pct_change:,.2f}%"
                                 else: return f"Reduce {abs(pct_change):,.2f}%"
-                                
                             df_latest["RecentActivity"] = df_merged.apply(calc_activity, axis=1)
                     
-                    df_latest["Current Price"] = "N/A"
-                    df_latest["+/-Reported Price"] = "N/A"
+                    # --- PROPOJENÍ S ŽIVÝM TRHEM ---
+                    df_latest["Ticker_Guess"] = df_latest["Stock"].apply(guess_ticker)
+                    valid_tickers = df_latest["Ticker_Guess"].dropna().unique().tolist()
                     
-                    final_cols = ["Stock", "% of Portfolio", "RecentActivity", "Shares", "ReportedPrice*", "Value", "Current Price", "+/-Reported Price"]
+                    # Hromadné vektorové stáhnutí 52týdenní historie
+                    market_data = {}
+                    if valid_tickers:
+                        try:
+                            hist = yf.download(valid_tickers, period="1y", group_by="ticker", progress=False)
+                            for tkr in valid_tickers:
+                                if len(valid_tickers) == 1: ticker_hist = hist
+                                else: ticker_hist = hist[tkr]
+                                
+                                if not ticker_hist.empty:
+                                    market_data[tkr] = {
+                                        "Current Price": ticker_hist["Close"].iloc[-1],
+                                        "52Week Low": ticker_hist["Low"].min(),
+                                        "52Week High": ticker_hist["High"].max()
+                                    }
+                        except: pass
+                    
+                    # Vložení tržních dat do tabulky a výpočet výkonnosti
+                    df_latest["Current Price"] = df_latest["Ticker_Guess"].map(lambda x: market_data.get(x, {}).get("Current Price", None))
+                    df_latest["52Week Low"] = df_latest["Ticker_Guess"].map(lambda x: market_data.get(x, {}).get("52Week Low", None))
+                    df_latest["52Week High"] = df_latest["Ticker_Guess"].map(lambda x: market_data.get(x, {}).get("52Week High", None))
+                    
+                    df_latest["+/-Reported Price"] = df_latest.apply(
+                        lambda r: ((r["Current Price"] - r["ReportedPrice*"]) / r["ReportedPrice*"]) * 100 if pd.notnull(r["Current Price"]) and r["ReportedPrice*"] > 0 else None, 
+                        axis=1
+                    )
+                    
+                    df_latest[" "] = None # Prázdný sloupec jako vizuální oddělovač ("Unnamed: 7" na screenshotu)
+                    
+                    final_cols = ["Stock", "% of Portfolio", "RecentActivity", "Shares", "ReportedPrice*", "Value", " ", "Current Price", "+/-Reported Price", "52Week Low", "52Week High"]
                     df_final = df_latest[final_cols].sort_values(by="% of Portfolio", ascending=False)
                     
-                    def style_activity(val):
-                        v = str(val)
-                        if "Buy" in v or "Add" in v: return 'color: #00ff00;'
-                        if "Reduce" in v: return 'color: #ff4b4b;'
-                        return 'color: gray;'
+                    # Stylizace barviček
+                    def style_df(row):
+                        styles = [''] * len(row)
                         
-                    styled_df = df_final.style.format({
+                        # Barvení aktivity
+                        act_val = str(row['RecentActivity'])
+                        if "Buy" in act_val or "Add" in act_val: styles[2] = 'color: #00ff00;'
+                        elif "Reduce" in act_val: styles[2] = 'color: #ff4b4b;'
+                        
+                        # Barvení zisku/ztráty od nákupu
+                        if pd.notnull(row['+/-Reported Price']):
+                            val = float(row['+/-Reported Price'])
+                            if val > 0: styles[8] = 'color: #00ff00;'
+                            elif val < 0: styles[8] = 'color: #ff4b4b;'
+                        
+                        return styles
+                    
+                    styled_df = df_final.style.apply(style_df, axis=1).format({
                         "% of Portfolio": "{:.2f}%",
                         "Shares": "{:,.0f}",
                         "ReportedPrice*": "${:,.2f}",
-                        "Value": "${:,.0f}"
-                    }).map(style_activity, subset=["RecentActivity"])
+                        "Value": "${:,.0f}",
+                        "Current Price": lambda x: f"${x:,.2f}" if pd.notnull(x) else "N/A",
+                        "+/-Reported Price": lambda x: f"{x:+.2f}%" if pd.notnull(x) else "N/A",
+                        "52Week Low": lambda x: f"${x:,.2f}" if pd.notnull(x) else "N/A",
+                        "52Week High": lambda x: f"${x:,.2f}" if pd.notnull(x) else "N/A"
+                    })
                     
                     kvartal = preved_na_kvartal(latest_filing['report_date'])
-                    st.success(f"✅ Stažen report pro: **{vyber.split('(')[0].strip()}** | {kvartal} (Reportováno ke dni {latest_filing['report_date']})")
+                    st.success(f"**{vyber.split('(')[0].strip()}** | Zobrazen nejnovější SEC report: **{kvartal}** (Ke dni {latest_filing['report_date']})")
                     st.dataframe(styled_df, use_container_width=True)
                 else: st.error(_["err_xml"])
             else: st.error(_["err_no13f"])
