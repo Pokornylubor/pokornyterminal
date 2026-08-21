@@ -136,7 +136,8 @@ def get_13f_df(cik, acc_no_hyphens):
                 try:
                     pos.append({
                         "Stock": issuer.group(1).strip().upper(), 
-                        "Value": float(val.group(1).strip().replace(',', '')) * 1000,
+                        # Změna pravidel SEC: Hodnoty už nejsou v tisících, ale v přesných dolarech (žádné * 1000)
+                        "Value": float(val.group(1).strip().replace(',', '')),
                         "Shares": float(shares.group(1).strip().replace(',', ''))
                     })
                 except: pass
@@ -144,10 +145,9 @@ def get_13f_df(cik, acc_no_hyphens):
             return pd.DataFrame(pos).groupby("Stock").sum().reset_index()
     return None
 
-# Nástroj na překlad SEC názvů na burzovní tickery
 @st.cache_data(ttl=86400, show_spinner=False)
 def guess_ticker(company_name):
-    clean_name = re.sub(r'\b(COM|CL A|CLASS A|INC|CORP|LLC|PLC|LTD|HOLDINGS|GROUP|NEW|NV)\b', '', company_name).strip()
+    clean_name = re.sub(r'\b(COM|CL A|CLASS A|INC|CORP|LLC|PLC|LTD|HOLDINGS|GROUP|NEW|NV|CO)\b', '', company_name).strip()
     try:
         url = f"https://query2.finance.yahoo.com/v1/finance/search?q={requests.utils.quote(clean_name)}"
         res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=2)
@@ -214,11 +214,9 @@ if st.button(_["btn_down"], type="primary"):
                                 else: return f"Reduce {abs(pct_change):,.2f}%"
                             df_latest["RecentActivity"] = df_merged.apply(calc_activity, axis=1)
                     
-                    # --- PROPOJENÍ S ŽIVÝM TRHEM ---
                     df_latest["Ticker_Guess"] = df_latest["Stock"].apply(guess_ticker)
                     valid_tickers = df_latest["Ticker_Guess"].dropna().unique().tolist()
                     
-                    # Hromadné vektorové stáhnutí 52týdenní historie
                     market_data = {}
                     if valid_tickers:
                         try:
@@ -235,7 +233,6 @@ if st.button(_["btn_down"], type="primary"):
                                     }
                         except: pass
                     
-                    # Vložení tržních dat do tabulky a výpočet výkonnosti
                     df_latest["Current Price"] = df_latest["Ticker_Guess"].map(lambda x: market_data.get(x, {}).get("Current Price", None))
                     df_latest["52Week Low"] = df_latest["Ticker_Guess"].map(lambda x: market_data.get(x, {}).get("52Week Low", None))
                     df_latest["52Week High"] = df_latest["Ticker_Guess"].map(lambda x: market_data.get(x, {}).get("52Week High", None))
@@ -245,21 +242,19 @@ if st.button(_["btn_down"], type="primary"):
                         axis=1
                     )
                     
-                    df_latest[" "] = None # Prázdný sloupec jako vizuální oddělovač ("Unnamed: 7" na screenshotu)
+                    # Čistý oddělovací sloupec beze slova "None"
+                    df_latest[" "] = ""
                     
                     final_cols = ["Stock", "% of Portfolio", "RecentActivity", "Shares", "ReportedPrice*", "Value", " ", "Current Price", "+/-Reported Price", "52Week Low", "52Week High"]
                     df_final = df_latest[final_cols].sort_values(by="% of Portfolio", ascending=False)
                     
-                    # Stylizace barviček
                     def style_df(row):
                         styles = [''] * len(row)
                         
-                        # Barvení aktivity
                         act_val = str(row['RecentActivity'])
                         if "Buy" in act_val or "Add" in act_val: styles[2] = 'color: #00ff00;'
                         elif "Reduce" in act_val: styles[2] = 'color: #ff4b4b;'
                         
-                        # Barvení zisku/ztráty od nákupu
                         if pd.notnull(row['+/-Reported Price']):
                             val = float(row['+/-Reported Price'])
                             if val > 0: styles[8] = 'color: #00ff00;'
@@ -267,15 +262,16 @@ if st.button(_["btn_down"], type="primary"):
                         
                         return styles
                     
+                    # Ošetření, aby chybějící data (None) nepsala hnusné texty do tabulky
                     styled_df = df_final.style.apply(style_df, axis=1).format({
                         "% of Portfolio": "{:.2f}%",
                         "Shares": "{:,.0f}",
                         "ReportedPrice*": "${:,.2f}",
                         "Value": "${:,.0f}",
-                        "Current Price": lambda x: f"${x:,.2f}" if pd.notnull(x) else "N/A",
-                        "+/-Reported Price": lambda x: f"{x:+.2f}%" if pd.notnull(x) else "N/A",
-                        "52Week Low": lambda x: f"${x:,.2f}" if pd.notnull(x) else "N/A",
-                        "52Week High": lambda x: f"${x:,.2f}" if pd.notnull(x) else "N/A"
+                        "Current Price": lambda x: f"${x:,.2f}" if pd.notnull(x) and x != "" else "",
+                        "+/-Reported Price": lambda x: f"{x:+.2f}%" if pd.notnull(x) and x != "" else "",
+                        "52Week Low": lambda x: f"${x:,.2f}" if pd.notnull(x) and x != "" else "",
+                        "52Week High": lambda x: f"${x:,.2f}" if pd.notnull(x) and x != "" else ""
                     })
                     
                     kvartal = preved_na_kvartal(latest_filing['report_date'])
