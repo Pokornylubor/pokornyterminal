@@ -19,7 +19,6 @@ st.set_page_config(page_title="SEC 13F Radar", page_icon="🏛️", layout="wide
 import menu
 menu.vykresli_menu() 
 
-# SEC vyžaduje striktní hlavičku (Jinak dává ban)
 SEC_HEADERS = {
     "User-Agent": "PokornyTerminal pokornyl98@gmail.com",
     "Accept-Encoding": "gzip, deflate"
@@ -28,7 +27,7 @@ scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 
 
 t = {
     "CZ": {
-        "title": "🏛️ SEC EDGAR 13F Radar", "desc": "Živá vládní data z EDGAR (Nejnovější kvartál).", "exp_feed": "🔥 Live Feed z trhu", "btn_feed": "Stáhnout 40 reportů",
+        "title": "🏛️ SEC EDGAR 13F Radar", "desc": "Živá vládní data z EDGAR.", "exp_feed": "🔥 Live Feed z trhu", "btn_feed": "Stáhnout 40 reportů",
         "spin_feed": "Stahuji...", "sel_fund": "Vyber Fond:", "cik_input": "Zadej CIK:", "name_input": "Název pro uložení:",
         "btn_save": "💾 Uložit nový fond na Cloud", "succ_save": "✅ Uloženo!", "btn_down": "Stáhnout Data",
         "err_no13f": "❌ Žádný report nebyl nalezen.", "err_xml": "❌ Nelze přečíst data z reportu.", 
@@ -64,7 +63,17 @@ data = load_watchlist()
 if "saved_ciks" not in data: data["saved_ciks"] = {}
 if "sec_favorites" not in data: data["sec_favorites"] = []
 
-# --- DATABÁZE FONDŮ ---
+# --- PŘEKKLAD DATA NA KVARTÁLY ---
+def preved_na_kvartal(datum_str):
+    if not datum_str or len(datum_str) < 10: return "Neznámý kvartál"
+    rok = datum_str[:4]
+    mesic = datum_str[5:7]
+    if mesic in ['01', '02', '03']: return f"Q1 {rok}"
+    if mesic in ['04', '05', '06']: return f"Q2 {rok}"
+    if mesic in ['07', '08', '09']: return f"Q3 {rok}"
+    if mesic in ['10', '11', '12']: return f"Q4 {rok}"
+    return datum_str
+
 PREDEFINED_FUNDS = {
     "Warren Buffett (Berkshire Hathaway)": "1067983",
     "Michael Burry (Scion Asset Management)": "1649339",
@@ -78,12 +87,10 @@ PREDEFINED_FUNDS = {
     "Carl Icahn (Icahn Capital)": "921669"
 }
 
-# Spojíme předpřipravené a tvoje vlastní
 ALL_FUNDS = PREDEFINED_FUNDS.copy()
 ALL_FUNDS.update(data["saved_ciks"])
 fund_names = sorted(list(ALL_FUNDS.keys()))
 
-# --- UI: OBLÍBENÍ (Stejné jako Dataroma) ---
 vychozi_vyber = [f for f in data["sec_favorites"] if f in fund_names]
 
 with st.expander(_["exp_fav"], expanded=False):
@@ -95,7 +102,6 @@ with st.expander(_["exp_fav"], expanded=False):
 
 st.markdown("---")
 
-# --- UI: VÝBĚR FONDU ---
 zobrazit_vse = st.checkbox(_["show_all"], value=False)
 nabidka = fund_names if (not vychozi_vyber or zobrazit_vse) else vychozi_vyber
 nabidka.append("🔍 Jiný fond (Zadat CIK manuálně)")
@@ -116,7 +122,6 @@ if vyber == "🔍 Jiný fond (Zadat CIK manuálně)":
 else:
     cik_input = ALL_FUNDS[vyber]
 
-# --- STAHOVÁNÍ DAT ---
 if st.button(_["btn_down"], type="primary"):
     cik = cik_input.zfill(10)
     with st.spinner("Pátrám po nejnovějším kvartálu..."):
@@ -133,7 +138,6 @@ if st.button(_["btn_down"], type="primary"):
             acc_nums = recent.get("accessionNumber", [])
             report_dates = recent.get("reportDate", [])
             
-            # Najdeme všechny 13F reporty a přidáme k nim datum reportu
             valid_filings = []
             for i in range(len(forms)):
                 f_type = str(forms[i]).upper()
@@ -144,7 +148,7 @@ if st.button(_["btn_down"], type="primary"):
                     })
             
             if valid_filings:
-                # SEŘAZENÍ: Vždy chronologicky podle data reportu (Nejnovější nahoře)
+                # SEŘAZENÍ: Tohle zajistí, že se vezme absolutně nejnovější datum kvartálu
                 valid_filings.sort(key=lambda x: x["report_date"], reverse=True)
                 latest_filing = valid_filings[0]
                 
@@ -169,8 +173,9 @@ if st.button(_["btn_down"], type="primary"):
                         df = pd.DataFrame(pos).groupby("Akcie").sum().reset_index()
                         df["%"] = (df["Hodnota ($)"] / df["Hodnota ($)"].sum()) * 100
                         
-                        # Zobrazí jasný důkaz o tom, k jakému datu report skutečně je!
-                        st.success(f"{_['succ_down']} Report ke dni: **{latest_filing['report_date']}**")
+                        # Zobrazení krásného štítku s Qx a rokem
+                        kvartal = preved_na_kvartal(latest_filing['report_date'])
+                        st.success(f"{_['succ_down']} Zobrazen nejnovější report: **{kvartal}** (Ke dni {latest_filing['report_date']})")
                         st.dataframe(df.sort_values(by="%", ascending=False).style.format({"Hodnota ($)": "${:,.0f}", "%": "{:.2f}%"}), use_container_width=True)
                     else: st.error(_["err_xml"])
                 else: st.error("❌ Master soubor nelze stáhnout.")
