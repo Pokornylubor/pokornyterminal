@@ -49,7 +49,7 @@ if aktualni_ticker:
     if st.button(_["btn"].format(aktualni_ticker), type="primary"):
         with st.spinner(_["spin"]):
             url = f"http://openinsider.com/search?q={aktualni_ticker}"
-            headers = {"User-Agent": "Lubor Pokorny (pokornyl98@gmail.com)"}
+            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36"}
             res = requests.get(url, headers=headers)
             if res.status_code == 200:
                 soup = BeautifulSoup(res.content, 'html.parser')
@@ -61,9 +61,11 @@ if aktualni_ticker:
                             df = dfs[0]
                             clean_df = df.iloc[:, [2, 4, 5, 6, 7, 8, 11]].copy()
                             clean_df.columns = ["Datum", "Jméno", "Pozice", "Typ", "Cena ($)", "Kusy", "Hodnota (USD)"]
-                            clean_df["Cena ($)"] = clean_df["Cena ($)"].replace('[\$,]', '', regex=True).astype(float)
-                            clean_df["Hodnota (USD)"] = clean_df["Hodnota (USD)"].replace('[\$,]', '', regex=True).astype(float)
-                            clean_df["Kusy"] = clean_df["Kusy"].astype(str).str.replace(',', '').str.replace('+', '').astype(float)
+                            
+                            # Bezpečný převod čísel - pokud je tam nesmysl, hodí prázdné políčko místo pádu aplikace
+                            clean_df["Cena ($)"] = pd.to_numeric(clean_df["Cena ($)"].astype(str).str.replace('[\$,]', '', regex=True), errors='coerce')
+                            clean_df["Hodnota (USD)"] = pd.to_numeric(clean_df["Hodnota (USD)"].astype(str).str.replace('[\$,]', '', regex=True), errors='coerce')
+                            clean_df["Kusy"] = pd.to_numeric(clean_df["Kusy"].astype(str).str.replace(',', '').str.replace('+', ''), errors='coerce')
                             
                             def preloz_typ(val):
                                 v = str(val).lower()
@@ -78,6 +80,11 @@ if aktualni_ticker:
                                 if "🔴" in str(val): return 'color: #ff4b4b; font-weight: bold;'
                                 return 'color: gray;'
 
-                            st.dataframe(clean_df.style.format({"Cena ($)": "${:,.2f}", "Kusy": "{:,.0f}", "Hodnota (USD)": "${:,.0f}"}).map(style_trade, subset=["Typ"]), use_container_width=True)
-                    except: st.error("Chyba dat.")
-                else: st.info("Žádná data.")
+                            # na_rep="-" zajistí, že prázdná/vadná políčka se zobrazí jako pomlčka
+                            st.dataframe(clean_df.style.format({"Cena ($)": "${:,.2f}", "Kusy": "{:,.0f}", "Hodnota (USD)": "${:,.0f}"}, na_rep="-").map(style_trade, subset=["Typ"]), use_container_width=True)
+                    except Exception as e: 
+                        st.error(f"Chyba při zpracování dat z tabulky: {e}")
+                else: 
+                    st.info("Žádná data nebyly nalezeny pro tento ticker.")
+            else: 
+                st.error(f"Nelze se připojit na OpenInsider (Status kód: {res.status_code})")
