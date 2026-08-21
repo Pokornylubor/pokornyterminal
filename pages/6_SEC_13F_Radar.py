@@ -23,13 +23,13 @@ SEC_HEADERS = {"User-Agent": "Lubor Pokorny (pokornyl98@gmail.com)"}
 
 t = {
     "CZ": {
-        "title": "🏛️ SEC EDGAR 13F Radar", "desc": "Živá vládní data z EDGAR.", "exp_feed": "🔥 Live Feed z trhu", "btn_feed": "Stáhnout 40 reportů",
+        "title": "🏛️ SEC EDGAR 13F Radar", "desc": "Živá vládní data z EDGAR (Přímé napojení na centrálu).", "exp_feed": "🔥 Live Feed z trhu", "btn_feed": "Stáhnout 40 reportů",
         "spin_feed": "Stahuji...", "sel_fund": "Vyber Fond:", "cik_input": "Zadej CIK:", "name_input": "Název pro uložení:",
         "btn_save": "💾 Uložit na Cloud", "succ_save": "✅ Uloženo!", "btn_down": "Stáhnout Data",
         "err_no13f": "❌ Žádný report nebyl nalezen (fond asi ještě nepodal 13F).", "err_xml": "❌ Nelze přečíst data z reportu.", "succ_down": "✅ Nalezeno."
     },
     "EN": {
-        "title": "🏛️ SEC EDGAR 13F Radar", "desc": "Live government data from EDGAR.", "exp_feed": "🔥 Live Market Feed", "btn_feed": "Download 40 reports",
+        "title": "🏛️ SEC EDGAR 13F Radar", "desc": "Live government data from EDGAR (Direct feed).", "exp_feed": "🔥 Live Market Feed", "btn_feed": "Download 40 reports",
         "spin_feed": "Downloading...", "sel_fund": "Select Fund:", "cik_input": "Enter CIK:", "name_input": "Name to save:",
         "btn_save": "💾 Save to Cloud", "succ_save": "✅ Saved!", "btn_down": "Download Data",
         "err_no13f": "❌ No report found.", "err_xml": "❌ Cannot read data.", "succ_down": "✅ Found."
@@ -95,55 +95,64 @@ with col3:
 
 if st.button(_["btn_down"], type="primary"):
     cik = cik_input.zfill(10)
-    with st.spinner("Pátrám v hlubinách SEC EDGAR..."):
+    with st.spinner("Vytahuji data přímo z centrály EDGAR..."):
         time.sleep(0.5) 
-        res = requests.get(f"https://data.sec.gov/submissions/CIK{cik}.json", headers=SEC_HEADERS)
         
-        if res.status_code == 200:
-            filings = res.json().get("filings", {}).get("recent", {})
+        # 1. KROK: Místo chybového API použijeme surový RSS vyhledávač, ten nelže.
+        rss_url = f"https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK={cik}&type=13F-HR&count=5&output=atom"
+        rss_res = requests.get(rss_url, headers=SEC_HEADERS)
+        
+        if rss_res.status_code == 200:
+            soup_rss = BeautifulSoup(rss_res.content, 'xml')
+            entries = soup_rss.find_all('entry')
             
-            if not filings or not filings.get("form"):
-                st.error("❌ SEC API tě dočasně zablokovalo za příliš rychlé klikání. Počkej 30 vteřin a zkus to znovu.")
-                st.stop()
-                
-            hr_indices = [i for i, f in enumerate(filings.get("form", [])) if "13F" in str(f).upper() and "NT" not in str(f).upper()]
-            
-            if hr_indices:
-                acc_no_hyphens = filings['accessionNumber'][hr_indices[0]]
-                acc_no_clean = acc_no_hyphens.replace('-', '')
-                
-                txt_url = f"https://www.sec.gov/Archives/edgar/data/{cik}/{acc_no_clean}/{acc_no_hyphens}.txt"
-                txt_res = requests.get(txt_url, headers=SEC_HEADERS)
-                
-                if txt_res.status_code == 200:
-                    content = txt_res.text
-                    
-                    # REGEX: Nezničítejný textový rentgen (ignoruje všechno kolem, vytáhne jen bloky akcií)
-                    blocks = re.findall(r'(?is)<[^>]*?infoTable[^>]*>(.*?)</[^>]*?infoTable>', content)
-                    
-                    pos = []
-                    for block in blocks:
-                        issuer_match = re.search(r'(?is)<[^>]*?nameOfIssuer[^>]*>(.*?)</[^>]*?nameOfIssuer>', block)
-                        value_match = re.search(r'(?is)<[^>]*?value[^>]*>(.*?)</[^>]*?value>', block)
+            if entries:
+                # 2. KROK: Najdeme unikátní kód posledního reportu
+                acc_no_hyphens = None
+                for entry in entries:
+                    id_tag = entry.find('id')
+                    if id_tag and 'accession' in id_tag.text:
+                        acc_no_hyphens = id_tag.text.split(':')[-1]
+                        break
                         
-                        if issuer_match and value_match:
-                            try:
-                                issuer = issuer_match.group(1).strip()
-                                val = float(value_match.group(1).strip()) * 1000
-                                pos.append({"Akcie": issuer, "Hodnota ($)": val})
-                            except:
-                                pass
+                if acc_no_hyphens:
+                    acc_no_clean = acc_no_hyphens.replace('-', '')
                     
-                    if pos:
-                        df = pd.DataFrame(pos).groupby("Akcie").sum().reset_index()
-                        df["%"] = (df["Hodnota ($)"] / df["Hodnota ($)"].sum()) * 100
-                        st.success(_["succ_down"])
-                        st.dataframe(df.sort_values(by="%", ascending=False).style.format({"Hodnota ($)": "${:,.0f}", "%": "{:.2f}%"}), use_container_width=True)
+                    # 3. KROK: Stáhneme hrubý Master textový soubor
+                    txt_url = f"https://www.sec.gov/Archives/edgar/data/{cik}/{acc_no_clean}/{acc_no_hyphens}.txt"
+                    txt_res = requests.get(txt_url, headers=SEC_HEADERS)
+                    
+                    if txt_res.status_code == 200:
+                        content = txt_res.text
+                        
+                        # 4. KROK: Nezničítejný Regex (Rentgen), který vyseká akcie i z toho největšího chaosu
+                        blocks = re.findall(r'(?is)<[^>]*?infoTable[^>]*>(.*?)</[^>]*?infoTable>', content)
+                        
+                        pos = []
+                        for block in blocks:
+                            issuer_match = re.search(r'(?is)<[^>]*?nameOfIssuer[^>]*>(.*?)</[^>]*?nameOfIssuer>', block)
+                            value_match = re.search(r'(?is)<[^>]*?value[^>]*>(.*?)</[^>]*?value>', block)
+                            
+                            if issuer_match and value_match:
+                                try:
+                                    issuer = issuer_match.group(1).strip()
+                                    val = float(value_match.group(1).strip()) * 1000
+                                    pos.append({"Akcie": issuer, "Hodnota ($)": val})
+                                except:
+                                    pass
+                        
+                        if pos:
+                            df = pd.DataFrame(pos).groupby("Akcie").sum().reset_index()
+                            df["%"] = (df["Hodnota ($)"] / df["Hodnota ($)"].sum()) * 100
+                            st.success(_["succ_down"])
+                            st.dataframe(df.sort_values(by="%", ascending=False).style.format({"Hodnota ($)": "${:,.0f}", "%": "{:.2f}%"}), use_container_width=True)
+                        else:
+                            st.error("❌ Nalezený report je pravděpodobně prázdný, nebo fond požádal SEC o utajení pozic.")
                     else:
-                        st.error("❌ Nalezený report je pravděpodobně prázdný, nebo fond požádal o utajení pozic.")
+                        st.error("❌ Nepodařilo se stáhnout Master soubor.")
                 else:
-                    st.error("❌ Nepodařilo se stáhnout Master soubor.")
+                    st.error("❌ Nepodařilo se najít identifikační číslo reportu.")
             else:
                 st.error(_["err_no13f"])
         else:
-            st.error("❌ Nelze se připojit na SEC API.")
+            st.error("❌ Nelze se připojit na vyhledávač SEC EDGAR.")
