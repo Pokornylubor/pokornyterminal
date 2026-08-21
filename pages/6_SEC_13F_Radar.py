@@ -124,24 +124,27 @@ else:
 def get_13f_df(cik, acc_no_hyphens):
     acc_no_clean = acc_no_hyphens.replace('-', '')
     txt_url = f"https://www.sec.gov/Archives/edgar/data/{cik}/{acc_no_clean}/{acc_no_hyphens}.txt"
-    txt_res = scraper.get(txt_url, headers=SEC_HEADERS)
-    if txt_res.status_code == 200:
-        blocks = re.findall(r'(?is)<[^>]*?infoTable[^>]*>(.*?)</[^>]*?infoTable>', txt_res.text)
-        pos = []
-        for block in blocks:
-            issuer = re.search(r'(?is)<[^>]*?nameOfIssuer[^>]*>(.*?)</[^>]*?nameOfIssuer>', block)
-            val = re.search(r'(?is)<[^>]*?value[^>]*>(.*?)</[^>]*?value>', block)
-            shares = re.search(r'(?is)<[^>]*?sshPrnamt[^>]*>(.*?)</[^>]*?sshPrnamt>', block)
-            if issuer and val and shares:
-                try:
-                    pos.append({
-                        "Stock": issuer.group(1).strip().upper(), 
-                        "Value": float(val.group(1).strip().replace(',', '')),
-                        "Shares": float(shares.group(1).strip().replace(',', ''))
-                    })
-                except: pass
-        if pos:
-            return pd.DataFrame(pos).groupby("Stock").sum().reset_index()
+    # Přidán timeout 10 vteřin pro případ výpadku SEC serveru
+    try:
+        txt_res = scraper.get(txt_url, headers=SEC_HEADERS, timeout=10)
+        if txt_res.status_code == 200:
+            blocks = re.findall(r'(?is)<[^>]*?infoTable[^>]*>(.*?)</[^>]*?infoTable>', txt_res.text)
+            pos = []
+            for block in blocks:
+                issuer = re.search(r'(?is)<[^>]*?nameOfIssuer[^>]*>(.*?)</[^>]*?nameOfIssuer>', block)
+                val = re.search(r'(?is)<[^>]*?value[^>]*>(.*?)</[^>]*?value>', block)
+                shares = re.search(r'(?is)<[^>]*?sshPrnamt[^>]*>(.*?)</[^>]*?sshPrnamt>', block)
+                if issuer and val and shares:
+                    try:
+                        pos.append({
+                            "Stock": issuer.group(1).strip().upper(), 
+                            "Value": float(val.group(1).strip().replace(',', '')),
+                            "Shares": float(shares.group(1).strip().replace(',', ''))
+                        })
+                    except: pass
+            if pos:
+                return pd.DataFrame(pos).groupby("Stock").sum().reset_index()
+    except: pass
     return None
 
 @st.cache_data(ttl=86400, show_spinner=False)
@@ -149,7 +152,7 @@ def guess_ticker(company_name):
     clean_name = re.sub(r'\b(COM|CL A|CLASS A|INC|CORP|LLC|PLC|LTD|HOLDINGS|GROUP|NEW|NV|CO)\b', '', company_name).strip()
     try:
         url = f"https://query2.finance.yahoo.com/v1/finance/search?q={requests.utils.quote(clean_name)}"
-        res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=2)
+        res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=2) # Extrémně krátký timeout, aby to neviselo
         if res.status_code == 200:
             quotes = res.json().get('quotes', [])
             for q in quotes:
@@ -160,9 +163,13 @@ def guess_ticker(company_name):
 
 if st.button(_["btn_down"], type="primary"):
     cik = cik_input.zfill(10)
-    with st.spinner("Stahuji vládní data ze SEC a propojuji je s živým trhem (YFinance)..."):
+    with st.spinner("Stahuji data (U velkých fondů vyhodnocuji TOP 150 pozic pro bleskovou rychlost)..."):
         time.sleep(0.5)
-        res = scraper.get(f"https://data.sec.gov/submissions/CIK{cik}.json", headers=SEC_HEADERS)
+        try:
+            res = scraper.get(f"https://data.sec.gov/submissions/CIK{cik}.json", headers=SEC_HEADERS, timeout=10)
+        except:
+            st.error("❌ Vypršel časový limit pro spojení se servery SEC. Zkus to prosím za chvíli znovu.")
+            st.stop()
         
         if res.status_code in [403, 429]:
             st.error("🚨 OCHRANA SEC: Tvoje IP je dočasně zablokovaná za rychlé klikání. Zkus to přes hotspot nebo počkej.")
@@ -213,13 +220,23 @@ if st.button(_["btn_down"], type="primary"):
                                 else: return f"Reduce {abs(pct_change):,.2f}%"
                             df_latest["RecentActivity"] = df_merged.apply(calc_activity, axis=1)
                     
-                    df_latest["Ticker_Guess"] = df_latest["Stock"].apply(guess_ticker)
+                    # --- OCHRANA PROTI ZAMRZNUTÍ: Filtrování TOP 150 pozic ---
+                    df_latest = df_latest.sort_values(by="% of Portfolio", ascending=False)
+                    top_df = df_latest.head(150).copy()
+                    bottom_df = df_latest.iloc[150:].copy()
+                    
+                    top_df["Ticker_Guess"] = top_df["Stock"].apply(guess_ticker)
+                    bottom_df["Ticker_Guess"] = None
+                    
+                    df_latest = pd.concat([top_df, bottom_df])
+                    
                     valid_tickers = df_latest["Ticker_Guess"].dropna().unique().tolist()
                     
                     market_data = {}
                     if valid_tickers:
                         try:
-                            hist = yf.download(valid_tickers, period="1y", group_by="ticker", progress=False)
+                            # Potlačení chybových hlášek, kdyby YFinance dočasně vypadlo
+                            hist = yf.download(valid_tickers, period="1y", group_by="ticker", progress=False, ignore_tz=True)
                             for tkr in valid_tickers:
                                 if len(valid_tickers) == 1: ticker_hist = hist
                                 else: ticker_hist = hist[tkr]
@@ -230,7 +247,8 @@ if st.button(_["btn_down"], type="primary"):
                                         "52Week Low": ticker_hist["Low"].min(),
                                         "52Week High": ticker_hist["High"].max()
                                     }
-                        except: pass
+                        except Exception as e:
+                            st.warning("⚠️ Živá data z burzy momentálně nelze načíst (výpadek YFinance), zobrazuji pouze vládní report.")
                     
                     df_latest["Current Price"] = df_latest["Ticker_Guess"].map(lambda x: market_data.get(x, {}).get("Current Price", None))
                     df_latest["52Week Low"] = df_latest["Ticker_Guess"].map(lambda x: market_data.get(x, {}).get("52Week Low", None))
@@ -241,9 +259,8 @@ if st.button(_["btn_down"], type="primary"):
                         axis=1
                     )
                     
-                    # Odstraněn prázdný oddělovací sloupec
                     final_cols = ["Stock", "% of Portfolio", "RecentActivity", "Shares", "ReportedPrice*", "Value", "Current Price", "+/-Reported Price", "52Week Low", "52Week High"]
-                    df_final = df_latest[final_cols].sort_values(by="% of Portfolio", ascending=False)
+                    df_final = df_latest[final_cols] # Už je seřazeno z dřívějška
                     
                     def style_df(row):
                         styles = [''] * len(row)
@@ -254,8 +271,8 @@ if st.button(_["btn_down"], type="primary"):
                         
                         if pd.notnull(row['+/-Reported Price']):
                             val = float(row['+/-Reported Price'])
-                            if val > 0: styles[7] = 'color: #00ff00;' # Posunuto na index 7
-                            elif val < 0: styles[7] = 'color: #ff4b4b;' # Posunuto na index 7
+                            if val > 0: styles[7] = 'color: #00ff00;'
+                            elif val < 0: styles[7] = 'color: #ff4b4b;'
                         
                         return styles
                     
