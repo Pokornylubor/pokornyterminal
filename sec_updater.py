@@ -1,6 +1,6 @@
+import cloudscraper
 import pandas as pd
 import requests
-import cloudscraper
 import json
 import os
 import time
@@ -165,8 +165,15 @@ def update_sec_funds(target_cik=None):
                         with open(os.path.join(SEC_DATA_DIR, f"{cik_str}_meta.json"), "w") as f:
                             json.dump(meta, f)
                         print(f"✅ Uloženo: {name}")
-        except Exception as e: print(f"❌ Chyba u {name}: {e}")
-        time.sleep(1) # Pauza proti banu
+        
+        # TADY JE TA ZMĚNA: Přeskakujeme chybu, dáváme 10s pauzu a jedeme plynule dál
+        except Exception as e: 
+            print(f"⚠️ Chyba u {name} ({e}). Dávám serveru SEC 10s vydechnout a přeskakuji na další...")
+            time.sleep(10)
+            continue
+            
+        # Standardní bezpečnostní pauza mezi fondy, když se to stáhne úspěšně
+        time.sleep(1) 
 
 if __name__ == "__main__":
     update_sec_funds()
