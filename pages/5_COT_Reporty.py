@@ -52,7 +52,7 @@ Nehledej překřížení nulové osy. Hledej momenty, kdy se od sebe zelená a �
 """,
         "leg_comm": "Commercials (Zajišťovatelé)",
         "leg_nonc": "Non-Commercials (Spekulanti)",
-        "err_hist": "Pro tento trh není dostatek historických dat.",
+        "err_hist": "Pro tento trh není dostatek historických dat (kontrakt pravděpodobně zanikl, nebo ještě neexistoval).",
         "raw_title": "KOMPLETNÍ ZÁZNAM CFTC:",
         "raw_desc": "Pohled do všech dostupných sloupců a kategorií pro vybraný trh."
     },
@@ -84,7 +84,7 @@ Do not look for zero-line crossovers. Look for moments when the green and red li
 """,
         "leg_comm": "Commercials (Hedgers)",
         "leg_nonc": "Non-Commercials (Speculators)",
-        "err_hist": "Not enough historical data for this market.",
+        "err_hist": "Not enough historical data for this market (contract may be discontinued or newly added).",
         "raw_title": "COMPLETE CFTC RECORD:",
         "raw_desc": "View all available columns and categories for the selected market."
     }
@@ -163,9 +163,18 @@ if vybrany_trh:
     df_market = cot_df[cot_df['Market and Exchange Names'] == vybrany_trh].copy()
     try:
         date_cols = df_market.columns.tolist()
-        if 'Report_Date_as_YYYY-MM-DD' in date_cols: df_market['Date'] = pd.to_datetime(df_market['Report_Date_as_YYYY-MM-DD'], errors='coerce')
-        elif 'Report_Date_as_MM_DD_YYYY' in date_cols: df_market['Date'] = pd.to_datetime(df_market['Report_Date_as_MM_DD_YYYY'], errors='coerce')
-        else: df_market['Date'] = pd.to_datetime(df_market[[c for c in date_cols if 'as of' in c.lower()][0]].astype(str).str.zfill(6), format='%y%m%d', errors='coerce')
+        
+        # NEPRŮSTŘELNÉ PARSOVÁNÍ DATA (Ochrana proti "Float Bugu")
+        if 'Report_Date_as_YYYY-MM-DD' in date_cols: 
+            df_market['Date'] = pd.to_datetime(df_market['Report_Date_as_YYYY-MM-DD'], errors='coerce')
+        elif 'Report_Date_as_MM_DD_YYYY' in date_cols: 
+            df_market['Date'] = pd.to_datetime(df_market['Report_Date_as_MM_DD_YYYY'], errors='coerce')
+        else:
+            date_col = next((c for c in date_cols if 'as of' in c.lower()), None)
+            if date_col:
+                # Očistí chyby (přidá zfill na 6 znaků a vymaže nesmyslné desetinné nuly z Pandas)
+                clean_dates = df_market[date_col].astype(str).str.replace(r'\.0$', '', regex=True).str.zfill(6)
+                df_market['Date'] = pd.to_datetime(clean_dates, format='%y%m%d', errors='coerce')
         
         df_market = df_market.dropna(subset=['Date']).sort_values('Date')
         
