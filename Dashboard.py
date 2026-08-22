@@ -20,9 +20,24 @@ WATCHLIST_FILE = os.path.join(hlavni_slozka, "watchlist.json")
 import menu
 menu.vykresli_menu() 
 
+# --- DICTIONARY ---
 t = {
-    "CZ": {"title": "POKORNY TERMINAL", "tab_port": "PORTFOLIO", "tab_watch": "WATCHLIST", "tab_set": "SYSTÉMOVÁ KONFIGURACE", "curr_pos": "AKTUÁLNÍ POZICE", "radar": "RADAR", "no_data": "ŽÁDNÁ DATA", "err": "ERR", "port_tickers": "TICKERY (PORTFOLIO)", "watch_tickers": "TICKERY (WATCHLIST)", "commit": "ULOŽIT ZMĚNY", "success": "SYSTÉM AKTUALIZOVÁN"},
-    "EN": {"title": "POKORNY TERMINAL", "tab_port": "PORTFOLIO", "tab_watch": "WATCHLIST", "tab_set": "SYSTEM CONFIG", "curr_pos": "CURRENT POSITIONS", "radar": "RADAR", "no_data": "NO DATA AVAILABLE", "err": "ERR", "port_tickers": "PORTFOLIO TICKERS", "watch_tickers": "WATCHLIST TICKERS", "commit": "COMMIT CHANGES", "success": "SYSTEM UPDATED"}
+    "CZ": {
+        "title": "POKORNY TERMINAL", "tab_port": "PORTFOLIO", "tab_watch": "WATCHLIST", 
+        "tab_chart": "CHARTING", "tab_set": "SYSTÉMOVÁ KONFIGURACE", "curr_pos": "AKTUÁLNÍ POZICE", 
+        "radar": "RADAR", "no_data": "ŽÁDNÁ DATA", "err": "ERR", "port_tickers": "TICKERY (PORTFOLIO)", 
+        "watch_tickers": "TICKERY (WATCHLIST)", "commit": "ULOŽIT ZMĚNY", "success": "SYSTÉM AKTUALIZOVÁN",
+        "db_select": "DATABÁZE", "custom_tick": "VLASTNÍ TICKER", "chart_type": "TYP GRAFU",
+        "interval": "INTERVAL", "loading": "STAHOVÁNÍ DAT...", "err_data": "DATA NEJSOU DOSTUPNÁ."
+    },
+    "EN": {
+        "title": "POKORNY TERMINAL", "tab_port": "PORTFOLIO", "tab_watch": "WATCHLIST", 
+        "tab_chart": "CHARTING", "tab_set": "SYSTEM CONFIG", "curr_pos": "CURRENT POSITIONS", 
+        "radar": "RADAR", "no_data": "NO DATA AVAILABLE", "err": "ERR", "port_tickers": "PORTFOLIO TICKERS", 
+        "watch_tickers": "WATCHLIST TICKERS", "commit": "COMMIT CHANGES", "success": "SYSTEM UPDATED",
+        "db_select": "DATABASE", "custom_tick": "CUSTOM TICKER", "chart_type": "CHART TYPE",
+        "interval": "INTERVAL", "loading": "LOADING DATA...", "err_data": "DATA NOT AVAILABLE."
+    }
 }
 _ = t.get(st.session_state.get("lang", "CZ"), t["CZ"])
 
@@ -71,58 +86,61 @@ def display_tickers(ticker_list, title):
             else: col.metric(ticker, "N/A")
         except: col.metric(ticker, _["err"])
 
-tab1, tab2, tab3, tab4 = st.tabs([_["tab_port"], _["tab_watch"], "CHARTING", _["tab_set"]])
+tab1, tab2, tab3, tab4 = st.tabs([_["tab_port"], _["tab_watch"], _["tab_chart"], _["tab_set"]])
 
 with tab1: display_tickers(data.get("portfolio", []), _["curr_pos"])
 with tab2: display_tickers(data.get("watchlist", []), _["radar"])
 
 with tab3:
-    st.subheader("DETAILNÍ ANALÝZA (CHARTING)")
     all_tickers = list(dict.fromkeys(data.get("portfolio", []) + data.get("watchlist", [])))
     
-    # 4 sloupce pro lepší rozložení vyhledávání
     c1, c2, c3, c4 = st.columns([2, 2, 1, 1])
-    sel_tick = c1.selectbox("VÝBĚR Z DATABÁZE", [""] + all_tickers)
-    custom_tick = c2.text_input("VLASTNÍ TICKER (např. AAPL)")
+    sel_tick = c1.selectbox(_["db_select"], [""] + all_tickers)
+    custom_tick = c2.text_input(_["custom_tick"], value="")
     
-    # Pokud uživatel zadá vlastní ticker, má přednost před výběrem ze seznamu
     final_tick = custom_tick.upper().strip() if custom_tick.strip() else sel_tick
     
-    chart_type = c3.selectbox("TYP GRAFU", ["Candlestick", "Line"])
-    interval = c4.selectbox("INTERVAL", ["1m", "5m", "15m", "1h", "1d", "1wk", "1mo"], index=4)
+    chart_type = c3.selectbox(_["chart_type"], ["Candlestick", "Line"])
+    interval_display = c4.selectbox(_["interval"], ["1M", "5M", "15M", "1H", "1D", "1W", "1MO"], index=4)
 
     if final_tick:
+        yf_interval_map = {"1M": "1m", "5M": "5m", "15M": "15m", "1H": "1h", "1D": "1d", "1W": "1wk", "1MO": "1mo"}
         period_map = {"1m": "7d", "5m": "60d", "15m": "60d", "1h": "730d", "1d": "max", "1wk": "max", "1mo": "max"}
         
-        with st.spinner(f"Stahuji tržní data pro {final_tick}..."):
-            df_c = yf.download(final_tick, period=period_map[interval], interval=interval, progress=False)
+        yf_int = yf_interval_map[interval_display]
+        
+        with st.spinner(f"{_['loading']} {final_tick}..."):
+            df_c = yf.download(final_tick, period=period_map[yf_int], interval=yf_int, progress=False)
             
         if not df_c.empty:
             if isinstance(df_c.columns, pd.MultiIndex): df_c.columns = df_c.columns.get_level_values(0)
             fig = go.Figure()
             if chart_type == "Candlestick":
-                fig.add_trace(go.Candlestick(x=df_c.index, open=df_c['Open'], high=df_c['High'], low=df_c['Low'], close=df_c['Close'], name="Cena"))
+                fig.add_trace(go.Candlestick(
+                    x=df_c.index, open=df_c['Open'], high=df_c['High'], low=df_c['Low'], close=df_c['Close'], 
+                    name=final_tick,
+                    increasing_line_color='#26A69A', decreasing_line_color='#EF5350'
+                ))
             else:
-                fig.add_trace(go.Scatter(x=df_c.index, y=df_c['Close'], mode='lines', line=dict(color='#00FF00'), name="Close"))
+                fig.add_trace(go.Scatter(x=df_c.index, y=df_c['Close'], mode='lines', line=dict(color='#2962FF'), name=final_tick))
             
-            # Profi formátování s TradingView logikou (dragmode='pan')
             fig.update_layout(
                 template="plotly_dark", 
-                margin=dict(l=0, r=0, t=10, b=0), 
-                height=600, 
+                margin=dict(l=0, r=60, t=20, b=0), 
+                height=650, 
                 xaxis_rangeslider_visible=False,
-                dragmode='pan'
+                dragmode='pan',
+                hovermode='x unified',
+                yaxis=dict(side='right', fixedrange=False, tickformat=".2f"),
+                xaxis=dict(fixedrange=False, showspikes=True, spikemode='across', spikesnap='cursor', showgrid=False)
             )
             
-            # Aktivace zoomování kolečkem
-            st.plotly_chart(fig, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': True})
+            # Schování panelu s tlačítky (displayModeBar=False) pro absolutně čistý vzhled
+            st.plotly_chart(fig, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': False})
         else:
-            st.error(f"Data pro ticker {final_tick} v intervalu {interval} nejsou dostupná.")
-    else:
-        st.info("Vyber ticker ze seznamu nebo zadej vlastní pro zobrazení grafu.")
+            st.error(_["err_data"])
 
 with tab4:
-    st.subheader(_["tab_set"])
     col1, col2 = st.columns(2)
     with col1: edit_port = st.data_editor(pd.DataFrame(data.get("portfolio", []), columns=["Ticker"]), num_rows="dynamic", use_container_width=True, hide_index=True)
     with col2: edit_watch = st.data_editor(pd.DataFrame(data.get("watchlist", []), columns=["Ticker"]), num_rows="dynamic", use_container_width=True, hide_index=True)
