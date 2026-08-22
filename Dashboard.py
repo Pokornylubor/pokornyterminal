@@ -101,11 +101,9 @@ with tab3:
     final_tick = custom_tick.upper().strip() if custom_tick.strip() else sel_tick
     
     chart_type = c3.selectbox(_["chart_type"], ["Candlestick", "Line"])
-    # Přidán 4H interval (index 5 je defaultně 1D)
     interval_display = c4.selectbox(_["interval"], ["1M", "5M", "15M", "1H", "4H", "1D", "1W", "1MO"], index=5)
 
     if final_tick:
-        # Pro 4H stáhneme data po 1H (1h) a následně je přepočítáme
         yf_interval_map = {"1M": "1m", "5M": "5m", "15M": "15m", "1H": "1h", "4H": "1h", "1D": "1d", "1W": "1wk", "1MO": "1mo"}
         period_map = {"1m": "7d", "5m": "60d", "15m": "60d", "1h": "730d", "1d": "max", "1wk": "max", "1mo": "max"}
         
@@ -117,13 +115,9 @@ with tab3:
         if not df_c.empty:
             if isinstance(df_c.columns, pd.MultiIndex): df_c.columns = df_c.columns.get_level_values(0)
             
-            # --- MATEMATICKÝ PŘEPOČET NA 4H SVÍČKY ---
             if interval_display == "4H":
                 df_c = df_c.resample('4h').agg({
-                    'Open': 'first',
-                    'High': 'max',
-                    'Low': 'min',
-                    'Close': 'last'
+                    'Open': 'first', 'High': 'max', 'Low': 'min', 'Close': 'last'
                 }).dropna()
 
             fig = go.Figure()
@@ -142,15 +136,13 @@ with tab3:
                 height=650, 
                 xaxis_rangeslider_visible=False,
                 dragmode='pan',
-                hovermode='x unified',
-                hoverdistance=-1,
+                hovermode='x', # Změna pro správné uchycení kříže na konkrétní svíčku
                 yaxis=dict(
                     side='right', 
                     fixedrange=False, 
                     tickformat=".2f",
                     showspikes=True,
                     spikemode='across',
-                    spikesnap='cursor',
                     spikethickness=1,
                     spikedash='solid',
                     spikecolor='#787B86'
@@ -160,7 +152,6 @@ with tab3:
                     showgrid=False,
                     showspikes=True,
                     spikemode='across',
-                    spikesnap='cursor',
                     spikethickness=1,
                     spikedash='solid',
                     spikecolor='#787B86'
@@ -168,6 +159,33 @@ with tab3:
             )
             
             st.plotly_chart(fig, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': False})
+            
+            # --- VALUACE A FUNDAMENTY ---
+            st.markdown("---")
+            st.subheader(f"FUNDAMENTY & VALUACE: {final_tick}")
+            
+            try:
+                tkr = yf.Ticker(final_tick)
+                info = tkr.info
+                
+                v1, v2, v3, v4, v5, v6 = st.columns(6)
+                
+                pe = info.get('trailingPE')
+                f_pe = info.get('forwardPE')
+                peg = info.get('pegRatio')
+                pb = info.get('priceToBook')
+                mc = info.get('marketCap')
+                pm = info.get('profitMargins')
+                
+                v1.metric("P/E (Trailing)", f"{pe:.2f}" if pe else "N/A")
+                v2.metric("Forward P/E", f"{f_pe:.2f}" if f_pe else "N/A")
+                v3.metric("PEG Ratio", f"{peg:.2f}" if peg else "N/A")
+                v4.metric("Price / Book", f"{pb:.2f}" if pb else "N/A")
+                v5.metric("Market Cap", f"${mc/1e9:.2f}B" if mc else "N/A")
+                v6.metric("Profit Margin", f"{pm*100:.2f}%" if pm else "N/A")
+            except:
+                st.caption("Data o valuaci nejsou pro tento ticker aktuálně k dispozici.")
+                
         else:
             st.error(_["err_data"])
 
