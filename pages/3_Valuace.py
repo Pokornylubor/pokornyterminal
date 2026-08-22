@@ -136,28 +136,47 @@ if final_tick:
         
         st.markdown("---")
         
-        # --- VÝKAZ ZISKŮ A ZTRÁT (BAR CHART) ---
-        st.subheader("VÝVOJ TRŽEB A ZISKU (Roční výkazy)")
+        # --- VÝKAZ ZISKŮ A ZTRÁT (BAR CHART S LTM) ---
+        st.subheader("VÝVOJ VÝKAZŮ: TRŽBY, EBITDA, ZISK (Včetně LTM)")
         
         if not financials.empty:
             try:
-                # Očištění dat z výkazů
-                rev = financials.loc['Total Revenue'].dropna()[::-1]
-                net_inc = financials.loc['Net Income'].dropna()[::-1]
+                # Sestavení DataFramu pro přesné párování let a LTM
+                chart_df = pd.DataFrame()
                 
-                years = [str(date.year) for date in rev.index]
+                if 'Total Revenue' in financials.index:
+                    chart_df['Tržby'] = financials.loc['Total Revenue'][::-1]
+                
+                # Zjištění klíče pro EBITDU z Yahoo Finance
+                if 'EBITDA' in financials.index:
+                    chart_df['EBITDA'] = financials.loc['EBITDA'][::-1]
+                elif 'Normalized EBITDA' in financials.index:
+                    chart_df['EBITDA'] = financials.loc['Normalized EBITDA'][::-1]
+                    
+                if 'Net Income' in financials.index:
+                    chart_df['Čistý zisk'] = financials.loc['Net Income'][::-1]
+                
+                # Přejmenování indexu na čisté roky
+                chart_df.index = [str(d.year) for d in chart_df.index]
+                
+                # Přidání LTM řádku
+                if total_rev_ltm:
+                    ltm_net = info.get("netIncomeToCommon", info.get("netIncome"))
+                    chart_df.loc['LTM'] = {
+                        'Tržby': total_rev_ltm,
+                        'EBITDA': ebitda_ltm,
+                        'Čistý zisk': ltm_net
+                    }
                 
                 fig = go.Figure()
                 
-                # Sloupce pro tržby (Modrá)
-                fig.add_trace(go.Bar(
-                    x=years, y=rev, name='Total Revenue (Tržby)', marker_color='#2962FF'
-                ))
-                
-                # Sloupce pro čistý zisk (Zelená)
-                fig.add_trace(go.Bar(
-                    x=years, y=net_inc, name='Net Income (Čistý zisk)', marker_color='#26A69A'
-                ))
+                # Vykreslení sloupců
+                if 'Tržby' in chart_df.columns:
+                    fig.add_trace(go.Bar(x=chart_df.index, y=chart_df['Tržby'], name='Tržby (Revenue)', marker_color='#2962FF'))
+                if 'EBITDA' in chart_df.columns:
+                    fig.add_trace(go.Bar(x=chart_df.index, y=chart_df['EBITDA'], name='EBITDA', marker_color='#FFA726'))
+                if 'Čistý zisk' in chart_df.columns:
+                    fig.add_trace(go.Bar(x=chart_df.index, y=chart_df['Čistý zisk'], name='Čistý zisk (Net Income)', marker_color='#26A69A'))
                 
                 fig.update_layout(
                     template="plotly_dark",
@@ -171,7 +190,7 @@ if final_tick:
                 
                 st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
             except Exception as e:
-                st.caption("Finanční výkazy pro tento ticker nejsou dostupné ve správném formátu.")
+                st.caption(f"Došlo k chybě při zpracování výkazů: {str(e)}")
         else:
             st.caption("Data z výkazů chybí.")
             
