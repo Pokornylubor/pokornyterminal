@@ -24,14 +24,20 @@ t = {
         "db_select": "DATABÁZE",
         "custom_tick": "VLASTNÍ TICKER",
         "no_db": "SYS ERR: DATABÁZE INSIDER_4F_DB.CSV NENALEZENA.",
-        "no_data": "ŽÁDNÁ DATA."
+        "no_data": "ŽÁDNÁ DATA.",
+        "buy": "NÁKUP",
+        "sell": "PRODEJ",
+        "opt": "OPCE"
     },
     "EN": {
         "title": "INSIDER TRANSACTIONS (FORM 4)",
         "db_select": "DATABASE",
         "custom_tick": "CUSTOM TICKER",
         "no_db": "SYS ERR: DATABASE INSIDER_4F_DB.CSV NOT FOUND.",
-        "no_data": "NO DATA."
+        "no_data": "NO DATA.",
+        "buy": "BUY",
+        "sell": "SELL",
+        "opt": "OPTION"
     }
 }
 _ = t.get(st.session_state.get("lang", "CZ"), t["CZ"])
@@ -44,7 +50,6 @@ def load_watchlist():
     return {"portfolio": [], "watchlist": []}
 
 data = load_watchlist()
-# Sjednocení tickerů do jednoho listu bez duplicit
 all_tickers = list(dict.fromkeys(data.get("portfolio", []) + data.get("watchlist", [])))
 
 st.title(_["title"])
@@ -55,7 +60,6 @@ if not os.path.exists(FILE_PATH):
 else:
     df_all = pd.read_csv(FILE_PATH)
     
-    # 4 sloupce pro zachování vizuálního formátu z hlavní strany
     c1, c2, c3, c4 = st.columns([2, 2, 1, 1])
     sel_tick = c1.selectbox(_["db_select"], [""] + all_tickers)
     custom_tick = c2.text_input(_["custom_tick"], value="")
@@ -68,25 +72,23 @@ else:
         if df_filtered.empty:
             st.caption(_["no_data"])
         else:
-            # Převedení číselných sloupců na správný formát pro formátování
             for col in ['Price', 'Qty', 'Value']:
                 if col in df_filtered.columns:
                     df_filtered[col] = pd.to_numeric(df_filtered[col].astype(str).str.replace(r'[\$,+]', '', regex=True), errors='coerce')
             
             def preloz_typ(val):
                 v = str(val).lower()
-                if "purchase" in v or "p - " in v: return "BUY"
-                if "sale" in v or "s - " in v: return "SELL"
-                if "option" in v or "oe - " in v: return "OPTION"
+                if "purchase" in v or "p - " in v: return _["buy"]
+                if "sale" in v or "s - " in v: return _["sell"]
+                if "option" in v or "oe - " in v: return _["opt"]
                 return val.upper()
             
             if 'Trade Type' in df_filtered.columns:
                 df_filtered['Trade Type'] = df_filtered['Trade Type'].apply(preloz_typ)
             
-            # Profi barvy místo smajlíků
             def style_trade(val):
-                if val == "BUY": return 'color: #26A69A; font-weight: bold;'
-                if val == "SELL": return 'color: #EF5350; font-weight: bold;'
+                if val in [_["buy"], "BUY", "NÁKUP"]: return 'color: #26A69A; font-weight: bold;'
+                if val in [_["sell"], "SELL", "PRODEJ"]: return 'color: #EF5350; font-weight: bold;'
                 return 'color: #787B86;'
             
             format_dict = {}
@@ -94,7 +96,6 @@ else:
             if 'Qty' in df_filtered.columns: format_dict['Qty'] = "{:,.0f}"
             if 'Value' in df_filtered.columns: format_dict['Value'] = "${:,.0f}"
             
-            # Vykreslení čisté tabulky bez indexu
             st.dataframe(
                 df_filtered.style.format(format_dict, na_rep="-").map(style_trade, subset=['Trade Type'] if 'Trade Type' in df_filtered.columns else []), 
                 use_container_width=True, 
