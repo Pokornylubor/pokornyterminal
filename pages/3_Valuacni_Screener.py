@@ -56,6 +56,31 @@ def load_data():
 data = load_data()
 all_tickers = list(dict.fromkeys(data.get("portfolio", []) + data.get("watchlist", [])))
 
+# --- POMOCNÁ FUNKCE PRO FORMÁTOVÁNÍ VÝKAZŮ ---
+def format_statements(df):
+    if df is None or df.empty:
+        return pd.DataFrame()
+    
+    styled = df.copy()
+    # Očištění hlaviček na čisté datum
+    styled.columns = [str(col)[:10] for col in styled.columns]
+    
+    def format_val(x):
+        if pd.isna(x): 
+            return "-"
+        if isinstance(x, (int, float)):
+            if abs(x) >= 1e9: 
+                return f"${x/1e9:,.2f} B"
+            if abs(x) >= 1e6: 
+                return f"${x/1e6:,.2f} M"
+            return f"${x:,.2f}"
+        return str(x)
+        
+    for col in styled.columns:
+        styled[col] = styled[col].apply(format_val)
+        
+    return styled
+
 # --- OVLÁDACÍ PANEL ---
 c1, c2, c3 = st.columns([2, 2, 4])
 sel_tick = c1.selectbox(_["db_select"], [""] + all_tickers)
@@ -146,7 +171,7 @@ if final_tick:
 
     if info:
         # Vytvoření záložek (Tabs) pro oddělení grafiky a surových dat
-        tab_dash, tab_raw = st.tabs(["📊 ANALYTICKÝ DASHBOARD", "🗄️ SUROVÁ DATA (RAW VÝKAZY)"])
+        tab_dash, tab_raw = st.tabs(["📊 ANALYTICKÝ DASHBOARD", "🗄️ STRUKTUROVANÉ VÝKAZY"])
         
         with tab_dash:
             st.subheader(f"METRIKY: {short_name} ({final_tick})")
@@ -260,29 +285,30 @@ if final_tick:
                 st.caption("Data z výkazů chybí.")
 
         with tab_raw:
-            st.subheader(f"KOMPLETNÍ DATABÁZE VÝKAZŮ: {final_tick}")
-            st.caption("Pohled do hrubých dat stažených přes API Yahoo Finance. Výkazy jsou řazeny od nejnovějších po nejstarší.")
+            st.subheader(f"STRUKTUROVANÁ DATABÁZE VÝKAZŮ: {final_tick}")
+            st.caption("Vyčištěná data z výkazů ve formátu miliard (B) a milionů (M) dolarů.")
             
             st.markdown("### 1. INCOME STATEMENT (Výkaz zisků a ztrát)")
             if not financials.empty:
-                st.dataframe(financials, use_container_width=True)
+                st.dataframe(format_statements(financials), use_container_width=True)
             else:
                 st.info("Výkaz není dostupný.")
                 
             st.markdown("### 2. BALANCE SHEET (Rozvaha)")
             if not balance_sheet.empty:
-                st.dataframe(balance_sheet, use_container_width=True)
+                st.dataframe(format_statements(balance_sheet), use_container_width=True)
             else:
                 st.info("Rozvaha není dostupná.")
                 
             st.markdown("### 3. CASH FLOW STATEMENT (Výkaz peněžních toků)")
             if not cashflow.empty:
-                st.dataframe(cashflow, use_container_width=True)
+                st.dataframe(format_statements(cashflow), use_container_width=True)
             else:
                 st.info("Výkaz cash flow není dostupný.")
                 
             st.markdown("### 4. KOMPLETNÍ METRIKY (Surový JSON)")
-            st.json(info)
+            with st.expander("Zobrazit kompletní neformátovaný JSON", expanded=False):
+                st.json(info)
             
     else:
         st.error(_["err_data"])
