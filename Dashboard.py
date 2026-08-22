@@ -104,7 +104,7 @@ with tab3:
     interval_display = c4.selectbox(_["interval"], ["1M", "5M", "15M", "1H", "1D", "1W", "1MO"], index=4)
 
     if final_tick:
-        yf_interval_map = {"1M": "1m", "5M": "5m", "15M": "15m", "1H": "1h", "1D": "1d", "1W": "1wk", "1MO": "1mo"}
+        yf_interval_map = {"1M": "1m", "5M": "5m", "15M": "15m", "1H": "1h", "4H", "4h", "1D": "1d", "1W": "1wk", "1MO": "1mo"}
         period_map = {"1m": "7d", "5m": "60d", "15m": "60d", "1h": "730d", "1d": "max", "1wk": "max", "1mo": "max"}
         
         yf_int = yf_interval_map[interval_display]
