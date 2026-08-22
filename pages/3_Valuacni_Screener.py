@@ -70,24 +70,39 @@ if final_tick:
         financials = tkr.financials
         balance_sheet = tkr.balance_sheet
         
-        # Získání metrik
+        # Základní informace
         short_name = info.get("shortName", final_tick)
+        market_cap = info.get("marketCap")
+        
+        # Valuace
         pe = info.get("trailingPE")
         fwd_pe = info.get("forwardPE")
         peg = info.get("pegRatio")
+        ps = info.get("priceToSalesTrailing12Months")
         pb = info.get("priceToBook")
         ev_ebitda = info.get("enterpriseToEbitda")
         
-        # Výpočet čistého Debt/Equity z rozvahy
+        # Cash Flow
+        fcf = info.get("freeCashflow")
+        p_fcf = (market_cap / fcf) if market_cap and fcf and fcf > 0 else None
+        
+        # Likvidita
+        current_ratio = info.get("currentRatio")
+        quick_ratio = info.get("quickRatio")
+        
+        # Rozvaha (Výpočet čistého Debt/Equity a Invested Capital pro ROIC)
         calc_debt_eq = None
+        roic = None
         if not balance_sheet.empty:
             try:
                 total_debt = balance_sheet.loc['Total Debt'].iloc[0] if 'Total Debt' in balance_sheet.index else 0
                 stockholders_eq = balance_sheet.loc['Stockholders Equity'].iloc[0] if 'Stockholders Equity' in balance_sheet.index else 0
+                invested_capital = total_debt + stockholders_eq
+                
                 if stockholders_eq and stockholders_eq > 0:
                     calc_debt_eq = total_debt / stockholders_eq
             except Exception:
-                pass
+                invested_capital = 0
         
         # Marže a rentabilita
         roe = info.get("returnOnEquity")
@@ -96,21 +111,22 @@ if final_tick:
         op_margin = info.get("operatingMargins")
         profit_margin = info.get("profitMargins")
         
-        # LTM (TTM) Data a dopočítání EBITDA marže
+        # LTM Data a dopočty
         total_rev_ltm = info.get("totalRevenue")
         ebitda_ltm = info.get("ebitda")
-        
-        # Oprava: Výměna EPS za LTM Net Income pro LTM sloupec
         net_income_ltm = info.get("netIncomeToCommon", info.get("netIncome"))
+        eps_ltm = info.get("trailingEps")
         
-        ebitda_margin = None
-        if ebitda_ltm and total_rev_ltm and total_rev_ltm > 0:
-            ebitda_margin = ebitda_ltm / total_rev_ltm
+        ebitda_margin = (ebitda_ltm / total_rev_ltm) if ebitda_ltm and total_rev_ltm and total_rev_ltm > 0 else None
+        fcf_margin = (fcf / total_rev_ltm) if fcf and total_rev_ltm and total_rev_ltm > 0 else None
+        
+        if net_income_ltm and 'invested_capital' in locals() and invested_capital > 0:
+            roic = net_income_ltm / invested_capital
 
     if info:
         st.subheader(f"METRIKY: {short_name} ({final_tick})")
         
-        # --- TABULKA VALUACE, RENTABILITY A LTM ---
+        # --- TABULKA ---
         col1, col2, col3, col4, col5 = st.columns(5)
         
         def fmt(val, is_pct=False, is_currency=False):
@@ -126,27 +142,34 @@ if final_tick:
         col1.metric("P/E (Trailing)", fmt(pe))
         col1.metric("Forward P/E", fmt(fwd_pe))
         col1.metric("PEG Ratio", fmt(peg))
+        col1.metric("Price / Sales", fmt(ps))
+        col1.metric("Price / FCF", fmt(p_fcf))
         
-        col2.markdown("**MULTIPLIKÁTORY**")
+        col2.markdown("**MULTIPLIKÁTORY & LIKVIDITA**")
         col2.metric("EV / EBITDA", fmt(ev_ebitda))
         col2.metric("Price / Book", fmt(pb))
-        col2.metric("Debt / Equity", fmt(calc_debt_eq)) # Použití vlastního čistého výpočtu
+        col2.metric("Debt / Equity", fmt(calc_debt_eq))
+        col2.metric("Current Ratio", fmt(current_ratio))
+        col2.metric("Quick Ratio", fmt(quick_ratio))
         
         col3.markdown("**MARŽE (KASKÁDA)**")
         col3.metric("Gross Margin", fmt(gross_margin, True))
         col3.metric("EBITDA Margin", fmt(ebitda_margin, True))
         col3.metric("Operating Margin", fmt(op_margin, True))
+        col3.metric("Profit Margin (Net)", fmt(profit_margin, True))
+        col3.metric("FCF Margin", fmt(fcf_margin, True))
         
-        col4.markdown("**RENTABILITA & ZISK**")
-        col4.metric("Profit Margin (Net)", fmt(profit_margin, True))
+        col4.markdown("**RENTABILITA**")
+        col4.metric("ROIC (Odhad)", fmt(roic, True))
         col4.metric("ROE", fmt(roe, True))
         col4.metric("ROA", fmt(roa, True))
 
-        # Změna z EPS na LTM Net Income
         col5.markdown("**LTM (TTM) DATA**")
         col5.metric("LTM Revenue", fmt(total_rev_ltm, is_currency=True))
         col5.metric("LTM EBITDA", fmt(ebitda_ltm, is_currency=True))
         col5.metric("LTM Net Income", fmt(net_income_ltm, is_currency=True)) 
+        col5.metric("LTM FCF", fmt(fcf, is_currency=True))
+        col5.metric("LTM EPS", fmt(eps_ltm))
         
         st.markdown("---")
         
@@ -157,7 +180,6 @@ if final_tick:
             try:
                 chart_df = pd.DataFrame()
                 
-                # Získání historických dat
                 if 'Total Revenue' in financials.index:
                     chart_df['Tržby'] = financials.loc['Total Revenue'][::-1]
                 
@@ -171,10 +193,8 @@ if final_tick:
                 elif 'Net Income Common Stockholders' in financials.index:
                     chart_df['Čistý zisk'] = financials.loc['Net Income Common Stockholders'][::-1]
                 
-                # Očistění indexu na roky
                 chart_df.index = [str(d.year) for d in chart_df.index]
                 
-                # Tvrdé vytvoření a připojení LTM řádku (Safe Pandas Concat)
                 ltm_data = {}
                 if 'Tržby' in chart_df.columns and total_rev_ltm:
                     ltm_data['Tržby'] = total_rev_ltm
