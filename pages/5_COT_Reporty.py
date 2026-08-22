@@ -8,43 +8,56 @@ import os
 import sys
 import datetime
 import base64
+import plotly.graph_objects as go
 
-# --- CENTRÁLNÍ PAMĚŤ A MENU ---
+# --- INITIAL SETUP ---
+st.set_page_config(page_title="POKORNY TERMINAL | COT", layout="wide", initial_sidebar_state="collapsed")
+
+# --- DIRECTORY MANAGEMENT ---
 aktualni_slozka = os.path.dirname(os.path.abspath(__file__))
 hlavni_slozka = os.path.dirname(aktualni_slozka) if os.path.basename(aktualni_slozka) == "pages" else aktualni_slozka
 sys.path.append(hlavni_slozka)
 WATCHLIST_FILE = os.path.join(hlavni_slozka, "watchlist.json")
 
-st.set_page_config(page_title="COT Reporty", page_icon="🏛️", layout="wide")
 import menu
 menu.vykresli_menu()
 
+# --- DICTIONARY ---
 t = {
     "CZ": {
-        "title": "🏛️ COT Reporty (Commitments of Traders)",
-        "desc": "Tracking positions of Commercials (Hedgers/Smart Money) and Non-Commercials (Funds and Speculators).",
-        "spin_data": "Stahuji data...", "err_data": "❌ Nelze stáhnout data z CFTC.", "h_univ": "🔍 Vyhledávač",
-        "search_lbl": "✍️ Hledat:", "sel_univ": "Vyber trh:",
-        "btn_add": "⭐ Přidat na Watchlist", "succ_add": "✅ Přidáno a synchronizováno!",
-        "h_watch": "👀 Můj COT Watchlist", "sel_watch": "Watchlist:",
-        "btn_rem": "🗑️ Odebrat", "succ_rem": "✅ Odebráno!", "h_chart": "📈 Vývoj pozic (Net)",
-        "chart_desc": "**Zeleně:** Commercials. **Červeně:** Non-Commercials."
+        "title": "COT REPORTY (Commitments of Traders)",
+        "desc": "ANALÝZA POZIC 'SMART MONEY' (COMMERCIALS) VS SPEKULANTŮ (NON-COMMERCIALS).",
+        "spin_data": "STAHOVÁNÍ HISTORICKÝCH DAT Z CFTC...", 
+        "err_data": "SYS ERR: SPOJENÍ S CFTC BLOKOVÁNO.", 
+        "search_lbl": "VLASTNÍ VYHLEDÁVÁNÍ TRHU", 
+        "sel_univ": "VÝBĚR Z DATABÁZE CFTC",
+        "btn_add": "ULOŽIT DO WATCHLISTU", 
+        "succ_add": "SYSTÉM AKTUALIZOVÁN.",
+        "h_watch": "MŮJ COT WATCHLIST", 
+        "sel_watch": "ULOŽENÉ TRHY",
+        "btn_rem": "ODEBRAT Z WATCHLISTU", 
+        "succ_rem": "ODSTRANĚNO."
     },
     "EN": {
-        "title": "🏛️ COT Reports",
-        "desc": "Tracking positions of Commercials (Hedgers/Smart Money) and Non-Commercials (Funds and Speculators).",
-        "spin_data": "Downloading...", "err_data": "❌ Connection blocked.", "h_univ": "🔍 Search",
-        "search_lbl": "✍️ Search:", "sel_univ": "Select market:",
-        "btn_add": "⭐ Add to Watchlist", "succ_add": "✅ Added and synced!",
-        "h_watch": "👀 My COT Watchlist", "sel_watch": "Watchlist:",
-        "btn_rem": "🗑️ Remove", "succ_rem": "✅ Removed!", "h_chart": "📈 Positions History",
-        "chart_desc": "**Green:** Commercials. **Red:** Non-Commercials."
+        "title": "COT REPORTS (Commitments of Traders)",
+        "desc": "POSITION TRACKING: 'SMART MONEY' (COMMERCIALS) VS SPECULATORS (NON-COMMERCIALS).",
+        "spin_data": "DOWNLOADING CFTC HISTORY...", 
+        "err_data": "SYS ERR: CFTC CONNECTION BLOCKED.", 
+        "search_lbl": "CUSTOM MARKET SEARCH", 
+        "sel_univ": "SELECT FROM CFTC DATABASE",
+        "btn_add": "COMMIT TO WATCHLIST", 
+        "succ_add": "SYSTEM UPDATED.",
+        "h_watch": "MY COT WATCHLIST", 
+        "sel_watch": "SAVED MARKETS",
+        "btn_rem": "REMOVE FROM WATCHLIST", 
+        "succ_rem": "REMOVED."
     }
 }
-_ = t.get(st.session_state.lang, t["CZ"])
+_ = t.get(st.session_state.get("lang", "CZ"), t["CZ"])
 
 st.title(_["title"])
-st.markdown(_["desc"])
+st.caption(_["desc"])
+st.markdown("---")
 
 def save_data(data):
     with open(WATCHLIST_FILE, "w") as f: json.dump(data, f, indent=4)
@@ -53,7 +66,7 @@ def save_data(data):
             token, owner, repo = st.secrets["GITHUB_TOKEN"], st.secrets["GITHUB_OWNER"], st.secrets["GITHUB_REPO"]
             url, headers = f"https://api.github.com/repos/{owner}/{repo}/contents/watchlist.json", {"Authorization": f"token {token}", "Accept": "application/vnd.github.v3+json"}
             sha = requests.get(url, headers=headers).json().get("sha")
-            payload = {"message": "Cloud sync COT Watchlistu", "content": base64.b64encode(json.dumps(data, indent=4).encode("utf-8")).decode("utf-8"), "branch": "main"}
+            payload = {"message": "SYS: COT Watchlist Sync", "content": base64.b64encode(json.dumps(data, indent=4).encode("utf-8")).decode("utf-8"), "branch": "main"}
             if sha: payload["sha"] = sha
             requests.put(url, headers=headers, json=payload)
     except Exception: pass
@@ -69,6 +82,7 @@ def load_cot_data():
                 with zipfile.ZipFile(io.BytesIO(res.content)) as z: return pd.read_csv(io.BytesIO(z.read(z.namelist()[0])), low_memory=False)
         except: pass
         return pd.DataFrame()
+    # Spojení aktuálního a předchozího roku pro delší historii
     return pd.concat([fetch_year(year), fetch_year(year - 1)], ignore_index=True)
 
 with st.spinner(_["spin_data"]): cot_df = load_cot_data()
@@ -79,27 +93,30 @@ try:
     if "cot_watchlist" not in data: data["cot_watchlist"] = []
 except: data = {"cot_watchlist": []}
 
-col1, col2 = st.columns(2)
+c1, c2 = st.columns([1, 1])
 vybrany_trh = None
 markets = sorted(cot_df['Market and Exchange Names'].dropna().unique())
 
-with col1:
-    st.markdown(f"### {_['h_univ']}")
-    search_term = st.text_input(_["search_lbl"]).strip().lower()
-    univ_trh = st.selectbox(_["sel_univ"], ["---"] + ([m for m in markets if search_term in m.lower()] if search_term else markets))
-    if univ_trh != "---":
+with c1:
+    st.markdown(f"**{_['search_lbl']}**")
+    search_term = st.text_input("Hledat", label_visibility="collapsed").strip().lower()
+    nabidka_trhu = [m for m in markets if search_term in m.lower()] if search_term else markets
+    univ_trh = st.selectbox(_["sel_univ"], [""] + nabidka_trhu)
+    
+    if univ_trh:
         vybrany_trh = univ_trh
-        if st.button(_["btn_add"], use_container_width=True):
-            if univ_trh not in data["cot_watchlist"]:
+        if univ_trh not in data["cot_watchlist"]:
+            if st.button(_["btn_add"], use_container_width=True):
                 data["cot_watchlist"].append(univ_trh)
                 save_data(data); st.success(_["succ_add"]); st.rerun()
 
-with col2:
-    st.markdown(f"### {_['h_watch']}")
-    if not data["cot_watchlist"]: st.info("Zatím prázdný.")
+with c2:
+    st.markdown(f"**{_['h_watch']}**")
+    if not data["cot_watchlist"]: 
+        st.caption("DATABÁZE JE PRÁZDNÁ.")
     else:
-        watch_trh = st.selectbox(_["sel_watch"], ["---"] + sorted(data["cot_watchlist"]))
-        if watch_trh != "---":
+        watch_trh = st.selectbox(_["sel_watch"], [""] + sorted(data["cot_watchlist"]))
+        if watch_trh:
             vybrany_trh = watch_trh
             if st.button(_["btn_rem"], use_container_width=True):
                 data["cot_watchlist"].remove(watch_trh)
@@ -107,26 +124,71 @@ with col2:
 
 if vybrany_trh:
     st.markdown("---")
-    st.subheader(f"{_['h_chart']}: {vybrany_trh}")
-    st.markdown(_["chart_desc"])
     
     df_market = cot_df[cot_df['Market and Exchange Names'] == vybrany_trh].copy()
     try:
+        # Zpracování data (CFTC má nekonzistentní formáty hlaviček)
         date_cols = df_market.columns.tolist()
         if 'Report_Date_as_YYYY-MM-DD' in date_cols: df_market['Date'] = pd.to_datetime(df_market['Report_Date_as_YYYY-MM-DD'], errors='coerce')
         elif 'Report_Date_as_MM_DD_YYYY' in date_cols: df_market['Date'] = pd.to_datetime(df_market['Report_Date_as_MM_DD_YYYY'], errors='coerce')
         else: df_market['Date'] = pd.to_datetime(df_market[[c for c in date_cols if 'as of' in c.lower()][0]].astype(str).str.zfill(6), format='%y%m%d', errors='coerce')
+        
         df_market = df_market.dropna(subset=['Date']).sort_values('Date')
         
+        # Extrakce sloupců pozic
         def get_col(inc, exc=[]): return next((c for c in df_market.columns if all(k in c.lower() for k in inc) and not any(k in c.lower() for k in exc)), None)
         c_long = get_col(['commercial', 'long', 'all'], ['non']) or get_col(['commercial', 'long'], ['non'])
         c_short = get_col(['commercial', 'short', 'all'], ['non']) or get_col(['commercial', 'short'], ['non'])
         nc_long = get_col(['non', 'commercial', 'long', 'all']) or get_col(['non', 'commercial', 'long'])
         nc_short = get_col(['non', 'commercial', 'short', 'all']) or get_col(['non', 'commercial', 'short'])
         
+        # Výpočet Net pozic
         df_market['Net Commercials'] = pd.to_numeric(df_market[c_long], errors='coerce') - pd.to_numeric(df_market[c_short], errors='coerce')
         df_market['Net Non-Commercials'] = pd.to_numeric(df_market[nc_long], errors='coerce') - pd.to_numeric(df_market[nc_short], errors='coerce')
         
-        if len(df_market) > 1: st.line_chart(df_market.set_index('Date')[['Net Commercials', 'Net Non-Commercials']], color=["#2ca02c", "#d62728"]) 
-        else: st.warning("Málo dat.")
-    except Exception as e: st.error(f"Chyba grafu: {e}")
+        tab_dash, tab_raw = st.tabs(["📊 GRAF NET POZIC", "🗄️ SUROVÁ DATA (CFTC)"])
+        
+        with tab_dash:
+            if len(df_market) > 1: 
+                st.subheader(vybrany_trh)
+                
+                fig = go.Figure()
+                
+                # Zelená linka (Commercials)
+                fig.add_trace(go.Scatter(
+                    x=df_market['Date'], y=df_market['Net Commercials'], 
+                    mode='lines', line=dict(color='#26A69A', width=2), 
+                    name='Commercials (Hedgers)', fill='tozeroy', fillcolor='rgba(38, 166, 154, 0.1)'
+                ))
+                
+                # Červená linka (Non-Commercials)
+                fig.add_trace(go.Scatter(
+                    x=df_market['Date'], y=df_market['Net Non-Commercials'], 
+                    mode='lines', line=dict(color='#EF5350', width=2), 
+                    name='Non-Commercials (Speculators)', fill='tozeroy', fillcolor='rgba(239, 83, 80, 0.1)'
+                ))
+                
+                # Nulová osa (Zero line)
+                fig.add_hline(y=0, line_dash="solid", line_color="#787B86", opacity=0.5)
+
+                fig.update_layout(
+                    template="plotly_dark",
+                    margin=dict(l=0, r=0, t=10, b=0),
+                    height=500,
+                    hovermode='x unified',
+                    yaxis=dict(fixedrange=False, showgrid=True, gridcolor='#2B2B2B', zeroline=False),
+                    xaxis=dict(fixedrange=False, showgrid=False)
+                )
+                
+                st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+            else: 
+                st.warning("Pro tento trh není dostatek historických dat.")
+                
+        with tab_raw:
+            st.subheader(f"KOMPLETNÍ ZÁZNAM CFTC: {vybrany_trh}")
+            st.caption("Pohled do všech dostupných sloupců a kategorií pro vybraný trh.")
+            # Odstraníme nepotřebné technické sloupce
+            clean_df = df_market.drop(columns=['Date', 'Market and Exchange Names'], errors='ignore').copy()
+            st.dataframe(clean_df.iloc[::-1], use_container_width=True, hide_index=True)
+            
+    except Exception as e: st.error(f"SYS ERR: {e}")
