@@ -161,36 +161,67 @@ if vybrany_trh:
     st.markdown("---")
     
     df_market = cot_df[cot_df['Market and Exchange Names'] == vybrany_trh].copy()
+    can_plot = True
+    
     try:
-        date_cols = df_market.columns.tolist()
+        # --- AGRESIVNÍ PARSOVÁNÍ DATA ---
+        date_series = None
+        for col_name in ['Report_Date_as_YYYY-MM-DD', 'As of Date in Form YYYY-MM-DD', 'Report_Date_as_MM_DD_YYYY', 'As of Date in Form YYMMDD']:
+            if col_name in df_market.columns:
+                if 'YYMMDD' in col_name:
+                    # Ochrana před Pandas Float Bugem (.0)
+                    clean = df_market[col_name].astype(str).str.replace(r'\.0$', '', regex=True).str.zfill(6)
+                    date_series = pd.to_datetime(clean, format='%y%m%d', errors='coerce')
+                else:
+                    date_series = pd.to_datetime(df_market[col_name], errors='coerce')
+                
+                if date_series.notna().any(): break
         
-        # NEPRŮSTŘELNÉ PARSOVÁNÍ DATA (Ochrana proti "Float Bugu")
-        if 'Report_Date_as_YYYY-MM-DD' in date_cols: 
-            df_market['Date'] = pd.to_datetime(df_market['Report_Date_as_YYYY-MM-DD'], errors='coerce')
-        elif 'Report_Date_as_MM_DD_YYYY' in date_cols: 
-            df_market['Date'] = pd.to_datetime(df_market['Report_Date_as_MM_DD_YYYY'], errors='coerce')
+        # Fallback vyhledávač
+        if date_series is None or not date_series.notna().any():
+            possible_cols = [c for c in df_market.columns if 'date' in c.lower() or 'as of' in c.lower()]
+            for c in possible_cols:
+                parsed = pd.to_datetime(df_market[c], errors='coerce')
+                if parsed.notna().any():
+                    date_series = parsed; break
+                
+                clean = df_market[c].astype(str).str.replace(r'\.0$', '', regex=True).str.zfill(6)
+                parsed = pd.to_datetime(clean, format='%y%m%d', errors='coerce')
+                if parsed.notna().any():
+                    date_series = parsed; break
+
+        if date_series is not None and date_series.notna().any():
+            df_market['Date'] = date_series
+            df_market = df_market.dropna(subset=['Date']).sort_values('Date')
         else:
-            date_col = next((c for c in date_cols if 'as of' in c.lower()), None)
-            if date_col:
-                # Očistí chyby (přidá zfill na 6 znaků a vymaže nesmyslné desetinné nuly z Pandas)
-                clean_dates = df_market[date_col].astype(str).str.replace(r'\.0$', '', regex=True).str.zfill(6)
-                df_market['Date'] = pd.to_datetime(clean_dates, format='%y%m%d', errors='coerce')
+            st.error("CHYBA: Časová osa (Datum) v datech CFTC chybí nebo je v neznámém formátu. Podívejte se do Surových dat.")
+            can_plot = False
+
+        # --- AGRESIVNÍ PARSOVÁNÍ SLOUPCŮ POZIC ---
+        def get_col(possible_lists, exc=[]):
+            for inc in possible_lists:
+                col = next((c for c in df_market.columns if all(k in c.lower() for k in inc) and not any(k in c.lower() for k in exc)), None)
+                if col: return col
+            return None
+
+        # CFTC střídá plná slova a zkratky (Commercial vs Comm, NonCommercial vs NonComm)
+        c_long = get_col([['commercial', 'long', 'all'], ['comm', 'long', 'all'], ['commercial', 'long'], ['comm', 'long']], ['non'])
+        c_short = get_col([['commercial', 'short', 'all'], ['comm', 'short', 'all'], ['commercial', 'short'], ['comm', 'short']], ['non'])
+        nc_long = get_col([['non', 'commercial', 'long', 'all'], ['noncomm', 'long', 'all'], ['non', 'commercial', 'long'], ['noncomm', 'long']])
+        nc_short = get_col([['non', 'commercial', 'short', 'all'], ['noncomm', 'short', 'all'], ['non', 'commercial', 'short'], ['noncomm', 'short']])
         
-        df_market = df_market.dropna(subset=['Date']).sort_values('Date')
-        
-        def get_col(inc, exc=[]): return next((c for c in df_market.columns if all(k in c.lower() for k in inc) and not any(k in c.lower() for k in exc)), None)
-        c_long = get_col(['commercial', 'long', 'all'], ['non']) or get_col(['commercial', 'long'], ['non'])
-        c_short = get_col(['commercial', 'short', 'all'], ['non']) or get_col(['commercial', 'short'], ['non'])
-        nc_long = get_col(['non', 'commercial', 'long', 'all']) or get_col(['non', 'commercial', 'long'])
-        nc_short = get_col(['non', 'commercial', 'short', 'all']) or get_col(['non', 'commercial', 'short'])
-        
-        df_market['Net Commercials'] = pd.to_numeric(df_market[c_long], errors='coerce') - pd.to_numeric(df_market[c_short], errors='coerce')
-        df_market['Net Non-Commercials'] = pd.to_numeric(df_market[nc_long], errors='coerce') - pd.to_numeric(df_market[nc_short], errors='coerce')
+        if can_plot and not all([c_long, c_short, nc_long, nc_short]):
+            st.error("CHYBA: Názvy sloupců (Commercial / Non-Commercial) byly CFTC přejmenovány. Podívejte se do Surových dat.")
+            can_plot = False
+            
+        if can_plot:
+            df_market['Net Commercials'] = pd.to_numeric(df_market[c_long], errors='coerce') - pd.to_numeric(df_market[c_short], errors='coerce')
+            df_market['Net Non-Commercials'] = pd.to_numeric(df_market[nc_long], errors='coerce') - pd.to_numeric(df_market[nc_short], errors='coerce')
         
         tab_dash, tab_raw = st.tabs([_["tab_chart"], _["tab_raw"]])
         
         with tab_dash:
-            if len(df_market) > 1: 
+            if can_plot and len(df_market) > 1: 
                 st.subheader(vybrany_trh)
                 
                 with st.expander(_["help_title"]):
@@ -222,7 +253,7 @@ if vybrany_trh:
                 )
                 
                 st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-            else: 
+            elif can_plot: 
                 st.warning(_["err_hist"])
                 
         with tab_raw:
