@@ -87,7 +87,6 @@ else:
         # --- FILTRACE A VÝBĚR ---
         c1, c2 = st.columns([1, 4])
         with c1:
-            # Checkbox posunutý lehce níže, aby lícoval s roletkou
             st.markdown("<div style='margin-top: 32px;'></div>", unsafe_allow_html=True)
             zobrazit_vse = st.checkbox(_["all"], value=False if vychozi_vyber else True)
             
@@ -97,6 +96,23 @@ else:
             selected = st.selectbox(_["sel"], nabidka)
             
         if selected:
-            # Odstranění nepotřebných sloupců a vykreslení čisté tabulky
             df_view = df[df['Investor'] == selected].drop(columns=['Investor', 'Kvartal_Aktualizace', 'Investor_Code'], errors='ignore')
-            st.dataframe(df_view, use_container_width=True, height=650, hide_index=True)
+            
+            # --- DYNAMICKÉ BARVY PRO ZMĚNY ---
+            def style_changes(val):
+                v = str(val).lower()
+                # Hledá pozitivní klíčová slova nebo kladná procenta
+                if 'buy' in v or 'add' in v or 'new' in v or ('+' in v and '%' in v):
+                    return 'color: #26A69A; font-weight: bold;'
+                # Hledá negativní klíčová slova nebo záporná procenta
+                if 'sell' in v or 'reduce' in v or ('-' in v and '%' in v):
+                    return 'color: #EF5350; font-weight: bold;'
+                return ''
+                
+            # Aplikace barviček na celou tabulku (pandas styler)
+            st.dataframe(
+                df_view.style.map(style_changes), 
+                use_container_width=True, 
+                height=650, 
+                hide_index=True
+            )
