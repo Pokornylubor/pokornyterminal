@@ -101,10 +101,12 @@ with tab3:
     final_tick = custom_tick.upper().strip() if custom_tick.strip() else sel_tick
     
     chart_type = c3.selectbox(_["chart_type"], ["Candlestick", "Line"])
-    interval_display = c4.selectbox(_["interval"], ["1M", "5M", "15M", "1H", "1D", "1W", "1MO"], index=4)
+    # Přidán 4H interval (index 5 je defaultně 1D)
+    interval_display = c4.selectbox(_["interval"], ["1M", "5M", "15M", "1H", "4H", "1D", "1W", "1MO"], index=5)
 
     if final_tick:
-        yf_interval_map = {"1M": "1m", "5M": "5m", "15M": "15m", "1H": "1h", "4H", "4h", "1D": "1d", "1W": "1wk", "1MO": "1mo"}
+        # Pro 4H stáhneme data po 1H (1h) a následně je přepočítáme
+        yf_interval_map = {"1M": "1m", "5M": "5m", "15M": "15m", "1H": "1h", "4H": "1h", "1D": "1d", "1W": "1wk", "1MO": "1mo"}
         period_map = {"1m": "7d", "5m": "60d", "15m": "60d", "1h": "730d", "1d": "max", "1wk": "max", "1mo": "max"}
         
         yf_int = yf_interval_map[interval_display]
@@ -114,6 +116,16 @@ with tab3:
             
         if not df_c.empty:
             if isinstance(df_c.columns, pd.MultiIndex): df_c.columns = df_c.columns.get_level_values(0)
+            
+            # --- MATEMATICKÝ PŘEPOČET NA 4H SVÍČKY ---
+            if interval_display == "4H":
+                df_c = df_c.resample('4h').agg({
+                    'Open': 'first',
+                    'High': 'max',
+                    'Low': 'min',
+                    'Close': 'last'
+                }).dropna()
+
             fig = go.Figure()
             if chart_type == "Candlestick":
                 fig.add_trace(go.Candlestick(
@@ -130,7 +142,7 @@ with tab3:
                 height=650, 
                 xaxis_rangeslider_visible=False,
                 dragmode='pan',
-                hovermode='x unified',  # ZDE JE OPRAVA, která zamezí pádu
+                hovermode='x unified',
                 hoverdistance=-1,
                 yaxis=dict(
                     side='right', 
