@@ -98,3 +98,10 @@ if __name__ == "__main__":
     update_superinvestors(master_scraper)
     update_insiders(master_scraper)
     print("\nData jsou připravena!")
+
+print("\n--- ZÁLOHUJI NA GITHUB ---")
+    import os
+    os.system("git add .")
+    os.system('git commit -m "Automatická aktualizace dat z Terminálu"')
+    os.system("git push")
+    print("✅ Vše je bezpečně odesláno na cloud!")
