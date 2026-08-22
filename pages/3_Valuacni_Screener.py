@@ -76,34 +76,63 @@ if final_tick:
         peg = info.get("pegRatio")
         pb = info.get("priceToBook")
         ev_ebitda = info.get("enterpriseToEbitda")
-        roe = info.get("returnOnEquity")
-        roa = info.get("returnOnAssets")
-        profit_margin = info.get("profitMargins")
         debt_eq = info.get("debtToEquity")
         
+        # Marže a rentabilita
+        roe = info.get("returnOnEquity")
+        roa = info.get("returnOnAssets")
+        gross_margin = info.get("grossMargins")
+        op_margin = info.get("operatingMargins")
+        profit_margin = info.get("profitMargins")
+        
+        # LTM (TTM) Data a dopočítání EBITDA marže
+        total_rev_ltm = info.get("totalRevenue")
+        ebitda_ltm = info.get("ebitda")
+        eps_ltm = info.get("trailingEps")
+        
+        ebitda_margin = None
+        if ebitda_ltm and total_rev_ltm and total_rev_ltm > 0:
+            ebitda_margin = ebitda_ltm / total_rev_ltm
+
     if info:
         st.subheader(f"METRIKY: {short_name} ({final_tick})")
         
-        # --- TABULKA VALUACE A RENTABILITY ---
-        col1, col2, col3, col4 = st.columns(4)
+        # --- TABULKA VALUACE, RENTABILITY A LTM ---
+        col1, col2, col3, col4, col5 = st.columns(5)
         
-        # Formátování metrik
-        def fmt(val, is_pct=False):
+        def fmt(val, is_pct=False, is_currency=False):
             if val is None: return "N/A"
-            if is_pct: return f"{val*100:.2f}%"
+            if is_pct: return f"{val*100:.2f} %"
+            if is_currency: 
+                if val >= 1e9: return f"${val/1e9:.2f}B"
+                if val >= 1e6: return f"${val/1e6:.2f}M"
+                return f"${val:,.2f}"
             return f"{val:.2f}"
             
+        col1.markdown("**VALUACE**")
         col1.metric("P/E (Trailing)", fmt(pe))
         col1.metric("Forward P/E", fmt(fwd_pe))
+        col1.metric("PEG Ratio", fmt(peg))
         
-        col2.metric("PEG Ratio", fmt(peg))
+        col2.markdown("**MULTIPLIKÁTORY**")
         col2.metric("EV / EBITDA", fmt(ev_ebitda))
+        col2.metric("Price / Book", fmt(pb))
+        col2.metric("Debt / Equity", fmt(debt_eq))
         
-        col3.metric("Price / Book", fmt(pb))
-        col3.metric("Debt / Equity", fmt(debt_eq))
+        col3.markdown("**MARŽE (KASKÁDA)**")
+        col3.metric("Gross Margin", fmt(gross_margin, True))
+        col3.metric("EBITDA Margin", fmt(ebitda_margin, True))
+        col3.metric("Operating Margin", fmt(op_margin, True))
         
-        col4.metric("ROE (Rentabilita vl. jmění)", fmt(roe, True))
-        col4.metric("Profit Margin (Čistá marže)", fmt(profit_margin, True))
+        col4.markdown("**RENTABILITA & ZISK**")
+        col4.metric("Profit Margin (Net)", fmt(profit_margin, True))
+        col4.metric("ROE", fmt(roe, True))
+        col4.metric("ROA", fmt(roa, True))
+
+        col5.markdown("**LTM (TTM) DATA**")
+        col5.metric("LTM Revenue", fmt(total_rev_ltm, is_currency=True))
+        col5.metric("LTM EBITDA", fmt(ebitda_ltm, is_currency=True))
+        col5.metric("LTM EPS", fmt(eps_ltm, is_currency=True))
         
         st.markdown("---")
         
