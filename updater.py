@@ -82,8 +82,10 @@ def update_insiders(scraper):
                 all_insider_data.append(df)
             time.sleep(random.uniform(2, 4))
         except Exception as e:
-            print(f"❌ Chyba u strany {page}: {e}")
-            break 
+            # TADY JE TA ZMĚNA: Přeskakujeme chybu, dáváme 10s pauzu a jedeme dál
+            print(f"⚠️ Stránka {page} selhala ({e}). Dávám serveru 10s vydechnout a jedu dál...")
+            time.sleep(10)
+            continue 
 
     if all_insider_data:
         final_df = pd.concat(all_insider_data, ignore_index=True)
