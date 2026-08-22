@@ -131,11 +131,29 @@ with tab3:
                 xaxis_rangeslider_visible=False,
                 dragmode='pan',
                 hovermode='x unified',
-                yaxis=dict(side='right', fixedrange=False, tickformat=".2f"),
-                xaxis=dict(fixedrange=False, showspikes=True, spikemode='across', spikesnap='cursor', showgrid=False)
+                yaxis=dict(
+                    side='right', 
+                    fixedrange=False, 
+                    tickformat=".2f",
+                    showspikes=True,
+                    spikemode='across',
+                    spikesnap='cursor',
+                    spikethickness=1,
+                    spikedash='solid',
+                    spikecolor='#787B86'
+                ),
+                xaxis=dict(
+                    fixedrange=False, 
+                    showgrid=False,
+                    showspikes=True,
+                    spikemode='across',
+                    spikesnap='cursor',
+                    spikethickness=1,
+                    spikedash='solid',
+                    spikecolor='#787B86'
+                )
             )
             
-            # Schování panelu s tlačítky (displayModeBar=False) pro absolutně čistý vzhled
             st.plotly_chart(fig, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': False})
         else:
             st.error(_["err_data"])
