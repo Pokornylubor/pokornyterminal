@@ -130,7 +130,8 @@ with tab3:
                 height=650, 
                 xaxis_rangeslider_visible=False,
                 dragmode='pan',
-                hovermode='x unified',
+                hovermode='cross',
+                hoverdistance=-1,
                 yaxis=dict(
                     side='right', 
                     fixedrange=False, 
