@@ -69,6 +69,7 @@ if final_tick:
         info = tkr.info
         financials = tkr.financials
         balance_sheet = tkr.balance_sheet
+        cashflow = tkr.cashflow
         
         # Základní informace
         short_name = info.get("shortName", final_tick)
@@ -94,7 +95,7 @@ if final_tick:
         calc_debt_eq = None
         roic = None
         roce = None
-        roi = None # Proxy ROI
+        roi = None 
         
         if not balance_sheet.empty:
             try:
@@ -113,7 +114,7 @@ if final_tick:
                 capital_employed = 0
                 total_assets = 0
         
-        # Marže a rentabilita (Základ z Yahoo)
+        # Marže a rentabilita 
         roe = info.get("returnOnEquity")
         roa = info.get("returnOnAssets")
         gross_margin = info.get("grossMargins")
@@ -126,11 +127,9 @@ if final_tick:
         net_income_ltm = info.get("netIncomeToCommon", info.get("netIncome"))
         eps_ltm = info.get("trailingEps")
         
-        # Dopočítání marží
         ebitda_margin = (ebitda_ltm / total_rev_ltm) if ebitda_ltm and total_rev_ltm and total_rev_ltm > 0 else None
         fcf_margin = (fcf / total_rev_ltm) if fcf and total_rev_ltm and total_rev_ltm > 0 else None
         
-        # Dopočítání ROIC, ROCE, ROI
         if net_income_ltm and 'invested_capital' in locals() and invested_capital > 0:
             roic = net_income_ltm / invested_capital
             
@@ -143,119 +142,147 @@ if final_tick:
                  pass
                  
         if net_income_ltm and 'total_assets' in locals() and total_assets > 0:
-             roi = net_income_ltm / total_assets # Často označováno jako upravené ROA, slouží jako proxy pro celkové ROI firmy
+             roi = net_income_ltm / total_assets 
 
     if info:
-        st.subheader(f"METRIKY: {short_name} ({final_tick})")
+        # Vytvoření záložek (Tabs) pro oddělení grafiky a surových dat
+        tab_dash, tab_raw = st.tabs(["📊 ANALYTICKÝ DASHBOARD", "🗄️ SUROVÁ DATA (RAW VÝKAZY)"])
         
-        # --- TABULKA ---
-        col1, col2, col3, col4, col5 = st.columns(5)
-        
-        def fmt(val, is_pct=False, is_currency=False):
-            if val is None: return "N/A"
-            if is_pct: return f"{val*100:.2f} %"
-            if is_currency: 
-                if val >= 1e9: return f"${val/1e9:.2f}B"
-                if val >= 1e6: return f"${val/1e6:.2f}M"
-                return f"${val:,.2f}"
-            return f"{val:.2f}"
+        with tab_dash:
+            st.subheader(f"METRIKY: {short_name} ({final_tick})")
             
-        col1.markdown("**VALUACE**")
-        col1.metric("P/E (Trailing)", fmt(pe))
-        col1.metric("Forward P/E", fmt(fwd_pe))
-        col1.metric("PEG Ratio", fmt(peg))
-        col1.metric("Price / Sales", fmt(ps))
-        col1.metric("Price / FCF", fmt(p_fcf))
-        
-        col2.markdown("**MULTIPLIKÁTORY & LIKVIDITA**")
-        col2.metric("EV / EBITDA", fmt(ev_ebitda))
-        col2.metric("Price / Book", fmt(pb))
-        col2.metric("Debt / Equity", fmt(calc_debt_eq))
-        col2.metric("Current Ratio", fmt(current_ratio))
-        col2.metric("Quick Ratio", fmt(quick_ratio))
-        
-        col3.markdown("**MARŽE (KASKÁDA)**")
-        col3.metric("Gross Margin", fmt(gross_margin, True))
-        col3.metric("EBITDA Margin", fmt(ebitda_margin, True))
-        col3.metric("Operating Margin", fmt(op_margin, True))
-        col3.metric("Profit Margin (Net)", fmt(profit_margin, True))
-        col3.metric("FCF Margin", fmt(fcf_margin, True))
-        
-        # Kompletní sada rentability
-        col4.markdown("**RENTABILITA**")
-        col4.metric("ROE", fmt(roe, True))
-        col4.metric("ROIC", fmt(roic, True))
-        col4.metric("ROA", fmt(roa, True))
-        col4.metric("ROCE", fmt(roce, True))
-        col4.metric("ROI (Proxy)", fmt(roi, True))
+            # --- TABULKA ---
+            col1, col2, col3, col4, col5 = st.columns(5)
+            
+            def fmt(val, is_pct=False, is_currency=False):
+                if val is None: return "N/A"
+                if is_pct: return f"{val*100:.2f} %"
+                if is_currency: 
+                    if val >= 1e9: return f"${val/1e9:.2f}B"
+                    if val >= 1e6: return f"${val/1e6:.2f}M"
+                    return f"${val:,.2f}"
+                return f"{val:.2f}"
+                
+            col1.markdown("**VALUACE**")
+            col1.metric("P/E (Trailing)", fmt(pe))
+            col1.metric("Forward P/E", fmt(fwd_pe))
+            col1.metric("PEG Ratio", fmt(peg))
+            col1.metric("Price / Sales", fmt(ps))
+            col1.metric("Price / FCF", fmt(p_fcf))
+            
+            col2.markdown("**MULTIPLIKÁTORY & LIKVIDITA**")
+            col2.metric("EV / EBITDA", fmt(ev_ebitda))
+            col2.metric("Price / Book", fmt(pb))
+            col2.metric("Debt / Equity", fmt(calc_debt_eq), help="Výpočet: Celkový dluh / Vlastní kapitál. Čím nižší, tím méně je firma pákou zatížená.")
+            col2.metric("Current Ratio", fmt(current_ratio), help="Běžná likvidita: Krátkodobá aktiva / Krátkodobé závazky. Ideálně > 1 (schopnost splatit dluhy do 1 roku).")
+            col2.metric("Quick Ratio", fmt(quick_ratio), help="Pohotová likvidita (Acid-test): (Krátkodobá aktiva - Zásoby) / Krátkodobé závazky. Tvrdší měřítko přežití krize bez nutnosti rozprodat sklady.")
+            
+            col3.markdown("**MARŽE (KASKÁDA)**")
+            col3.metric("Gross Margin", fmt(gross_margin, True))
+            col3.metric("EBITDA Margin", fmt(ebitda_margin, True))
+            col3.metric("Operating Margin", fmt(op_margin, True))
+            col3.metric("Profit Margin (Net)", fmt(profit_margin, True))
+            col3.metric("FCF Margin", fmt(fcf_margin, True))
+            
+            col4.markdown("**RENTABILITA**")
+            col4.metric("ROE", fmt(roe, True), help="Return on Equity: Čistý zisk / Vlastní kapitál. Kolik firma vydělává na peníze akcionářů.")
+            col4.metric("ROIC", fmt(roic, True), help="Return on Invested Capital: Čistý zisk / (Celkový dluh + Vlastní kapitál). Jak efektivně alokuje veškerý kapitál.")
+            col4.metric("ROA", fmt(roa, True), help="Return on Assets: Čistý zisk / Celková aktiva.")
+            col4.metric("ROCE", fmt(roce, True), help="Return on Capital Employed: EBIT / (Celková aktiva - Krátkodobé závazky).")
+            col4.metric("ROI (Proxy)", fmt(roi, True), help="Odhadovaná celková návratnost (Čistý zisk / Celková aktiva).")
 
-        col5.markdown("**LTM (TTM) DATA**")
-        col5.metric("LTM Revenue", fmt(total_rev_ltm, is_currency=True))
-        col5.metric("LTM EBITDA", fmt(ebitda_ltm, is_currency=True))
-        col5.metric("LTM Net Income", fmt(net_income_ltm, is_currency=True)) 
-        col5.metric("LTM FCF", fmt(fcf, is_currency=True))
-        col5.metric("LTM EPS", fmt(eps_ltm))
-        
-        st.markdown("---")
-        
-        # --- VÝKAZ ZISKŮ A ZTRÁT (BAR CHART S LTM) ---
-        st.subheader("VÝVOJ VÝKAZŮ: TRŽBY, EBITDA, ZISK (Včetně LTM)")
-        
-        if not financials.empty:
-            try:
-                chart_df = pd.DataFrame()
-                
-                if 'Total Revenue' in financials.index:
-                    chart_df['Tržby'] = financials.loc['Total Revenue'][::-1]
-                
-                if 'EBITDA' in financials.index:
-                    chart_df['EBITDA'] = financials.loc['EBITDA'][::-1]
-                elif 'Normalized EBITDA' in financials.index:
-                    chart_df['EBITDA'] = financials.loc['Normalized EBITDA'][::-1]
+            col5.markdown("**LTM (TTM) DATA**")
+            col5.metric("LTM Revenue", fmt(total_rev_ltm, is_currency=True))
+            col5.metric("LTM EBITDA", fmt(ebitda_ltm, is_currency=True))
+            col5.metric("LTM Net Income", fmt(net_income_ltm, is_currency=True)) 
+            col5.metric("LTM FCF", fmt(fcf, is_currency=True))
+            col5.metric("LTM EPS", fmt(eps_ltm))
+            
+            st.markdown("---")
+            
+            # --- VÝKAZ ZISKŮ A ZTRÁT (BAR CHART S LTM) ---
+            st.subheader("VÝVOJ VÝKAZŮ: TRŽBY, EBITDA, ZISK (Včetně LTM)")
+            
+            if not financials.empty:
+                try:
+                    chart_df = pd.DataFrame()
                     
-                if 'Net Income' in financials.index:
-                    chart_df['Čistý zisk'] = financials.loc['Net Income'][::-1]
-                elif 'Net Income Common Stockholders' in financials.index:
-                    chart_df['Čistý zisk'] = financials.loc['Net Income Common Stockholders'][::-1]
+                    if 'Total Revenue' in financials.index:
+                        chart_df['Tržby'] = financials.loc['Total Revenue'][::-1]
+                    
+                    if 'EBITDA' in financials.index:
+                        chart_df['EBITDA'] = financials.loc['EBITDA'][::-1]
+                    elif 'Normalized EBITDA' in financials.index:
+                        chart_df['EBITDA'] = financials.loc['Normalized EBITDA'][::-1]
+                        
+                    if 'Net Income' in financials.index:
+                        chart_df['Čistý zisk'] = financials.loc['Net Income'][::-1]
+                    elif 'Net Income Common Stockholders' in financials.index:
+                        chart_df['Čistý zisk'] = financials.loc['Net Income Common Stockholders'][::-1]
+                    
+                    chart_df.index = [str(d.year) for d in chart_df.index]
+                    
+                    ltm_data = {}
+                    if 'Tržby' in chart_df.columns and total_rev_ltm:
+                        ltm_data['Tržby'] = total_rev_ltm
+                    if 'EBITDA' in chart_df.columns and ebitda_ltm:
+                        ltm_data['EBITDA'] = ebitda_ltm
+                    if 'Čistý zisk' in chart_df.columns and net_income_ltm:
+                        ltm_data['Čistý zisk'] = net_income_ltm
+                    
+                    if ltm_data:
+                        df_ltm = pd.DataFrame([ltm_data], index=['LTM'])
+                        chart_df = pd.concat([chart_df, df_ltm])
+                    
+                    fig = go.Figure()
+                    
+                    if 'Tržby' in chart_df.columns:
+                        fig.add_trace(go.Bar(x=chart_df.index, y=chart_df['Tržby'], name='Tržby (Revenue)', marker_color='#2962FF'))
+                    if 'EBITDA' in chart_df.columns:
+                        fig.add_trace(go.Bar(x=chart_df.index, y=chart_df['EBITDA'], name='EBITDA', marker_color='#FFA726'))
+                    if 'Čistý zisk' in chart_df.columns:
+                        fig.add_trace(go.Bar(x=chart_df.index, y=chart_df['Čistý zisk'], name='Čistý zisk (Net Income)', marker_color='#26A69A'))
+                    
+                    fig.update_layout(
+                        template="plotly_dark",
+                        barmode='group',
+                        margin=dict(l=0, r=0, t=10, b=0),
+                        height=450,
+                        hovermode='x unified',
+                        yaxis=dict(fixedrange=False, showgrid=True, gridcolor='#2B2B2B'),
+                        xaxis=dict(fixedrange=False, showgrid=False)
+                    )
+                    
+                    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+                except Exception as e:
+                    st.caption(f"Došlo k chybě při zpracování výkazů: {str(e)}")
+            else:
+                st.caption("Data z výkazů chybí.")
+
+        with tab_raw:
+            st.subheader(f"KOMPLETNÍ DATABÁZE VÝKAZŮ: {final_tick}")
+            st.caption("Pohled do hrubých dat stažených přes API Yahoo Finance. Výkazy jsou řazeny od nejnovějších po nejstarší.")
+            
+            st.markdown("### 1. INCOME STATEMENT (Výkaz zisků a ztrát)")
+            if not financials.empty:
+                st.dataframe(financials, use_container_width=True)
+            else:
+                st.info("Výkaz není dostupný.")
                 
-                chart_df.index = [str(d.year) for d in chart_df.index]
+            st.markdown("### 2. BALANCE SHEET (Rozvaha)")
+            if not balance_sheet.empty:
+                st.dataframe(balance_sheet, use_container_width=True)
+            else:
+                st.info("Rozvaha není dostupná.")
                 
-                ltm_data = {}
-                if 'Tržby' in chart_df.columns and total_rev_ltm:
-                    ltm_data['Tržby'] = total_rev_ltm
-                if 'EBITDA' in chart_df.columns and ebitda_ltm:
-                    ltm_data['EBITDA'] = ebitda_ltm
-                if 'Čistý zisk' in chart_df.columns and net_income_ltm:
-                    ltm_data['Čistý zisk'] = net_income_ltm
+            st.markdown("### 3. CASH FLOW STATEMENT (Výkaz peněžních toků)")
+            if not cashflow.empty:
+                st.dataframe(cashflow, use_container_width=True)
+            else:
+                st.info("Výkaz cash flow není dostupný.")
                 
-                if ltm_data:
-                    df_ltm = pd.DataFrame([ltm_data], index=['LTM'])
-                    chart_df = pd.concat([chart_df, df_ltm])
-                
-                fig = go.Figure()
-                
-                if 'Tržby' in chart_df.columns:
-                    fig.add_trace(go.Bar(x=chart_df.index, y=chart_df['Tržby'], name='Tržby (Revenue)', marker_color='#2962FF'))
-                if 'EBITDA' in chart_df.columns:
-                    fig.add_trace(go.Bar(x=chart_df.index, y=chart_df['EBITDA'], name='EBITDA', marker_color='#FFA726'))
-                if 'Čistý zisk' in chart_df.columns:
-                    fig.add_trace(go.Bar(x=chart_df.index, y=chart_df['Čistý zisk'], name='Čistý zisk (Net Income)', marker_color='#26A69A'))
-                
-                fig.update_layout(
-                    template="plotly_dark",
-                    barmode='group',
-                    margin=dict(l=0, r=0, t=10, b=0),
-                    height=450,
-                    hovermode='x unified',
-                    yaxis=dict(fixedrange=False, showgrid=True, gridcolor='#2B2B2B'),
-                    xaxis=dict(fixedrange=False, showgrid=False)
-                )
-                
-                st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-            except Exception as e:
-                st.caption(f"Došlo k chybě při zpracování výkazů: {str(e)}")
-        else:
-            st.caption("Data z výkazů chybí.")
+            st.markdown("### 4. KOMPLETNÍ METRIKY (Surový JSON)")
+            st.json(info)
             
     else:
         st.error(_["err_data"])
