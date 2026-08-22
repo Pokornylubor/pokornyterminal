@@ -29,7 +29,8 @@ t = {
         "save": "ULOŽIT ZMĚNY", 
         "all": "ZOBRAZIT VŠECHNY Z DATABÁZE", 
         "sel": "VÝBĚR SUPERINVESTORA",
-        "no_db": "SYS ERR: DATABÁZE SUPERINVESTORS_DB.CSV NENALEZENA."
+        "no_db": "SYS ERR: DATABÁZE SUPERINVESTORS_DB.CSV NENALEZENA.",
+        "cloud_msg": "SYS: Cloud sync 13F Favorites"
     },
     "EN": {
         "title": "SUPERINVESTORS (13F)", 
@@ -40,7 +41,8 @@ t = {
         "save": "COMMIT CHANGES", 
         "all": "SHOW ALL FROM DATABASE", 
         "sel": "SELECT SUPERINVESTOR",
-        "no_db": "SYS ERR: DATABASE SUPERINVESTORS_DB.CSV NOT FOUND."
+        "no_db": "SYS ERR: DATABASE SUPERINVESTORS_DB.CSV NOT FOUND.",
+        "cloud_msg": "SYS: Cloud sync 13F Favorites"
     }
 }
 _ = t.get(st.session_state.get("lang", "CZ"), t["CZ"])
@@ -56,7 +58,7 @@ def save_data(data):
             token, owner, repo = st.secrets["GITHUB_TOKEN"], st.secrets["GITHUB_OWNER"], st.secrets["GITHUB_REPO"]
             url, headers = f"https://api.github.com/repos/{owner}/{repo}/contents/watchlist.json", {"Authorization": f"token {token}", "Accept": "application/vnd.github.v3+json"}
             sha = requests.get(url, headers=headers).json().get("sha")
-            payload = {"message": "SYS: Cloud sync 13F Favorites", "content": base64.b64encode(json.dumps(data, indent=4).encode("utf-8")).decode("utf-8"), "branch": "main"}
+            payload = {"message": _["cloud_msg"], "content": base64.b64encode(json.dumps(data, indent=4).encode("utf-8")).decode("utf-8"), "branch": "main"}
             if sha: payload["sha"] = sha
             requests.put(url, headers=headers, json=payload)
     except Exception: pass
@@ -84,7 +86,6 @@ else:
                 save_data(data)
                 st.rerun()
                 
-        # --- FILTRACE A VÝBĚR ---
         c1, c2 = st.columns([1, 4])
         with c1:
             st.markdown("<div style='margin-top: 32px;'></div>", unsafe_allow_html=True)
@@ -98,18 +99,14 @@ else:
         if selected:
             df_view = df[df['Investor'] == selected].drop(columns=['Investor', 'Kvartal_Aktualizace', 'Investor_Code'], errors='ignore')
             
-            # --- DYNAMICKÉ BARVY PRO ZMĚNY ---
             def style_changes(val):
                 v = str(val).lower()
-                # Hledá pozitivní klíčová slova nebo kladná procenta
                 if 'buy' in v or 'add' in v or 'new' in v or ('+' in v and '%' in v):
                     return 'color: #26A69A; font-weight: bold;'
-                # Hledá negativní klíčová slova nebo záporná procenta
                 if 'sell' in v or 'reduce' in v or ('-' in v and '%' in v):
                     return 'color: #EF5350; font-weight: bold;'
                 return ''
                 
-            # Aplikace barviček na celou tabulku (pandas styler)
             st.dataframe(
                 df_view.style.map(style_changes), 
                 use_container_width=True, 
