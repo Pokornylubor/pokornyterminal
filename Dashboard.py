@@ -130,8 +130,8 @@ with tab3:
                 height=650, 
                 xaxis_rangeslider_visible=False,
                 dragmode='pan',
-                hovermode='cross',         # Upraveno pro plný kříž
-                hoverdistance=-1,          # Kříž tě sleduje neustále
+                hovermode='x unified',  # ZDE JE OPRAVA, která zamezí pádu
+                hoverdistance=-1,
                 yaxis=dict(
                     side='right', 
                     fixedrange=False, 
@@ -161,7 +161,6 @@ with tab3:
 
 with tab4:
     col1, col2 = st.columns(2)
-    # Změna z tabulek na čisté textové bloky pro bleskové přesouvání (Ctrl+X, Ctrl+V)
     with col1: 
         port_text = st.text_area(_["port_tickers"], "\n".join(data.get("portfolio", [])), height=300)
     with col2: 
@@ -169,7 +168,6 @@ with tab4:
         
     st.markdown("---")
     if st.button(_["commit"], use_container_width=True):
-        # Uložení rozdělením řádků zpět do databáze
         data["portfolio"] = [t.strip().upper() for t in port_text.split('\n') if t.strip()]
         data["watchlist"] = [t.strip().upper() for t in watch_text.split('\n') if t.strip()]
         save_data(data)
