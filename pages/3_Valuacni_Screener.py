@@ -60,26 +60,31 @@ all_tickers = list(dict.fromkeys(data.get("portfolio", []) + data.get("watchlist
 def format_statements(df):
     if df is None or df.empty:
         return pd.DataFrame()
-    
     styled = df.copy()
-    # Očištění hlaviček na čisté datum
     styled.columns = [str(col)[:10] for col in styled.columns]
     
     def format_val(x):
-        if pd.isna(x): 
-            return "-"
+        if pd.isna(x): return "-"
         if isinstance(x, (int, float)):
-            if abs(x) >= 1e9: 
-                return f"${x/1e9:,.2f} B"
-            if abs(x) >= 1e6: 
-                return f"${x/1e6:,.2f} M"
+            if abs(x) >= 1e9: return f"${x/1e9:,.2f} B"
+            if abs(x) >= 1e6: return f"${x/1e6:,.2f} M"
             return f"${x:,.2f}"
         return str(x)
         
     for col in styled.columns:
         styled[col] = styled[col].apply(format_val)
-        
     return styled
+
+# --- FUNKCE PRO VÝPOČET PŘESNÉHO LTM Z KVARTÁLŮ ---
+def get_ltm_from_quarterly(df, keys):
+    if df is None or df.empty: return None
+    for key in keys:
+        if key in df.index:
+            # Vezme 4 nejnovější kvartály a sečte je
+            vals = df.loc[key].iloc[:4]
+            if len(vals) == 4 and not vals.isna().all():
+                return vals.sum()
+    return None
 
 # --- OVLÁDACÍ PANEL ---
 c1, c2, c3 = st.columns([2, 2, 4])
@@ -96,9 +101,30 @@ if final_tick:
         balance_sheet = tkr.balance_sheet
         cashflow = tkr.cashflow
         
+        # Stáhneme kvartální data pro přesné LTM
+        q_fin = tkr.quarterly_financials
+        q_cf = tkr.quarterly_cashflow
+        
         # Základní informace
         short_name = info.get("shortName", final_tick)
         market_cap = info.get("marketCap")
+        
+        # --- PŘESNÝ VÝPOČET LTM (SUMA 4 KVARTÁLŮ) ---
+        total_rev_ltm = get_ltm_from_quarterly(q_fin, ['Total Revenue']) or info.get("totalRevenue")
+        net_income_ltm = get_ltm_from_quarterly(q_fin, ['Net Income', 'Net Income Common Stockholders']) or info.get("netIncomeToCommon", info.get("netIncome"))
+        ebitda_ltm = get_ltm_from_quarterly(q_fin, ['Normalized EBITDA', 'EBITDA']) or info.get("ebitda")
+        
+        # FCF: Zkusíme přímo 'Free Cash Flow', jinak (Operating Cash Flow - Capital Expenditure)
+        fcf = get_ltm_from_quarterly(q_cf, ['Free Cash Flow'])
+        if fcf is None:
+            ocf = get_ltm_from_quarterly(q_cf, ['Operating Cash Flow'])
+            capex = get_ltm_from_quarterly(q_cf, ['Capital Expenditure'])
+            if ocf and capex is not None: 
+                fcf = ocf - abs(capex) # capex bývá záporný, odečítáme absolutní hodnotu
+            else:
+                fcf = info.get("freeCashflow")
+                
+        eps_ltm = info.get("trailingEps") # EPS se sčítá hůř kvůli ředění akcií, necháme info
         
         # Valuace
         pe = info.get("trailingPE")
@@ -107,9 +133,6 @@ if final_tick:
         ps = info.get("priceToSalesTrailing12Months")
         pb = info.get("priceToBook")
         ev_ebitda = info.get("enterpriseToEbitda")
-        
-        # Cash Flow
-        fcf = info.get("freeCashflow")
         p_fcf = (market_cap / fcf) if market_cap and fcf and fcf > 0 else None
         
         # Likvidita
@@ -146,12 +169,7 @@ if final_tick:
         op_margin = info.get("operatingMargins")
         profit_margin = info.get("profitMargins")
         
-        # LTM Data a dopočty
-        total_rev_ltm = info.get("totalRevenue")
-        ebitda_ltm = info.get("ebitda")
-        net_income_ltm = info.get("netIncomeToCommon", info.get("netIncome"))
-        eps_ltm = info.get("trailingEps")
-        
+        # Dopočítání marží
         ebitda_margin = (ebitda_ltm / total_rev_ltm) if ebitda_ltm and total_rev_ltm and total_rev_ltm > 0 else None
         fcf_margin = (fcf / total_rev_ltm) if fcf and total_rev_ltm and total_rev_ltm > 0 else None
         
@@ -170,13 +188,11 @@ if final_tick:
              roi = net_income_ltm / total_assets 
 
     if info:
-        # Vytvoření záložek (Tabs) pro oddělení grafiky a surových dat
         tab_dash, tab_raw = st.tabs(["📊 ANALYTICKÝ DASHBOARD", "🗄️ STRUKTUROVANÉ VÝKAZY"])
         
         with tab_dash:
             st.subheader(f"METRIKY: {short_name} ({final_tick})")
             
-            # --- TABULKA ---
             col1, col2, col3, col4, col5 = st.columns(5)
             
             def fmt(val, is_pct=False, is_currency=False):
@@ -198,9 +214,9 @@ if final_tick:
             col2.markdown("**MULTIPLIKÁTORY & LIKVIDITA**")
             col2.metric("EV / EBITDA", fmt(ev_ebitda))
             col2.metric("Price / Book", fmt(pb))
-            col2.metric("Debt / Equity", fmt(calc_debt_eq), help="Výpočet: Celkový dluh / Vlastní kapitál. Čím nižší, tím méně je firma pákou zatížená.")
-            col2.metric("Current Ratio", fmt(current_ratio), help="Běžná likvidita: Krátkodobá aktiva / Krátkodobé závazky. Ideálně > 1 (schopnost splatit dluhy do 1 roku).")
-            col2.metric("Quick Ratio", fmt(quick_ratio), help="Pohotová likvidita (Acid-test): (Krátkodobá aktiva - Zásoby) / Krátkodobé závazky. Tvrdší měřítko přežití krize bez nutnosti rozprodat sklady.")
+            col2.metric("Debt / Equity", fmt(calc_debt_eq), help="Celkový dluh / Vlastní kapitál.")
+            col2.metric("Current Ratio", fmt(current_ratio), help="Krátkodobá aktiva / Krátkodobé závazky.")
+            col2.metric("Quick Ratio", fmt(quick_ratio), help="(Krátkodobá aktiva - Zásoby) / Krátkodobé závazky.")
             
             col3.markdown("**MARŽE (KASKÁDA)**")
             col3.metric("Gross Margin", fmt(gross_margin, True))
@@ -210,11 +226,11 @@ if final_tick:
             col3.metric("FCF Margin", fmt(fcf_margin, True))
             
             col4.markdown("**RENTABILITA**")
-            col4.metric("ROE", fmt(roe, True), help="Return on Equity: Čistý zisk / Vlastní kapitál. Kolik firma vydělává na peníze akcionářů.")
-            col4.metric("ROIC", fmt(roic, True), help="Return on Invested Capital: Čistý zisk / (Celkový dluh + Vlastní kapitál). Jak efektivně alokuje veškerý kapitál.")
-            col4.metric("ROA", fmt(roa, True), help="Return on Assets: Čistý zisk / Celková aktiva.")
-            col4.metric("ROCE", fmt(roce, True), help="Return on Capital Employed: EBIT / (Celková aktiva - Krátkodobé závazky).")
-            col4.metric("ROI (Proxy)", fmt(roi, True), help="Odhadovaná celková návratnost (Čistý zisk / Celková aktiva).")
+            col4.metric("ROE", fmt(roe, True), help="Čistý zisk / Vlastní kapitál.")
+            col4.metric("ROIC", fmt(roic, True), help="Čistý zisk / (Celkový dluh + Vlastní kapitál).")
+            col4.metric("ROA", fmt(roa, True), help="Čistý zisk / Celková aktiva.")
+            col4.metric("ROCE", fmt(roce, True), help="EBIT / (Celková aktiva - Krátkodobé závazky).")
+            col4.metric("ROI (Proxy)", fmt(roi, True), help="Čistý zisk / Celková aktiva.")
 
             col5.markdown("**LTM (TTM) DATA**")
             col5.metric("LTM Revenue", fmt(total_rev_ltm, is_currency=True))
@@ -225,7 +241,6 @@ if final_tick:
             
             st.markdown("---")
             
-            # --- VÝKAZ ZISKŮ A ZTRÁT (BAR CHART S LTM) ---
             st.subheader("VÝVOJ VÝKAZŮ: TRŽBY, EBITDA, ZISK (Včetně LTM)")
             
             if not financials.empty:
