@@ -68,6 +68,7 @@ if final_tick:
         tkr = yf.Ticker(final_tick)
         info = tkr.info
         financials = tkr.financials
+        balance_sheet = tkr.balance_sheet
         
         # Získání metrik
         short_name = info.get("shortName", final_tick)
@@ -76,7 +77,17 @@ if final_tick:
         peg = info.get("pegRatio")
         pb = info.get("priceToBook")
         ev_ebitda = info.get("enterpriseToEbitda")
-        debt_eq = info.get("debtToEquity")
+        
+        # Výpočet čistého Debt/Equity z rozvahy
+        calc_debt_eq = None
+        if not balance_sheet.empty:
+            try:
+                total_debt = balance_sheet.loc['Total Debt'].iloc[0] if 'Total Debt' in balance_sheet.index else 0
+                stockholders_eq = balance_sheet.loc['Stockholders Equity'].iloc[0] if 'Stockholders Equity' in balance_sheet.index else 0
+                if stockholders_eq and stockholders_eq > 0:
+                    calc_debt_eq = total_debt / stockholders_eq
+            except Exception:
+                pass
         
         # Marže a rentabilita
         roe = info.get("returnOnEquity")
@@ -88,7 +99,9 @@ if final_tick:
         # LTM (TTM) Data a dopočítání EBITDA marže
         total_rev_ltm = info.get("totalRevenue")
         ebitda_ltm = info.get("ebitda")
-        eps_ltm = info.get("trailingEps")
+        
+        # Oprava: Výměna EPS za LTM Net Income pro LTM sloupec
+        net_income_ltm = info.get("netIncomeToCommon", info.get("netIncome"))
         
         ebitda_margin = None
         if ebitda_ltm and total_rev_ltm and total_rev_ltm > 0:
@@ -117,7 +130,7 @@ if final_tick:
         col2.markdown("**MULTIPLIKÁTORY**")
         col2.metric("EV / EBITDA", fmt(ev_ebitda))
         col2.metric("Price / Book", fmt(pb))
-        col2.metric("Debt / Equity", fmt(debt_eq))
+        col2.metric("Debt / Equity", fmt(calc_debt_eq)) # Použití vlastního čistého výpočtu
         
         col3.markdown("**MARŽE (KASKÁDA)**")
         col3.metric("Gross Margin", fmt(gross_margin, True))
@@ -129,10 +142,11 @@ if final_tick:
         col4.metric("ROE", fmt(roe, True))
         col4.metric("ROA", fmt(roa, True))
 
+        # Změna z EPS na LTM Net Income
         col5.markdown("**LTM (TTM) DATA**")
         col5.metric("LTM Revenue", fmt(total_rev_ltm, is_currency=True))
         col5.metric("LTM EBITDA", fmt(ebitda_ltm, is_currency=True))
-        col5.metric("LTM EPS", fmt(eps_ltm, is_currency=True))
+        col5.metric("LTM Net Income", fmt(net_income_ltm, is_currency=True)) 
         
         st.markdown("---")
         
@@ -166,9 +180,8 @@ if final_tick:
                     ltm_data['Tržby'] = total_rev_ltm
                 if 'EBITDA' in chart_df.columns and ebitda_ltm:
                     ltm_data['EBITDA'] = ebitda_ltm
-                if 'Čistý zisk' in chart_df.columns:
-                    net_ltm = info.get("netIncomeToCommon", info.get("netIncome"))
-                    if net_ltm: ltm_data['Čistý zisk'] = net_ltm
+                if 'Čistý zisk' in chart_df.columns and net_income_ltm:
+                    ltm_data['Čistý zisk'] = net_income_ltm
                 
                 if ltm_data:
                     df_ltm = pd.DataFrame([ltm_data], index=['LTM'])
