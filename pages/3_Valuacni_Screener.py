@@ -21,31 +21,26 @@ menu.vykresli_menu()
 # --- DICTIONARY ---
 t = {
     "CZ": {
-        "title": "VALUACE AKCIE",
-        "desc": "HISTORICKÉ VALUAČNÍ NÁSOBKY A STATISTIKA.",
+        "title": "FUNDAMENTY & VALUACE",
+        "desc": "HLOUBKOVÝ SCREENER FINANČNÍCH VÝKAZŮ A UKAZATELŮ.",
         "db_select": "DATABÁZE",
         "custom_tick": "VLASTNÍ TICKER",
-        "metric": "VALUAČNÍ METRIKA",
-        "period": "OBDOBÍ",
-        "loading": "STAHOVÁNÍ DAT...",
-        "err_data": "DATA PRO TENTO TICKER NEJSOU DOSTUPNÁ.",
-        "err_metric": "FUNDAMENTÁLNÍ DATA PRO VÝPOČET TÉTO METRIKY CHYBÍ."
+        "loading": "STAHOVÁNÍ VÝKAZŮ...",
+        "err_data": "DATA PRO TENTO TICKER NEJSOU DOSTUPNÁ."
     },
     "EN": {
-        "title": "STOCK VALUATION",
-        "desc": "HISTORICAL VALUATION MULTIPLES AND STATISTICS.",
+        "title": "FUNDAMENTALS & VALUATION",
+        "desc": "IN-DEPTH FINANCIAL STATEMENT AND RATIO SCREENER.",
         "db_select": "DATABASE",
         "custom_tick": "CUSTOM TICKER",
-        "metric": "VALUATION METRIC",
-        "period": "PERIOD",
-        "loading": "LOADING DATA...",
-        "err_data": "DATA FOR THIS TICKER NOT AVAILABLE.",
-        "err_metric": "FUNDAMENTAL DATA FOR THIS METRIC IS MISSING."
+        "loading": "LOADING STATEMENTS...",
+        "err_data": "DATA FOR THIS TICKER NOT AVAILABLE."
     }
 }
 _ = t.get(st.session_state.get("lang", "CZ"), t["CZ"])
 
 st.title(_["title"])
+st.caption(_["desc"])
 st.markdown("---")
 
 def load_data():
@@ -62,100 +57,94 @@ data = load_data()
 all_tickers = list(dict.fromkeys(data.get("portfolio", []) + data.get("watchlist", [])))
 
 # --- OVLÁDACÍ PANEL ---
-c1, c2, c3, c4 = st.columns([2, 2, 2, 1])
+c1, c2, c3 = st.columns([2, 2, 4])
 sel_tick = c1.selectbox(_["db_select"], [""] + all_tickers)
 custom_tick = c2.text_input(_["custom_tick"], value="")
-metric = c3.selectbox(_["metric"], ["Price to Earnings", "Price to Book", "Price to Sales"])
-period = c4.selectbox(_["period"], ["1Y", "3Y", "5Y", "10Y"], index=2)
 
 final_tick = custom_tick.upper().strip() if custom_tick.strip() else sel_tick
 
 if final_tick:
-    period_map = {"1Y": "1y", "3Y": "3y", "5Y": "5y", "10Y": "10y"}
-    yf_period = period_map[period]
-
     with st.spinner(f"{_['loading']} {final_tick}..."):
         tkr = yf.Ticker(final_tick)
-        hist = tkr.history(period=yf_period)
         info = tkr.info
-
-    if not hist.empty:
-        # Získání fundamentů z API
-        eps = info.get("trailingEps")
-        bv = info.get("bookValue")
-        ps = info.get("revenuePerShare")
+        financials = tkr.financials
         
+        # Získání metrik
+        short_name = info.get("shortName", final_tick)
+        pe = info.get("trailingPE")
         fwd_pe = info.get("forwardPE")
         peg = info.get("pegRatio")
-        short_name = info.get("shortName", final_tick)
-
-        # Matematika pro vykreslení
-        calc_series = None
-        if metric == "Price to Earnings" and eps and eps > 0:
-            calc_series = hist['Close'] / eps
-        elif metric == "Price to Book" and bv and bv > 0:
-            calc_series = hist['Close'] / bv
-        elif metric == "Price to Sales" and ps and ps > 0:
-            calc_series = hist['Close'] / ps
-
-        if calc_series is not None:
-            # Očištění o časová pásma
-            if calc_series.index.tz is not None:
-                calc_series.index = calc_series.index.tz_convert('Europe/Prague').tz_localize(None)
-
-            # Statistiky
-            val_current = calc_series.iloc[-1]
-            val_median = calc_series.median()
-            val_min = calc_series.min()
-            val_max = calc_series.max()
-
-            # --- GRAF ---
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(
-                x=calc_series.index, 
-                y=calc_series, 
-                mode='lines', 
-                line=dict(color='#2962FF', width=2), 
-                name=metric,
-                fill='tozeroy',
-                fillcolor='rgba(41, 98, 255, 0.1)' # Jemné podbarvení jako v EquiSpot
-            ))
+        pb = info.get("priceToBook")
+        ev_ebitda = info.get("enterpriseToEbitda")
+        roe = info.get("returnOnEquity")
+        roa = info.get("returnOnAssets")
+        profit_margin = info.get("profitMargins")
+        debt_eq = info.get("debtToEquity")
+        
+    if info:
+        st.subheader(f"METRIKY: {short_name} ({final_tick})")
+        
+        # --- TABULKA VALUACE A RENTABILITY ---
+        col1, col2, col3, col4 = st.columns(4)
+        
+        # Formátování metrik
+        def fmt(val, is_pct=False):
+            if val is None: return "N/A"
+            if is_pct: return f"{val*100:.2f}%"
+            return f"{val:.2f}"
             
-            # Přidání linky pro medián
-            fig.add_hline(y=val_median, line_dash="dash", line_color="#787B86", annotation_text="Median", annotation_position="bottom right")
-
-            fig.update_layout(
-                template="plotly_dark", 
-                margin=dict(l=0, r=0, t=10, b=0), 
-                height=450, 
-                xaxis_rangeslider_visible=False,
-                dragmode='pan',
-                hovermode='x unified',
-                yaxis=dict(side='right', fixedrange=False, showgrid=True, gridcolor='#2B2B2B'),
-                xaxis=dict(fixedrange=False, showgrid=False)
-            )
-            
-            st.plotly_chart(fig, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': False})
-
-            # --- TABULKA S TVRDÝMI DATY (EquiSpot styl) ---
-            st.markdown("<br>", unsafe_allow_html=True)
-            
-            table_data = [{
-                "Akcie": f"{short_name} ({final_tick})",
-                "Median": f"{val_median:.2f}",
-                "Minimum": f"{val_min:.2f}",
-                "Maximum": f"{val_max:.2f}",
-                "Aktuální": f"{val_current:.2f}",
-                "Forward P/E": f"{fwd_pe:.2f}" if fwd_pe else "N/A",
-                "PEG": f"{peg:.2f}" if peg else "N/A"
-            }]
-            
-            df_table = pd.DataFrame(table_data)
-            
-            # Skrytí indexu a roztažení
-            st.dataframe(df_table, use_container_width=True, hide_index=True)
-
+        col1.metric("P/E (Trailing)", fmt(pe))
+        col1.metric("Forward P/E", fmt(fwd_pe))
+        
+        col2.metric("PEG Ratio", fmt(peg))
+        col2.metric("EV / EBITDA", fmt(ev_ebitda))
+        
+        col3.metric("Price / Book", fmt(pb))
+        col3.metric("Debt / Equity", fmt(debt_eq))
+        
+        col4.metric("ROE (Rentabilita vl. jmění)", fmt(roe, True))
+        col4.metric("Profit Margin (Čistá marže)", fmt(profit_margin, True))
+        
+        st.markdown("---")
+        
+        # --- VÝKAZ ZISKŮ A ZTRÁT (BAR CHART) ---
+        st.subheader("VÝVOJ TRŽEB A ZISKU (Roční výkazy)")
+        
+        if not financials.empty:
+            try:
+                # Očištění dat z výkazů
+                rev = financials.loc['Total Revenue'].dropna()[::-1]
+                net_inc = financials.loc['Net Income'].dropna()[::-1]
+                
+                years = [str(date.year) for date in rev.index]
+                
+                fig = go.Figure()
+                
+                # Sloupce pro tržby (Modrá)
+                fig.add_trace(go.Bar(
+                    x=years, y=rev, name='Total Revenue (Tržby)', marker_color='#2962FF'
+                ))
+                
+                # Sloupce pro čistý zisk (Zelená)
+                fig.add_trace(go.Bar(
+                    x=years, y=net_inc, name='Net Income (Čistý zisk)', marker_color='#26A69A'
+                ))
+                
+                fig.update_layout(
+                    template="plotly_dark",
+                    barmode='group',
+                    margin=dict(l=0, r=0, t=10, b=0),
+                    height=450,
+                    hovermode='x unified',
+                    yaxis=dict(fixedrange=False, showgrid=True, gridcolor='#2B2B2B'),
+                    xaxis=dict(fixedrange=False, showgrid=False)
+                )
+                
+                st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+            except Exception as e:
+                st.caption("Finanční výkazy pro tento ticker nejsou dostupné ve správném formátu.")
         else:
-            st.warning(_["err_metric"])
+            st.caption("Data z výkazů chybí.")
+            
     else:
         st.error(_["err_data"])
