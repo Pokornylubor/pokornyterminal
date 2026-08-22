@@ -115,10 +115,23 @@ with tab3:
         if not df_c.empty:
             if isinstance(df_c.columns, pd.MultiIndex): df_c.columns = df_c.columns.get_level_values(0)
             
+            # --- PŘEVOD NA ČESKÝ ČAS (CEST/CET) ---
+            if df_c.index.tz is None:
+                df_c.index = df_c.index.tz_localize('UTC').tz_convert('Europe/Prague')
+            else:
+                df_c.index = df_c.index.tz_convert('Europe/Prague')
+            df_c.index = df_c.index.tz_localize(None) # Očistí formát pro čistší zobrazení na ose
+            
             if interval_display == "4H":
                 df_c = df_c.resample('4h').agg({
                     'Open': 'first', 'High': 'max', 'Low': 'min', 'Close': 'last'
                 }).dropna()
+
+            # --- ODSTRANĚNÍ MEZER V GRAFU ---
+            r_breaks = [dict(bounds=["sat", "mon"])] # Vždy skryje víkendy
+            if interval_display in ["1M", "5M", "15M", "1H", "4H"]:
+                # Skryje zavřenou burzu (US akcie z pohledu CZ času) od 22:00 do 15:30
+                r_breaks.append(dict(bounds=[22, 15.5], pattern="hour"))
 
             fig = go.Figure()
             if chart_type == "Candlestick":
@@ -154,7 +167,8 @@ with tab3:
                     spikemode='across',
                     spikethickness=1,
                     spikedash='solid',
-                    spikecolor='#787B86'
+                    spikecolor='#787B86',
+                    rangebreaks=r_breaks # Aplikace našeho filtru mezer
                 )
             )
             
