@@ -90,21 +90,30 @@ if final_tick:
         current_ratio = info.get("currentRatio")
         quick_ratio = info.get("quickRatio")
         
-        # Rozvaha (Výpočet čistého Debt/Equity a Invested Capital pro ROIC)
+        # Rozvaha (Výpočet čistého Debt/Equity, Invested Capital pro ROIC a ROCE)
         calc_debt_eq = None
         roic = None
+        roce = None
+        roi = None # Proxy ROI
+        
         if not balance_sheet.empty:
             try:
                 total_debt = balance_sheet.loc['Total Debt'].iloc[0] if 'Total Debt' in balance_sheet.index else 0
                 stockholders_eq = balance_sheet.loc['Stockholders Equity'].iloc[0] if 'Stockholders Equity' in balance_sheet.index else 0
+                total_assets = balance_sheet.loc['Total Assets'].iloc[0] if 'Total Assets' in balance_sheet.index else 0
+                current_liab = balance_sheet.loc['Total Current Liabilities'].iloc[0] if 'Total Current Liabilities' in balance_sheet.index else 0
+                
                 invested_capital = total_debt + stockholders_eq
+                capital_employed = total_assets - current_liab
                 
                 if stockholders_eq and stockholders_eq > 0:
                     calc_debt_eq = total_debt / stockholders_eq
             except Exception:
                 invested_capital = 0
+                capital_employed = 0
+                total_assets = 0
         
-        # Marže a rentabilita
+        # Marže a rentabilita (Základ z Yahoo)
         roe = info.get("returnOnEquity")
         roa = info.get("returnOnAssets")
         gross_margin = info.get("grossMargins")
@@ -117,11 +126,24 @@ if final_tick:
         net_income_ltm = info.get("netIncomeToCommon", info.get("netIncome"))
         eps_ltm = info.get("trailingEps")
         
+        # Dopočítání marží
         ebitda_margin = (ebitda_ltm / total_rev_ltm) if ebitda_ltm and total_rev_ltm and total_rev_ltm > 0 else None
         fcf_margin = (fcf / total_rev_ltm) if fcf and total_rev_ltm and total_rev_ltm > 0 else None
         
+        # Dopočítání ROIC, ROCE, ROI
         if net_income_ltm and 'invested_capital' in locals() and invested_capital > 0:
             roic = net_income_ltm / invested_capital
+            
+        if not financials.empty and 'capital_employed' in locals() and capital_employed > 0:
+             try:
+                 ebit = financials.loc['EBIT'].iloc[0] if 'EBIT' in financials.index else (financials.loc['Operating Income'].iloc[0] if 'Operating Income' in financials.index else 0)
+                 if ebit:
+                     roce = ebit / capital_employed
+             except Exception:
+                 pass
+                 
+        if net_income_ltm and 'total_assets' in locals() and total_assets > 0:
+             roi = net_income_ltm / total_assets # Často označováno jako upravené ROA, slouží jako proxy pro celkové ROI firmy
 
     if info:
         st.subheader(f"METRIKY: {short_name} ({final_tick})")
@@ -159,10 +181,13 @@ if final_tick:
         col3.metric("Profit Margin (Net)", fmt(profit_margin, True))
         col3.metric("FCF Margin", fmt(fcf_margin, True))
         
+        # Kompletní sada rentability
         col4.markdown("**RENTABILITA**")
-        col4.metric("ROIC (Odhad)", fmt(roic, True))
         col4.metric("ROE", fmt(roe, True))
+        col4.metric("ROIC", fmt(roic, True))
         col4.metric("ROA", fmt(roa, True))
+        col4.metric("ROCE", fmt(roce, True))
+        col4.metric("ROI (Proxy)", fmt(roi, True))
 
         col5.markdown("**LTM (TTM) DATA**")
         col5.metric("LTM Revenue", fmt(total_rev_ltm, is_currency=True))
