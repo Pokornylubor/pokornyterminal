@@ -133,10 +133,10 @@ with tab3:
             fig.update_layout(
                 template="plotly_dark", 
                 margin=dict(l=0, r=60, t=20, b=0), 
-                height=650, 
+                height=700, 
                 xaxis_rangeslider_visible=False,
                 dragmode='pan',
-                hovermode='x', # Změna pro správné uchycení kříže na konkrétní svíčku
+                hovermode='x', 
                 yaxis=dict(
                     side='right', 
                     fixedrange=False, 
@@ -159,33 +159,6 @@ with tab3:
             )
             
             st.plotly_chart(fig, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': False})
-            
-            # --- VALUACE A FUNDAMENTY ---
-            st.markdown("---")
-            st.subheader(f"FUNDAMENTY & VALUACE: {final_tick}")
-            
-            try:
-                tkr = yf.Ticker(final_tick)
-                info = tkr.info
-                
-                v1, v2, v3, v4, v5, v6 = st.columns(6)
-                
-                pe = info.get('trailingPE')
-                f_pe = info.get('forwardPE')
-                peg = info.get('pegRatio')
-                pb = info.get('priceToBook')
-                mc = info.get('marketCap')
-                pm = info.get('profitMargins')
-                
-                v1.metric("P/E (Trailing)", f"{pe:.2f}" if pe else "N/A")
-                v2.metric("Forward P/E", f"{f_pe:.2f}" if f_pe else "N/A")
-                v3.metric("PEG Ratio", f"{peg:.2f}" if peg else "N/A")
-                v4.metric("Price / Book", f"{pb:.2f}" if pb else "N/A")
-                v5.metric("Market Cap", f"${mc/1e9:.2f}B" if mc else "N/A")
-                v6.metric("Profit Margin", f"{pm*100:.2f}%" if pm else "N/A")
-            except:
-                st.caption("Data o valuaci nejsou pro tento ticker aktuálně k dispozici.")
-                
         else:
             st.error(_["err_data"])
 
