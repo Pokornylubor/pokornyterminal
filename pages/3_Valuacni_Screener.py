@@ -141,13 +141,12 @@ if final_tick:
         
         if not financials.empty:
             try:
-                # Sestavení DataFramu pro přesné párování let a LTM
                 chart_df = pd.DataFrame()
                 
+                # Získání historických dat
                 if 'Total Revenue' in financials.index:
                     chart_df['Tržby'] = financials.loc['Total Revenue'][::-1]
                 
-                # Zjištění klíče pro EBITDU z Yahoo Finance
                 if 'EBITDA' in financials.index:
                     chart_df['EBITDA'] = financials.loc['EBITDA'][::-1]
                 elif 'Normalized EBITDA' in financials.index:
@@ -155,22 +154,28 @@ if final_tick:
                     
                 if 'Net Income' in financials.index:
                     chart_df['Čistý zisk'] = financials.loc['Net Income'][::-1]
+                elif 'Net Income Common Stockholders' in financials.index:
+                    chart_df['Čistý zisk'] = financials.loc['Net Income Common Stockholders'][::-1]
                 
-                # Přejmenování indexu na čisté roky
+                # Očistění indexu na roky
                 chart_df.index = [str(d.year) for d in chart_df.index]
                 
-                # Přidání LTM řádku
-                if total_rev_ltm:
-                    ltm_net = info.get("netIncomeToCommon", info.get("netIncome"))
-                    chart_df.loc['LTM'] = {
-                        'Tržby': total_rev_ltm,
-                        'EBITDA': ebitda_ltm,
-                        'Čistý zisk': ltm_net
-                    }
+                # Tvrdé vytvoření a připojení LTM řádku (Safe Pandas Concat)
+                ltm_data = {}
+                if 'Tržby' in chart_df.columns and total_rev_ltm:
+                    ltm_data['Tržby'] = total_rev_ltm
+                if 'EBITDA' in chart_df.columns and ebitda_ltm:
+                    ltm_data['EBITDA'] = ebitda_ltm
+                if 'Čistý zisk' in chart_df.columns:
+                    net_ltm = info.get("netIncomeToCommon", info.get("netIncome"))
+                    if net_ltm: ltm_data['Čistý zisk'] = net_ltm
+                
+                if ltm_data:
+                    df_ltm = pd.DataFrame([ltm_data], index=['LTM'])
+                    chart_df = pd.concat([chart_df, df_ltm])
                 
                 fig = go.Figure()
                 
-                # Vykreslení sloupců
                 if 'Tržby' in chart_df.columns:
                     fig.add_trace(go.Bar(x=chart_df.index, y=chart_df['Tržby'], name='Tržby (Revenue)', marker_color='#2962FF'))
                 if 'EBITDA' in chart_df.columns:
