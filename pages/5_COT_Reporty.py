@@ -36,7 +36,25 @@ t = {
         "h_watch": "MŮJ COT WATCHLIST", 
         "sel_watch": "ULOŽENÉ TRHY",
         "btn_rem": "ODEBRAT Z WATCHLISTU", 
-        "succ_rem": "ODSTRANĚNO."
+        "succ_rem": "ODSTRANĚNO.",
+        "db_empty": "DATABÁZE JE PRÁZDNÁ.",
+        "tab_chart": "📊 GRAF NET POZIC",
+        "tab_raw": "🗄️ SUROVÁ DATA (CFTC)",
+        "help_title": "📖 JAK ČÍST TENTO GRAF (NÁPOVĚDA)",
+        "help_text": """
+**Základní pravidlo:** Trh je hra s nulovým součtem. Kde jeden kupuje, druhý prodává. Osa Y ukazuje tzv. Net pozice (Long kontrakty mínus Short kontrakty).
+
+* 🟢 **Zelená linka (Commercials / Smart Money):** Velké instituce, banky, korporace. Trh často používají k zajištění. Sledujeme u nich **obraty a extrémy**. Pokud jsou extrémně v mínusu (short) a začnou prudce růst, trh se pravděpodobně otočí nahoru.
+* 🔴 **Červená linka (Non-Commercials / Spekulanti):** Hedge fondy a trend-followeři. Většinou dělají přesný opak toho, co Smart Money.
+
+**Co v grafu hledat (Roztažení gumy):**
+Nehledej překřížení nulové osy. Hledej momenty, kdy se od sebe zelená a červená linka **extrémně vzdálí**. Znamená to, že napětí na trhu je na maximu. Spekulanti sází vše na jeden směr, ale Smart Money stojí tvrdě proti nim. V 90 % případů vyhrají Smart Money a trh následně prudce změní směr.
+""",
+        "leg_comm": "Commercials (Zajišťovatelé)",
+        "leg_nonc": "Non-Commercials (Spekulanti)",
+        "err_hist": "Pro tento trh není dostatek historických dat.",
+        "raw_title": "KOMPLETNÍ ZÁZNAM CFTC:",
+        "raw_desc": "Pohled do všech dostupných sloupců a kategorií pro vybraný trh."
     },
     "EN": {
         "title": "COT REPORTS (Commitments of Traders)",
@@ -50,7 +68,25 @@ t = {
         "h_watch": "MY COT WATCHLIST", 
         "sel_watch": "SAVED MARKETS",
         "btn_rem": "REMOVE FROM WATCHLIST", 
-        "succ_rem": "REMOVED."
+        "succ_rem": "REMOVED.",
+        "db_empty": "DATABASE IS EMPTY.",
+        "tab_chart": "📊 NET POSITIONS CHART",
+        "tab_raw": "🗄️ RAW CFTC DATA",
+        "help_title": "📖 HOW TO READ THIS CHART (HELP)",
+        "help_text": """
+**Basic Rule:** The market is a zero-sum game. Where one buys, another must sell. The Y-axis shows Net positions (Long contracts minus Short contracts).
+
+* 🟢 **Green Line (Commercials / Smart Money):** Large institutions, banks, corporations. They often use the market for hedging. We look for **reversals and extremes** here. If they are extremely negative (short) and suddenly spike upwards, the market will likely turn up.
+* 🔴 **Red Line (Non-Commercials / Speculators):** Hedge funds and trend-followers. They usually do the exact opposite of Smart Money.
+
+**What to look for (The Rubber Band Effect):**
+Do not look for zero-line crossovers. Look for moments when the green and red lines **diverge extremely** from each other. This means market tension is at a maximum. Speculators are betting heavily in one direction, but Smart Money is standing firmly against them. 90% of the time, Smart Money wins, and the market sharply reverses.
+""",
+        "leg_comm": "Commercials (Hedgers)",
+        "leg_nonc": "Non-Commercials (Speculators)",
+        "err_hist": "Not enough historical data for this market.",
+        "raw_title": "COMPLETE CFTC RECORD:",
+        "raw_desc": "View all available columns and categories for the selected market."
     }
 }
 _ = t.get(st.session_state.get("lang", "CZ"), t["CZ"])
@@ -112,7 +148,7 @@ with c1:
 with c2:
     st.markdown(f"**{_['h_watch']}**")
     if not data["cot_watchlist"]: 
-        st.caption("DATABÁZE JE PRÁZDNÁ.")
+        st.caption(_["db_empty"])
     else:
         watch_trh = st.selectbox(_["sel_watch"], [""] + sorted(data["cot_watchlist"]))
         if watch_trh:
@@ -142,36 +178,27 @@ if vybrany_trh:
         df_market['Net Commercials'] = pd.to_numeric(df_market[c_long], errors='coerce') - pd.to_numeric(df_market[c_short], errors='coerce')
         df_market['Net Non-Commercials'] = pd.to_numeric(df_market[nc_long], errors='coerce') - pd.to_numeric(df_market[nc_short], errors='coerce')
         
-        tab_dash, tab_raw = st.tabs(["📊 GRAF NET POZIC", "🗄️ SUROVÁ DATA (CFTC)"])
+        tab_dash, tab_raw = st.tabs([_["tab_chart"], _["tab_raw"]])
         
         with tab_dash:
             if len(df_market) > 1: 
                 st.subheader(vybrany_trh)
                 
-                # --- NÁPOVĚDA PRO ČTENÍ GRAFU ---
-                with st.expander("📖 JAK ČÍST TENTO GRAF (NÁPOVĚDA)"):
-                    st.markdown("""
-                    **Základní pravidlo:** Trh je hra s nulovým součtem. Kde jeden kupuje, druhý prodává. Osa Y ukazuje tzv. Net pozice (Long kontrakty mínus Short kontrakty).
-                    
-                    * 🟢 **Zelená linka (Commercials / Smart Money):** Velké instituce, banky, korporace. Trh často používají k zajištění. Sledujeme u nich **obraty a extrémy**. Pokud jsou extrémně v mínusu (short) a začnou prudce růst, trh se pravděpodobně otočí nahoru.
-                    * 🔴 **Červená linka (Non-Commercials / Spekulanti):** Hedge fondy a trend-followeři. Většinou dělají přesný opak toho, co Smart Money.
-                    
-                    **Co v grafu hledat (Roztažení gumy):**
-                    Nehledej překřížení nulové osy. Hledej momenty, kdy se od sebe zelená a červená linka **extrémně vzdálí**. Znamená to, že napětí na trhu je na maximu. Spekulanti sází vše na jeden směr, ale Smart Money stojí tvrdě proti nim. V 90 % případů vyhrají Smart Money a trh následně prudce změní směr.
-                    """)
+                with st.expander(_["help_title"]):
+                    st.markdown(_["help_text"])
                 
                 fig = go.Figure()
                 
                 fig.add_trace(go.Scatter(
                     x=df_market['Date'], y=df_market['Net Commercials'], 
                     mode='lines', line=dict(color='#26A69A', width=2), 
-                    name='Commercials (Hedgers)', fill='tozeroy', fillcolor='rgba(38, 166, 154, 0.1)'
+                    name=_["leg_comm"], fill='tozeroy', fillcolor='rgba(38, 166, 154, 0.1)'
                 ))
                 
                 fig.add_trace(go.Scatter(
                     x=df_market['Date'], y=df_market['Net Non-Commercials'], 
                     mode='lines', line=dict(color='#EF5350', width=2), 
-                    name='Non-Commercials (Speculators)', fill='tozeroy', fillcolor='rgba(239, 83, 80, 0.1)'
+                    name=_["leg_nonc"], fill='tozeroy', fillcolor='rgba(239, 83, 80, 0.1)'
                 ))
                 
                 fig.add_hline(y=0, line_dash="solid", line_color="#787B86", opacity=0.5)
@@ -187,11 +214,11 @@ if vybrany_trh:
                 
                 st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
             else: 
-                st.warning("Pro tento trh není dostatek historických dat.")
+                st.warning(_["err_hist"])
                 
         with tab_raw:
-            st.subheader(f"KOMPLETNÍ ZÁZNAM CFTC: {vybrany_trh}")
-            st.caption("Pohled do všech dostupných sloupců a kategorií pro vybraný trh.")
+            st.subheader(f"{_['raw_title']} {vybrany_trh}")
+            st.caption(_["raw_desc"])
             clean_df = df_market.drop(columns=['Date', 'Market and Exchange Names'], errors='ignore').copy()
             st.dataframe(clean_df.iloc[::-1], use_container_width=True, hide_index=True)
             
