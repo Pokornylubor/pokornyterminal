@@ -82,7 +82,6 @@ def load_cot_data():
                 with zipfile.ZipFile(io.BytesIO(res.content)) as z: return pd.read_csv(io.BytesIO(z.read(z.namelist()[0])), low_memory=False)
         except: pass
         return pd.DataFrame()
-    # Spojení aktuálního a předchozího roku pro delší historii
     return pd.concat([fetch_year(year), fetch_year(year - 1)], ignore_index=True)
 
 with st.spinner(_["spin_data"]): cot_df = load_cot_data()
@@ -127,7 +126,6 @@ if vybrany_trh:
     
     df_market = cot_df[cot_df['Market and Exchange Names'] == vybrany_trh].copy()
     try:
-        # Zpracování data (CFTC má nekonzistentní formáty hlaviček)
         date_cols = df_market.columns.tolist()
         if 'Report_Date_as_YYYY-MM-DD' in date_cols: df_market['Date'] = pd.to_datetime(df_market['Report_Date_as_YYYY-MM-DD'], errors='coerce')
         elif 'Report_Date_as_MM_DD_YYYY' in date_cols: df_market['Date'] = pd.to_datetime(df_market['Report_Date_as_MM_DD_YYYY'], errors='coerce')
@@ -135,14 +133,12 @@ if vybrany_trh:
         
         df_market = df_market.dropna(subset=['Date']).sort_values('Date')
         
-        # Extrakce sloupců pozic
         def get_col(inc, exc=[]): return next((c for c in df_market.columns if all(k in c.lower() for k in inc) and not any(k in c.lower() for k in exc)), None)
         c_long = get_col(['commercial', 'long', 'all'], ['non']) or get_col(['commercial', 'long'], ['non'])
         c_short = get_col(['commercial', 'short', 'all'], ['non']) or get_col(['commercial', 'short'], ['non'])
         nc_long = get_col(['non', 'commercial', 'long', 'all']) or get_col(['non', 'commercial', 'long'])
         nc_short = get_col(['non', 'commercial', 'short', 'all']) or get_col(['non', 'commercial', 'short'])
         
-        # Výpočet Net pozic
         df_market['Net Commercials'] = pd.to_numeric(df_market[c_long], errors='coerce') - pd.to_numeric(df_market[c_short], errors='coerce')
         df_market['Net Non-Commercials'] = pd.to_numeric(df_market[nc_long], errors='coerce') - pd.to_numeric(df_market[nc_short], errors='coerce')
         
@@ -152,23 +148,32 @@ if vybrany_trh:
             if len(df_market) > 1: 
                 st.subheader(vybrany_trh)
                 
+                # --- NÁPOVĚDA PRO ČTENÍ GRAFU ---
+                with st.expander("📖 JAK ČÍST TENTO GRAF (NÁPOVĚDA)"):
+                    st.markdown("""
+                    **Základní pravidlo:** Trh je hra s nulovým součtem. Kde jeden kupuje, druhý prodává. Osa Y ukazuje tzv. Net pozice (Long kontrakty mínus Short kontrakty).
+                    
+                    * 🟢 **Zelená linka (Commercials / Smart Money):** Velké instituce, banky, korporace. Trh často používají k zajištění. Sledujeme u nich **obraty a extrémy**. Pokud jsou extrémně v mínusu (short) a začnou prudce růst, trh se pravděpodobně otočí nahoru.
+                    * 🔴 **Červená linka (Non-Commercials / Spekulanti):** Hedge fondy a trend-followeři. Většinou dělají přesný opak toho, co Smart Money.
+                    
+                    **Co v grafu hledat (Roztažení gumy):**
+                    Nehledej překřížení nulové osy. Hledej momenty, kdy se od sebe zelená a červená linka **extrémně vzdálí**. Znamená to, že napětí na trhu je na maximu. Spekulanti sází vše na jeden směr, ale Smart Money stojí tvrdě proti nim. V 90 % případů vyhrají Smart Money a trh následně prudce změní směr.
+                    """)
+                
                 fig = go.Figure()
                 
-                # Zelená linka (Commercials)
                 fig.add_trace(go.Scatter(
                     x=df_market['Date'], y=df_market['Net Commercials'], 
                     mode='lines', line=dict(color='#26A69A', width=2), 
                     name='Commercials (Hedgers)', fill='tozeroy', fillcolor='rgba(38, 166, 154, 0.1)'
                 ))
                 
-                # Červená linka (Non-Commercials)
                 fig.add_trace(go.Scatter(
                     x=df_market['Date'], y=df_market['Net Non-Commercials'], 
                     mode='lines', line=dict(color='#EF5350', width=2), 
                     name='Non-Commercials (Speculators)', fill='tozeroy', fillcolor='rgba(239, 83, 80, 0.1)'
                 ))
                 
-                # Nulová osa (Zero line)
                 fig.add_hline(y=0, line_dash="solid", line_color="#787B86", opacity=0.5)
 
                 fig.update_layout(
@@ -187,7 +192,6 @@ if vybrany_trh:
         with tab_raw:
             st.subheader(f"KOMPLETNÍ ZÁZNAM CFTC: {vybrany_trh}")
             st.caption("Pohled do všech dostupných sloupců a kategorií pro vybraný trh.")
-            # Odstraníme nepotřebné technické sloupce
             clean_df = df_market.drop(columns=['Date', 'Market and Exchange Names'], errors='ignore').copy()
             st.dataframe(clean_df.iloc[::-1], use_container_width=True, hide_index=True)
             
