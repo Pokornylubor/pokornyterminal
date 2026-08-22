@@ -79,18 +79,23 @@ with tab2: display_tickers(data.get("watchlist", []), _["radar"])
 with tab3:
     st.subheader("DETAILNÍ ANALÝZA (CHARTING)")
     all_tickers = list(dict.fromkeys(data.get("portfolio", []) + data.get("watchlist", [])))
-    if not all_tickers:
-        st.caption("NEJSOU DOSTUPNÁ ŽÁDNÁ DATA.")
-    else:
-        c1, c2, c3 = st.columns([2, 1, 1])
-        sel_tick = c1.selectbox("TICKER", all_tickers)
-        chart_type = c2.selectbox("TYP GRAFU", ["Candlestick", "Line"])
-        interval = c3.selectbox("INTERVAL", ["1m", "5m", "15m", "1h", "1d", "1wk", "1mo"], index=4)
+    
+    # 4 sloupce pro lepší rozložení vyhledávání
+    c1, c2, c3, c4 = st.columns([2, 2, 1, 1])
+    sel_tick = c1.selectbox("VÝBĚR Z DATABÁZE", [""] + all_tickers)
+    custom_tick = c2.text_input("VLASTNÍ TICKER (např. AAPL)")
+    
+    # Pokud uživatel zadá vlastní ticker, má přednost před výběrem ze seznamu
+    final_tick = custom_tick.upper().strip() if custom_tick.strip() else sel_tick
+    
+    chart_type = c3.selectbox("TYP GRAFU", ["Candlestick", "Line"])
+    interval = c4.selectbox("INTERVAL", ["1m", "5m", "15m", "1h", "1d", "1wk", "1mo"], index=4)
 
+    if final_tick:
         period_map = {"1m": "7d", "5m": "60d", "15m": "60d", "1h": "730d", "1d": "max", "1wk": "max", "1mo": "max"}
         
-        with st.spinner("Stahuji tržní data..."):
-            df_c = yf.download(sel_tick, period=period_map[interval], interval=interval, progress=False)
+        with st.spinner(f"Stahuji tržní data pro {final_tick}..."):
+            df_c = yf.download(final_tick, period=period_map[interval], interval=interval, progress=False)
             
         if not df_c.empty:
             if isinstance(df_c.columns, pd.MultiIndex): df_c.columns = df_c.columns.get_level_values(0)
@@ -99,10 +104,22 @@ with tab3:
                 fig.add_trace(go.Candlestick(x=df_c.index, open=df_c['Open'], high=df_c['High'], low=df_c['Low'], close=df_c['Close'], name="Cena"))
             else:
                 fig.add_trace(go.Scatter(x=df_c.index, y=df_c['Close'], mode='lines', line=dict(color='#00FF00'), name="Close"))
-            fig.update_layout(template="plotly_dark", margin=dict(l=0, r=0, t=10, b=0), height=600, xaxis_rangeslider_visible=False)
-            st.plotly_chart(fig, use_container_width=True)
+            
+            # Profi formátování s TradingView logikou (dragmode='pan')
+            fig.update_layout(
+                template="plotly_dark", 
+                margin=dict(l=0, r=0, t=10, b=0), 
+                height=600, 
+                xaxis_rangeslider_visible=False,
+                dragmode='pan'
+            )
+            
+            # Aktivace zoomování kolečkem
+            st.plotly_chart(fig, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': True})
         else:
-            st.error("Data pro tento interval nejsou dostupná.")
+            st.error(f"Data pro ticker {final_tick} v intervalu {interval} nejsou dostupná.")
+    else:
+        st.info("Vyber ticker ze seznamu nebo zadej vlastní pro zobrazení grafu.")
 
 with tab4:
     st.subheader(_["tab_set"])
