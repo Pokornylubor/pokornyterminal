@@ -4,7 +4,7 @@ import yfinance as yf
 import json
 import os
 import sys
-import requests_cache
+import requests
 import plotly.graph_objects as go
 
 # --- INITIAL SETUP ---
@@ -146,8 +146,8 @@ final_tick = custom_tick.upper().strip() if custom_tick.strip() else sel_tick
 if final_tick:
     with st.spinner(f"{_['loading']} {final_tick}..."):
         try:
-            # Implementace Cache paměti (24 hodin = 86400 vteřin) a agresivního maskování
-            session = requests_cache.CachedSession('yfinance_cache', expire_after=86400)
+            # Čistý requests bez lokální paměti, ale s maskováním prohlížeče
+            session = requests.Session()
             session.headers.update({
                 "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
                 "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
