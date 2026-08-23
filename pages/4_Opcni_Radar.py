@@ -4,6 +4,7 @@ import yfinance as yf
 import json
 import os
 import sys
+import requests
 import plotly.graph_objects as go
 
 # --- INITIAL SETUP ---
@@ -27,6 +28,7 @@ t = {
         "custom_tick": "VLASTNÍ TICKER",
         "loading": "STAHOVÁNÍ OPČNÍHO ŘETĚZCE...",
         "err_data": "OPČNÍ DATA PRO TENTO TICKER NEJSOU DOSTUPNÁ.",
+        "err_api": "⚠️ YAHOO FINANCE API LIMIT: Spojení bylo dočasně zablokováno (Rate Limit). Zkuste to za chvíli znovu.",
         "exp_lbl": "EXPIRAČNÍ DATUM:",
         "bear": "🔴 BEARISH (Trh se jistí Puts)",
         "bull": "🟢 BULLISH (Trh sází na Calls)",
@@ -54,6 +56,7 @@ t = {
         "custom_tick": "CUSTOM TICKER",
         "loading": "LOADING OPTION CHAIN...",
         "err_data": "OPTIONS DATA FOR THIS TICKER NOT AVAILABLE.",
+        "err_api": "⚠️ YAHOO FINANCE API LIMIT: Connection temporarily blocked. Please try again later.",
         "exp_lbl": "EXPIRATION DATE:",
         "bear": "🔴 BEARISH (Market hedging with Puts)",
         "bull": "🟢 BULLISH (Market betting on Calls)",
@@ -101,16 +104,20 @@ custom_tick = c2.text_input(_["custom_tick"], value="")
 final_tick = custom_tick.upper().strip() if custom_tick.strip() else sel_tick
 
 if final_tick:
-    tkr_obj = yf.Ticker(final_tick)
-    expirations = tkr_obj.options
-    
-    if not expirations:
-        st.error(_["err_data"])
-    else:
-        selected_exp = st.selectbox(_["exp_lbl"], expirations)
+    try:
+        # Nasazení prohlížečového User-Agentu
+        session = requests.Session()
+        session.headers.update({"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"})
         
-        with st.spinner(f"{_['loading']} {selected_exp}"):
-            try:
+        tkr_obj = yf.Ticker(final_tick, session=session)
+        expirations = tkr_obj.options
+        
+        if not expirations:
+            st.error(_["err_data"])
+        else:
+            selected_exp = st.selectbox(_["exp_lbl"], expirations)
+            
+            with st.spinner(f"{_['loading']} {selected_exp}"):
                 chain = tkr_obj.option_chain(selected_exp)
                 calls = chain.calls.copy()
                 puts = chain.puts.copy()
@@ -186,5 +193,8 @@ if final_tick:
                         ), use_container_width=True, hide_index=True
                     )
                     
-            except Exception as e:
-                st.error(f"{_['err_load']} {str(e)}")
+    except Exception as e:
+        if "YFRateLimitError" in str(type(e).__name__) or "429" in str(e):
+            st.error(_["err_api"])
+        else:
+            st.error(f"{_['err_load']} {str(e)}")
