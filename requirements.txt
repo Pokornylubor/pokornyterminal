@@ -7,4 +7,3 @@ beautifulsoup4
 lxml
 cloudscraper
 plotly
-requests-cache
