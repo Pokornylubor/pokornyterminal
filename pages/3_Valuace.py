@@ -4,6 +4,7 @@ import yfinance as yf
 import json
 import os
 import sys
+import requests
 import plotly.graph_objects as go
 
 # --- INITIAL SETUP ---
@@ -27,6 +28,7 @@ t = {
         "custom_tick": "VLASTNÍ TICKER",
         "loading": "STAHOVÁNÍ VÝKAZŮ...",
         "err_data": "DATA PRO TENTO TICKER NEJSOU DOSTUPNÁ.",
+        "err_api": "⚠️ YAHOO FINANCE API LIMIT: Spojení bylo dočasně zablokováno (Rate Limit). Zkuste to za chvíli znovu.",
         "tab_dash": "📊 ANALYTICKÝ DASHBOARD",
         "tab_raw": "🗄️ STRUKTUROVANÉ VÝKAZY",
         "met_val": "VALUACE",
@@ -63,6 +65,7 @@ t = {
         "custom_tick": "CUSTOM TICKER",
         "loading": "LOADING STATEMENTS...",
         "err_data": "DATA FOR THIS TICKER NOT AVAILABLE.",
+        "err_api": "⚠️ YAHOO FINANCE API LIMIT: Connection temporarily blocked. Please try again later.",
         "tab_dash": "📊 ANALYTICS DASHBOARD",
         "tab_raw": "🗄️ STRUCTURED STATEMENTS",
         "met_val": "VALUATION",
@@ -142,170 +145,182 @@ final_tick = custom_tick.upper().strip() if custom_tick.strip() else sel_tick
 
 if final_tick:
     with st.spinner(f"{_['loading']} {final_tick}..."):
-        tkr = yf.Ticker(final_tick)
-        info = tkr.info
-        financials = tkr.financials
-        balance_sheet = tkr.balance_sheet
-        cashflow = tkr.cashflow
-        q_fin = tkr.quarterly_financials
-        q_cf = tkr.quarterly_cashflow
-        
-        short_name = info.get("shortName", final_tick)
-        market_cap = info.get("marketCap")
-        
-        total_rev_ltm = get_ltm_from_quarterly(q_fin, ['Total Revenue']) or info.get("totalRevenue")
-        net_income_ltm = get_ltm_from_quarterly(q_fin, ['Net Income', 'Net Income Common Stockholders']) or info.get("netIncomeToCommon", info.get("netIncome"))
-        ebitda_ltm = get_ltm_from_quarterly(q_fin, ['Normalized EBITDA', 'EBITDA']) or info.get("ebitda")
-        
-        fcf = get_ltm_from_quarterly(q_cf, ['Free Cash Flow'])
-        if fcf is None:
-            ocf = get_ltm_from_quarterly(q_cf, ['Operating Cash Flow'])
-            capex = get_ltm_from_quarterly(q_cf, ['Capital Expenditure'])
-            if ocf and capex is not None: fcf = ocf - abs(capex)
-            else: fcf = info.get("freeCashflow")
+        try:
+            # Nastavení vlastní Session s maskováním prohlížeče
+            session = requests.Session()
+            session.headers.update({"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"})
+            
+            tkr = yf.Ticker(final_tick, session=session)
+            info = tkr.info
+            
+            if not info:
+                st.error(_["err_data"])
+            else:
+                financials = tkr.financials
+                balance_sheet = tkr.balance_sheet
+                cashflow = tkr.cashflow
+                q_fin = tkr.quarterly_financials
+                q_cf = tkr.quarterly_cashflow
                 
-        eps_ltm = info.get("trailingEps") 
-        pe = info.get("trailingPE")
-        fwd_pe = info.get("forwardPE")
-        peg = info.get("pegRatio")
-        ps = info.get("priceToSalesTrailing12Months")
-        pb = info.get("priceToBook")
-        ev_ebitda = info.get("enterpriseToEbitda")
-        p_fcf = (market_cap / fcf) if market_cap and fcf and fcf > 0 else None
-        
-        current_ratio = info.get("currentRatio")
-        quick_ratio = info.get("quickRatio")
-        
-        calc_debt_eq = None
-        roic, roce, roi = None, None, None 
-        
-        if not balance_sheet.empty:
-            try:
-                total_debt = balance_sheet.loc['Total Debt'].iloc[0] if 'Total Debt' in balance_sheet.index else 0
-                stockholders_eq = balance_sheet.loc['Stockholders Equity'].iloc[0] if 'Stockholders Equity' in balance_sheet.index else 0
-                total_assets = balance_sheet.loc['Total Assets'].iloc[0] if 'Total Assets' in balance_sheet.index else 0
-                current_liab = balance_sheet.loc['Total Current Liabilities'].iloc[0] if 'Total Current Liabilities' in balance_sheet.index else 0
-                invested_capital = total_debt + stockholders_eq
-                capital_employed = total_assets - current_liab
-                if stockholders_eq and stockholders_eq > 0: calc_debt_eq = total_debt / stockholders_eq
-            except Exception:
-                invested_capital, capital_employed, total_assets = 0, 0, 0
-        
-        roe = info.get("returnOnEquity")
-        roa = info.get("returnOnAssets")
-        gross_margin = info.get("grossMargins")
-        op_margin = info.get("operatingMargins")
-        profit_margin = info.get("profitMargins")
-        
-        ebitda_margin = (ebitda_ltm / total_rev_ltm) if ebitda_ltm and total_rev_ltm and total_rev_ltm > 0 else None
-        fcf_margin = (fcf / total_rev_ltm) if fcf and total_rev_ltm and total_rev_ltm > 0 else None
-        
-        if net_income_ltm and 'invested_capital' in locals() and invested_capital > 0: roic = net_income_ltm / invested_capital
-        if not financials.empty and 'capital_employed' in locals() and capital_employed > 0:
-             try:
-                 ebit = financials.loc['EBIT'].iloc[0] if 'EBIT' in financials.index else (financials.loc['Operating Income'].iloc[0] if 'Operating Income' in financials.index else 0)
-                 if ebit: roce = ebit / capital_employed
-             except Exception: pass
-        if net_income_ltm and 'total_assets' in locals() and total_assets > 0: roi = net_income_ltm / total_assets 
+                short_name = info.get("shortName", final_tick)
+                market_cap = info.get("marketCap")
+                
+                total_rev_ltm = get_ltm_from_quarterly(q_fin, ['Total Revenue']) or info.get("totalRevenue")
+                net_income_ltm = get_ltm_from_quarterly(q_fin, ['Net Income', 'Net Income Common Stockholders']) or info.get("netIncomeToCommon", info.get("netIncome"))
+                ebitda_ltm = get_ltm_from_quarterly(q_fin, ['Normalized EBITDA', 'EBITDA']) or info.get("ebitda")
+                
+                fcf = get_ltm_from_quarterly(q_cf, ['Free Cash Flow'])
+                if fcf is None:
+                    ocf = get_ltm_from_quarterly(q_cf, ['Operating Cash Flow'])
+                    capex = get_ltm_from_quarterly(q_cf, ['Capital Expenditure'])
+                    if ocf and capex is not None: fcf = ocf - abs(capex)
+                    else: fcf = info.get("freeCashflow")
+                        
+                eps_ltm = info.get("trailingEps") 
+                pe = info.get("trailingPE")
+                fwd_pe = info.get("forwardPE")
+                peg = info.get("pegRatio")
+                ps = info.get("priceToSalesTrailing12Months")
+                pb = info.get("priceToBook")
+                ev_ebitda = info.get("enterpriseToEbitda")
+                p_fcf = (market_cap / fcf) if market_cap and fcf and fcf > 0 else None
+                
+                current_ratio = info.get("currentRatio")
+                quick_ratio = info.get("quickRatio")
+                
+                calc_debt_eq = None
+                roic, roce, roi = None, None, None 
+                
+                if not balance_sheet.empty:
+                    try:
+                        total_debt = balance_sheet.loc['Total Debt'].iloc[0] if 'Total Debt' in balance_sheet.index else 0
+                        stockholders_eq = balance_sheet.loc['Stockholders Equity'].iloc[0] if 'Stockholders Equity' in balance_sheet.index else 0
+                        total_assets = balance_sheet.loc['Total Assets'].iloc[0] if 'Total Assets' in balance_sheet.index else 0
+                        current_liab = balance_sheet.loc['Total Current Liabilities'].iloc[0] if 'Total Current Liabilities' in balance_sheet.index else 0
+                        invested_capital = total_debt + stockholders_eq
+                        capital_employed = total_assets - current_liab
+                        if stockholders_eq and stockholders_eq > 0: calc_debt_eq = total_debt / stockholders_eq
+                    except Exception:
+                        invested_capital, capital_employed, total_assets = 0, 0, 0
+                
+                roe = info.get("returnOnEquity")
+                roa = info.get("returnOnAssets")
+                gross_margin = info.get("grossMargins")
+                op_margin = info.get("operatingMargins")
+                profit_margin = info.get("profitMargins")
+                
+                ebitda_margin = (ebitda_ltm / total_rev_ltm) if ebitda_ltm and total_rev_ltm and total_rev_ltm > 0 else None
+                fcf_margin = (fcf / total_rev_ltm) if fcf and total_rev_ltm and total_rev_ltm > 0 else None
+                
+                if net_income_ltm and 'invested_capital' in locals() and invested_capital > 0: roic = net_income_ltm / invested_capital
+                if not financials.empty and 'capital_employed' in locals() and capital_employed > 0:
+                     try:
+                         ebit = financials.loc['EBIT'].iloc[0] if 'EBIT' in financials.index else (financials.loc['Operating Income'].iloc[0] if 'Operating Income' in financials.index else 0)
+                         if ebit: roce = ebit / capital_employed
+                     except Exception: pass
+                if net_income_ltm and 'total_assets' in locals() and total_assets > 0: roi = net_income_ltm / total_assets 
 
-    if info:
-        tab_dash, tab_raw = st.tabs([_["tab_dash"], _["tab_raw"]])
-        
-        with tab_dash:
-            st.subheader(f"{short_name} ({final_tick})")
-            col1, col2, col3, col4, col5 = st.columns(5)
-            
-            def fmt(val, is_pct=False, is_currency=False):
-                if val is None: return "N/A"
-                if is_pct: return f"{val*100:.2f} %"
-                if is_currency: 
-                    if val >= 1e9: return f"${val/1e9:.2f}B"
-                    if val >= 1e6: return f"${val/1e6:.2f}M"
-                    return f"${val:,.2f}"
-                return f"{val:.2f}"
+                tab_dash, tab_raw = st.tabs([_["tab_dash"], _["tab_raw"]])
                 
-            col1.markdown(f"**{_['met_val']}**")
-            col1.metric("P/E (Trailing)", fmt(pe))
-            col1.metric("Forward P/E", fmt(fwd_pe))
-            col1.metric("PEG Ratio", fmt(peg))
-            col1.metric("Price / Sales", fmt(ps))
-            col1.metric("Price / FCF", fmt(p_fcf))
-            
-            col2.markdown(f"**{_['met_mul']}**")
-            col2.metric("EV / EBITDA", fmt(ev_ebitda))
-            col2.metric("Price / Book", fmt(pb))
-            col2.metric("Debt / Equity", fmt(calc_debt_eq), help=_["h_de"])
-            col2.metric("Current Ratio", fmt(current_ratio), help=_["h_cr"])
-            col2.metric("Quick Ratio", fmt(quick_ratio), help=_["h_qr"])
-            
-            col3.markdown(f"**{_['met_mar']}**")
-            col3.metric("Gross Margin", fmt(gross_margin, True))
-            col3.metric("EBITDA Margin", fmt(ebitda_margin, True))
-            col3.metric("Operating Margin", fmt(op_margin, True))
-            col3.metric("Profit Margin (Net)", fmt(profit_margin, True))
-            col3.metric("FCF Margin", fmt(fcf_margin, True))
-            
-            col4.markdown(f"**{_['met_ret']}**")
-            col4.metric("ROE", fmt(roe, True), help=_["h_roe"])
-            col4.metric("ROIC", fmt(roic, True), help=_["h_roic"])
-            col4.metric("ROA", fmt(roa, True), help=_["h_roa"])
-            col4.metric("ROCE", fmt(roce, True), help=_["h_roce"])
-            col4.metric("ROI (Proxy)", fmt(roi, True), help=_["h_roi"])
+                with tab_dash:
+                    st.subheader(f"{short_name} ({final_tick})")
+                    col1, col2, col3, col4, col5 = st.columns(5)
+                    
+                    def fmt(val, is_pct=False, is_currency=False):
+                        if val is None: return "N/A"
+                        if is_pct: return f"{val*100:.2f} %"
+                        if is_currency: 
+                            if val >= 1e9: return f"${val/1e9:.2f}B"
+                            if val >= 1e6: return f"${val/1e6:.2f}M"
+                            return f"${val:,.2f}"
+                        return f"{val:.2f}"
+                        
+                    col1.markdown(f"**{_['met_val']}**")
+                    col1.metric("P/E (Trailing)", fmt(pe))
+                    col1.metric("Forward P/E", fmt(fwd_pe))
+                    col1.metric("PEG Ratio", fmt(peg))
+                    col1.metric("Price / Sales", fmt(ps))
+                    col1.metric("Price / FCF", fmt(p_fcf))
+                    
+                    col2.markdown(f"**{_['met_mul']}**")
+                    col2.metric("EV / EBITDA", fmt(ev_ebitda))
+                    col2.metric("Price / Book", fmt(pb))
+                    col2.metric("Debt / Equity", fmt(calc_debt_eq), help=_["h_de"])
+                    col2.metric("Current Ratio", fmt(current_ratio), help=_["h_cr"])
+                    col2.metric("Quick Ratio", fmt(quick_ratio), help=_["h_qr"])
+                    
+                    col3.markdown(f"**{_['met_mar']}**")
+                    col3.metric("Gross Margin", fmt(gross_margin, True))
+                    col3.metric("EBITDA Margin", fmt(ebitda_margin, True))
+                    col3.metric("Operating Margin", fmt(op_margin, True))
+                    col3.metric("Profit Margin (Net)", fmt(profit_margin, True))
+                    col3.metric("FCF Margin", fmt(fcf_margin, True))
+                    
+                    col4.markdown(f"**{_['met_ret']}**")
+                    col4.metric("ROE", fmt(roe, True), help=_["h_roe"])
+                    col4.metric("ROIC", fmt(roic, True), help=_["h_roic"])
+                    col4.metric("ROA", fmt(roa, True), help=_["h_roa"])
+                    col4.metric("ROCE", fmt(roce, True), help=_["h_roce"])
+                    col4.metric("ROI (Proxy)", fmt(roi, True), help=_["h_roi"])
 
-            col5.markdown(f"**{_['met_ltm']}**")
-            col5.metric("LTM Revenue", fmt(total_rev_ltm, is_currency=True))
-            col5.metric("LTM EBITDA", fmt(ebitda_ltm, is_currency=True))
-            col5.metric("LTM Net Income", fmt(net_income_ltm, is_currency=True)) 
-            col5.metric("LTM FCF", fmt(fcf, is_currency=True))
-            col5.metric("LTM EPS", fmt(eps_ltm))
-            
-            st.markdown("---")
-            st.subheader(_["h_chart"])
-            
-            if not financials.empty:
-                try:
-                    chart_df = pd.DataFrame()
-                    if 'Total Revenue' in financials.index: chart_df['Tržby'] = financials.loc['Total Revenue'][::-1]
-                    if 'EBITDA' in financials.index: chart_df['EBITDA'] = financials.loc['EBITDA'][::-1]
-                    elif 'Normalized EBITDA' in financials.index: chart_df['EBITDA'] = financials.loc['Normalized EBITDA'][::-1]
-                    if 'Net Income' in financials.index: chart_df['Čistý zisk'] = financials.loc['Net Income'][::-1]
-                    elif 'Net Income Common Stockholders' in financials.index: chart_df['Čistý zisk'] = financials.loc['Net Income Common Stockholders'][::-1]
+                    col5.markdown(f"**{_['met_ltm']}**")
+                    col5.metric("LTM Revenue", fmt(total_rev_ltm, is_currency=True))
+                    col5.metric("LTM EBITDA", fmt(ebitda_ltm, is_currency=True))
+                    col5.metric("LTM Net Income", fmt(net_income_ltm, is_currency=True)) 
+                    col5.metric("LTM FCF", fmt(fcf, is_currency=True))
+                    col5.metric("LTM EPS", fmt(eps_ltm))
                     
-                    chart_df.index = [str(d.year) for d in chart_df.index]
+                    st.markdown("---")
+                    st.subheader(_["h_chart"])
                     
-                    ltm_data = {}
-                    if 'Tržby' in chart_df.columns and total_rev_ltm: ltm_data['Tržby'] = total_rev_ltm
-                    if 'EBITDA' in chart_df.columns and ebitda_ltm: ltm_data['EBITDA'] = ebitda_ltm
-                    if 'Čistý zisk' in chart_df.columns and net_income_ltm: ltm_data['Čistý zisk'] = net_income_ltm
-                    if ltm_data: chart_df = pd.concat([chart_df, pd.DataFrame([ltm_data], index=['LTM'])])
-                    
-                    fig = go.Figure()
-                    if 'Tržby' in chart_df.columns: fig.add_trace(go.Bar(x=chart_df.index, y=chart_df['Tržby'], name=_["leg_rev"], marker_color='#2962FF'))
-                    if 'EBITDA' in chart_df.columns: fig.add_trace(go.Bar(x=chart_df.index, y=chart_df['EBITDA'], name='EBITDA', marker_color='#FFA726'))
-                    if 'Čistý zisk' in chart_df.columns: fig.add_trace(go.Bar(x=chart_df.index, y=chart_df['Čistý zisk'], name=_["leg_net"], marker_color='#26A69A'))
-                    
-                    fig.update_layout(template="plotly_dark", barmode='group', margin=dict(l=0, r=0, t=10, b=0), height=450, hovermode='x unified', yaxis=dict(fixedrange=False, showgrid=True, gridcolor='#2B2B2B'), xaxis=dict(fixedrange=False, showgrid=False))
-                    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-                except Exception as e: st.caption(f"{_['err_chart']} {str(e)}")
-            else: st.caption(_["err_miss"])
+                    if not financials.empty:
+                        try:
+                            chart_df = pd.DataFrame()
+                            if 'Total Revenue' in financials.index: chart_df['Tržby'] = financials.loc['Total Revenue'][::-1]
+                            if 'EBITDA' in financials.index: chart_df['EBITDA'] = financials.loc['EBITDA'][::-1]
+                            elif 'Normalized EBITDA' in financials.index: chart_df['EBITDA'] = financials.loc['Normalized EBITDA'][::-1]
+                            if 'Net Income' in financials.index: chart_df['Čistý zisk'] = financials.loc['Net Income'][::-1]
+                            elif 'Net Income Common Stockholders' in financials.index: chart_df['Čistý zisk'] = financials.loc['Net Income Common Stockholders'][::-1]
+                            
+                            chart_df.index = [str(d.year) for d in chart_df.index]
+                            
+                            ltm_data = {}
+                            if 'Tržby' in chart_df.columns and total_rev_ltm: ltm_data['Tržby'] = total_rev_ltm
+                            if 'EBITDA' in chart_df.columns and ebitda_ltm: ltm_data['EBITDA'] = ebitda_ltm
+                            if 'Čistý zisk' in chart_df.columns and net_income_ltm: ltm_data['Čistý zisk'] = net_income_ltm
+                            if ltm_data: chart_df = pd.concat([chart_df, pd.DataFrame([ltm_data], index=['LTM'])])
+                            
+                            fig = go.Figure()
+                            if 'Tržby' in chart_df.columns: fig.add_trace(go.Bar(x=chart_df.index, y=chart_df['Tržby'], name=_["leg_rev"], marker_color='#2962FF'))
+                            if 'EBITDA' in chart_df.columns: fig.add_trace(go.Bar(x=chart_df.index, y=chart_df['EBITDA'], name='EBITDA', marker_color='#FFA726'))
+                            if 'Čistý zisk' in chart_df.columns: fig.add_trace(go.Bar(x=chart_df.index, y=chart_df['Čistý zisk'], name=_["leg_net"], marker_color='#26A69A'))
+                            
+                            fig.update_layout(template="plotly_dark", barmode='group', margin=dict(l=0, r=0, t=10, b=0), height=450, hovermode='x unified', yaxis=dict(fixedrange=False, showgrid=True, gridcolor='#2B2B2B'), xaxis=dict(fixedrange=False, showgrid=False))
+                            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+                        except Exception as e: st.caption(f"{_['err_chart']} {str(e)}")
+                    else: st.caption(_["err_miss"])
 
-        with tab_raw:
-            st.subheader(f"{_['raw_h']} {final_tick}")
-            st.caption(_["raw_c"])
-            
-            st.markdown(f"### {_['raw_inc']}")
-            if not financials.empty: st.dataframe(format_statements(financials), use_container_width=True)
-            else: st.info(_["raw_na"])
-                
-            st.markdown(f"### {_['raw_bal']}")
-            if not balance_sheet.empty: st.dataframe(format_statements(balance_sheet), use_container_width=True)
-            else: st.info(_["raw_na"])
-                
-            st.markdown(f"### {_['raw_cf']}")
-            if not cashflow.empty: st.dataframe(format_statements(cashflow), use_container_width=True)
-            else: st.info(_["raw_na"])
-                
-            st.markdown(f"### {_['raw_json']}")
-            with st.expander(_["raw_json_btn"], expanded=False): st.json(info)
-            
-    else: st.error(_["err_data"])
+                with tab_raw:
+                    st.subheader(f"{_['raw_h']} {final_tick}")
+                    st.caption(_["raw_c"])
+                    
+                    st.markdown(f"### {_['raw_inc']}")
+                    if not financials.empty: st.dataframe(format_statements(financials), use_container_width=True)
+                    else: st.info(_["raw_na"])
+                        
+                    st.markdown(f"### {_['raw_bal']}")
+                    if not balance_sheet.empty: st.dataframe(format_statements(balance_sheet), use_container_width=True)
+                    else: st.info(_["raw_na"])
+                        
+                    st.markdown(f"### {_['raw_cf']}")
+                    if not cashflow.empty: st.dataframe(format_statements(cashflow), use_container_width=True)
+                    else: st.info(_["raw_na"])
+                        
+                    st.markdown(f"### {_['raw_json']}")
+                    with st.expander(_["raw_json_btn"], expanded=False): st.json(info)
+                    
+        except Exception as e:
+            if "YFRateLimitError" in str(type(e).__name__) or "429" in str(e):
+                st.error(_["err_api"])
+            else:
+                st.error(f"SYS ERR: {str(e)}")
