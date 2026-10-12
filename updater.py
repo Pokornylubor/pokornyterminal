@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 import time
 import random
 import io
+import os
 
 def get_update_period(soup):
     try:
@@ -82,7 +83,6 @@ def update_insiders(scraper):
                 all_insider_data.append(df)
             time.sleep(random.uniform(2, 4))
         except Exception as e:
-            # TADY JE TA ZMĚNA: Přeskakujeme chybu, dáváme 10s pauzu a jedeme dál
             print(f"⚠️ Stránka {page} selhala ({e}). Dávám serveru 10s vydechnout a jedu dál...")
             time.sleep(10)
             continue 
@@ -99,8 +99,7 @@ if __name__ == "__main__":
     update_insiders(master_scraper)
     print("\nData jsou připravena!")
 
-print("\n--- ZÁLOHUJI NA GITHUB ---")
-    import os
+    print("\n--- ZÁLOHUJI NA GITHUB ---")
     os.system("git add .")
     os.system('git commit -m "Automatická aktualizace dat z Terminálu"')
     os.system("git push")

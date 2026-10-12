@@ -179,8 +179,8 @@ if __name__ == "__main__":
     update_sec_funds()
 
 print("\n--- ZÁLOHUJI NA GITHUB ---")
-    import os
-    os.system("git add .")
-    os.system('git commit -m "Automatická aktualizace dat z Terminálu"')
-    os.system("git push")
-    print("✅ Vše je bezpečně odesláno na cloud!")
+import os
+os.system("git add .")
+os.system('git commit -m "Automatická aktualizace dat z Terminálu"')
+os.system("git push")
+print("✅ Vše je bezpečně odesláno na cloud!")
