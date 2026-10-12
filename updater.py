@@ -4,7 +4,6 @@ from bs4 import BeautifulSoup
 import time
 import random
 import io
-import os
 
 def get_update_period(soup):
     try:
@@ -71,11 +70,9 @@ def update_insiders(scraper):
     
     for page in range(1, pages_to_scrape + 1):
         print(f"Stahuji stranu {page}/{pages_to_scrape} (1000 transakcí na stranu)...")
-        # URL vrácena na funkční nezabezpečené http
         url = f"http://openinsider.com/screener?s=&o=&pl=&ph=&ll=&lh=&fd=730&fdr=&td=0&tdr=&fdlyl=&fdlyh=&daysago=&xp=1&xs=1&vl=&vh=&ocl=&och=&sic1=-1&sicl=100&sich=9999&grp=0&nfl=&nfh=&nil=&nih=&nol=&noh=&v2l=&v2h=&oc2l=&oc2h=&sortcol=0&cnt=1000&page={page}"
         try:
-            # Přidáno maskování, abychom se tvářili jako normální prohlížeč Chrome
-            response = scraper.get(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}, timeout=15)
+            response = scraper.get(url, timeout=15)
             tables = pd.read_html(io.StringIO(response.text))
             if tables:
                 df = max(tables, key=len)
@@ -85,6 +82,7 @@ def update_insiders(scraper):
                 all_insider_data.append(df)
             time.sleep(random.uniform(2, 4))
         except Exception as e:
+            # TADY JE TA ZMĚNA: Přeskakujeme chybu, dáváme 10s pauzu a jedeme dál
             print(f"⚠️ Stránka {page} selhala ({e}). Dávám serveru 10s vydechnout a jedu dál...")
             time.sleep(10)
             continue 
@@ -95,26 +93,15 @@ def update_insiders(scraper):
         print(f"✅ HOTOVO! Úspěšně uloženo {len(final_df)} Insider transakcí do databáze.")
 
 if __name__ == "__main__":
-    import sys
     master_scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'windows', 'mobile': False})
-    
-    # Detekce příkazu z GitHub budíku
-    co_spustit = sys.argv[1] if len(sys.argv) > 1 else "vsechno"
-    print(f"Spouštím aktualizaci: {co_spustit.upper()} (Pokorný Terminal)...")
-    
-    if co_spustit == "insiders":
-        update_insiders(master_scraper)
-    elif co_spustit == "superinvestors":
-        update_superinvestors(master_scraper)
-    else:
-        # Původní chování - stáhne se obojí (když to spustíš ty ručně)
-        update_superinvestors(master_scraper)
-        update_insiders(master_scraper)
-
+    print("Spouštím aktualizaci (Pokorný Terminal)...")
+    update_superinvestors(master_scraper)
+    update_insiders(master_scraper)
     print("\nData jsou připravena!")
 
-    print("\n--- ZÁLOHUJI NA GITHUB ---")
-    os.system("git add .")
-    os.system('git commit -m "Automatická aktualizace dat z Terminálu"')
-    os.system("git push")
-    print("✅ Vše je bezpečně odesláno na cloud!")
+print("\n--- ZÁLOHUJI NA GITHUB ---")
+import os
+os.system("git add .")
+os.system('git commit -m "Automatická aktualizace dat z Terminálu"')
+os.system("git push")
+print("✅ Vše je bezpečně odesláno na cloud!")
