@@ -40,12 +40,12 @@ IWF - iShares Russell 1000 Growth ETF,1.09,Reduce 0.65%,105814,$125.26,"$13,254,
 UBER - Uber Technologies Inc.,0.93,Buy,164010,$68.51,"$11,236,000",,$69.29,1.14%,$65.41,$100.35,David Katz - Matrix Asset Advisors Updated 13 Oct 2026,Q3 2026
 STZ - Constellation Brands,0.84,Add 21.18%,90009,$113.06,"$10,176,000",,$127.41,12.69%,$110.60,$166.17,David Katz - Matrix Asset Advisors Updated 13 Oct 2026,Q3 2026
 IJR - Ishares Core S&P Small Cap E,0.77,Reduce 0.58%,69038,$136.04,"$9,392,000",,$135.41,-0.46%,$110.57,$150.15,David Katz - Matrix Asset Advisors Updated 13 Oct 2026,Q3 2026
-ABBV - AbbVie Inc.,0.73,Reduce 13.24%,33896,$261.59,"$8,867,000",,$283.48,8.37%,$189.40,$285.40,David Katz - Matrix Asset Advisors Updated 13 Oct 2026,Q3 2026
+ABBV - AbbVie Inc.,0.73,Reduce 13.24%,33896,$261.59,"$8,867,000",,$283.48,8.37%,$188.25,$283.66,David Katz - Matrix Asset Advisors Updated 13 Oct 2026,Q3 2026
 VTV - Vanguard Value ETF,0.64,Add 6.70%,36068,$216.09,"$7,794,000",,$221.14,2.34%,$179.15,$227.52,David Katz - Matrix Asset Advisors Updated 13 Oct 2026,Q3 2026
 TGT - Target Corp.,0.56,Reduce 62.18%,43192,$156.70,"$6,768,000",,$155.31,-0.89%,$81.20,$170.75,David Katz - Matrix Asset Advisors Updated 13 Oct 2026,Q3 2026
 BRK.B - Berkshire Hathaway CL B,0.52,Add 8.59%,12645,$497.98,"$6,297,000",,$526.35,5.70%,$464.01,$537.74,David Katz - Matrix Asset Advisors Updated 13 Oct 2026,Q3 2026
 IWR - Ishares Russell Mid Cap ETF,0.52,Add 0.36%,59303,$106.71,"$6,328,000",,$108.22,1.42%,$90.51,$114.63,David Katz - Matrix Asset Advisors Updated 13 Oct 2026,Q3 2026
-ABT - Abbott Labs,0.43,Add 11.73%,52805,$98.84,"$5,219,000",,$102.97,4.18%,$81.39,$129.62,David Katz - Matrix Asset Advisors Updated 13 Oct 2026,Q3 2026
+ABT - Abbott Labs,0.43,Add 11.73%,52805,$98.84,"$5,219,000",,$102.97,4.18%,$80.89,$128.82,David Katz - Matrix Asset Advisors Updated 13 Oct 2026,Q3 2026
 ACN - Accenture,0.33,Add 78.47%,21928,$183.37,"$4,021,000",,$214.96,17.23%,$115.82,$282.94,David Katz - Matrix Asset Advisors Updated 13 Oct 2026,Q3 2026
 TCHP - T Rowe Price Blue Chip Growth ETF,0.32,Reduce 0.23%,75866,$51.41,"$3,900,000",,$50.94,-0.91%,$42.26,$53.26,David Katz - Matrix Asset Advisors Updated 13 Oct 2026,Q3 2026
 MDY - SPDR S&P Midcap 400 ETF Trst,0.31,Reduce 2.35%,5787,$656.82,"$3,801,000",,$659.52,0.41%,$562.03,$715.63,David Katz - Matrix Asset Advisors Updated 13 Oct 2026,Q3 2026
@@ -121,7 +121,7 @@ MDT - Medtronic plc,1.78,Add 37.23%,13783983,$78.23,"$1,078,321,000",,$94.23,20.
 NEM - Newmont Corp.,1.78,Reduce 3.76%,11570326,$93.40,"$1,080,668,000",,$111.56,19.44%,$75.34,$135.01,First Eagle Investment Management Updated 24 Aug 2026,Q2 2026
 WDAY - Workday Inc.,1.78,Add 15.98%,8824517,$122.42,"$1,080,297,000",,$188.77,54.20%,$110.36,$247.40,First Eagle Investment Management Updated 24 Aug 2026,Q2 2026
 PM - Philip Morris Intl.,1.77,Add 0.56%,5925468,$180.91,"$1,071,977,000",,$205.58,13.64%,$137.25,$205.99,First Eagle Investment Management Updated 24 Aug 2026,Q2 2026
-OKE - ONEOK Inc.,1.7,Add 1.33%,11834827,$86.94,"$1,028,920,000",,$91.97,5.79%,$84.15,$97.66,First Eagle Investment Management Updated 24 Aug 2026,Q2 2026
+OKE - ONEOK Inc.,1.7,Add 1.33%,11834827,$86.94,"$1,028,920,000",,$91.97,5.79%,$61.67,$99.85,First Eagle Investment Management Updated 24 Aug 2026,Q2 2026
 CMCSA - Comcast Corp.,1.55,Add 1.04%,38172985,$24.55,"$937,147,000",,$21.05,-14.26%,$20.48,$31.55,First Eagle Investment Management Updated 24 Aug 2026,Q2 2026
 GLD - SPDR Gold Trust,1.51,Add 1.46%,2491623,$368.38,"$917,863,000",,$375.99,2.07%,$360.12,$509.70,First Eagle Investment Management Updated 24 Aug 2026,Q2 2026
 BKNG - Booking Holdings Inc.,1.45,Buy,4916494,$178.24,"$876,316,000",,$160.68,-9.85%,$149.40,$219.22,First Eagle Investment Management Updated 24 Aug 2026,Q2 2026
@@ -223,7 +223,7 @@ SPB - Spectrum Brands Holdings Inc.,0.04,Add 24.48%,289122,$85.75,"$24,792,000",
 TEL - TE Connectivity plc,0.04,Add 3.82%,109839,$201.61,"$22,145,000",,$210.25,4.29%,$189.53,$250.61,First Eagle Investment Management Updated 24 Aug 2026,Q2 2026
 UTI - Universal Technical Institute,0.04,Add 20.78%,570235,$42.77,"$24,389,000",,$20.31,-52.51%,$18.02,$51.34,First Eagle Investment Management Updated 24 Aug 2026,Q2 2026
 ABM - ABM Industries,0.03,Add 36.56%,400085,$44.24,"$17,700,000",,$50.64,14.47%,$36.23,$50.98,First Eagle Investment Management Updated 24 Aug 2026,Q2 2026
-ACA - Arcosa Inc.,0.03,Add 0.95%,127840,$145.29,"$18,574,000",,$147.06,1.22%,$90.79,$147.50,First Eagle Investment Management Updated 24 Aug 2026,Q2 2026
+ACA - Arcosa Inc.,0.03,Add 0.95%,127840,$145.29,"$18,574,000",,$147.06,1.22%,$90.76,$147.45,First Eagle Investment Management Updated 24 Aug 2026,Q2 2026
 ADTN - ADTRAN Holdings Inc.,0.03,Reduce 8.78%,1248507,$13.90,"$17,354,000",,$6.64,-52.23%,$6.56,$19.98,First Eagle Investment Management Updated 24 Aug 2026,Q2 2026
 AIN - Albany International,0.03,Add 32.86%,272129,$74.50,"$20,274,000",,$60.61,-18.64%,$40.33,$76.61,First Eagle Investment Management Updated 24 Aug 2026,Q2 2026
 AMRC - Ameresco Inc. CL A,0.03,Add 34.89%,749081,$27.60,"$20,674,000",,$20.11,-27.14%,$18.38,$44.59,First Eagle Investment Management Updated 24 Aug 2026,Q2 2026
@@ -247,7 +247,7 @@ EXTR - Extreme Networks Inc.,0.03,Add 66.77%,582916,$32.37,"$18,869,000",,$22.46
 FLOC - Flowco Holdings Inc Cl A,0.03,Add 36.86%,778565,$21.34,"$16,615,000",,$18.48,-13.40%,$13.75,$27.97,First Eagle Investment Management Updated 24 Aug 2026,Q2 2026
 FLYW - Flywire Corp Voting,0.03,Add 44.05%,1153637,$17.57,"$20,269,000",,$18.06,2.79%,$10.55,$19.73,First Eagle Investment Management Updated 24 Aug 2026,Q2 2026
 FORM - FormFactor Inc.,0.03,Reduce 40.99%,106137,$159.93,"$16,975,000",,$119.71,-25.15%,$40.60,$160.27,First Eagle Investment Management Updated 24 Aug 2026,Q2 2026
-FUL - H.B. Fuller Co.,0.03,Add 48.45%,339343,$58.29,"$19,780,000",,$50.43,-13.48%,$46.70,$68.05,First Eagle Investment Management Updated 24 Aug 2026,Q2 2026
+FUL - H.B. Fuller Co.,0.03,Add 48.45%,339343,$58.29,"$19,780,000",,$50.43,-13.48%,$46.47,$67.72,First Eagle Investment Management Updated 24 Aug 2026,Q2 2026
 GFF - Griffon Corp.,0.03,Buy,170157,$97.53,"$16,595,000",,$92.08,-5.59%,$64.35,$108.33,First Eagle Investment Management Updated 24 Aug 2026,Q2 2026
 GLNG - Golar LNG Ltd.,0.03,Add 29.86%,360322,$49.84,"$17,958,000",,$46.03,-7.64%,$34.49,$57.22,First Eagle Investment Management Updated 24 Aug 2026,Q2 2026
 HD - Home Depot,0.03,Add 3.82%,52776,$352.68,"$18,613,000",,$295.51,-16.21%,$277.15,$389.18,First Eagle Investment Management Updated 24 Aug 2026,Q2 2026
@@ -270,7 +270,7 @@ STNG - Scorpio Tankers Inc.,0.03,Reduce 2.70%,228718,$69.26,"$15,841,000",,$85.9
 TITN - Titan Machinery Inc.,0.03,Reduce 1.78%,786899,$21.12,"$16,619,000",,$22.76,7.77%,$13.21,$26.90,First Eagle Investment Management Updated 24 Aug 2026,Q2 2026
 TKR - Timken Co.,0.03,Add 54.93%,142297,$145.32,"$20,679,000",,$112.32,-22.71%,$71.73,$145.98,First Eagle Investment Management Updated 24 Aug 2026,Q2 2026
 TMHC-OLD - Taylor Morrison Home Corp.,0.03,Reduce 5.23%,227601,$71.74,"$16,328,000",,$72.46,1.00%,$54.15,$72.50,First Eagle Investment Management Updated 24 Aug 2026,Q2 2026
-TRN - Trinity Industries,0.03,Add 11.48%,463319,$34.58,"$16,021,000",,$26.13,-24.44%,$24.06,$38.31,First Eagle Investment Management Updated 24 Aug 2026,Q2 2026
+TRN - Trinity Industries,0.03,Add 11.48%,463319,$34.58,"$16,021,000",,$26.13,-24.44%,$23.77,$37.85,First Eagle Investment Management Updated 24 Aug 2026,Q2 2026
 TRNS - Transcat Inc.,0.03,Add 13.49%,173697,$92.77,"$16,114,000",,$82.37,-11.21%,$50.23,$100.00,First Eagle Investment Management Updated 24 Aug 2026,Q2 2026
 TXN - Texas Instruments,0.03,Reduce 98.57%,52464,$298.07,"$15,638,000",,$280.65,-5.84%,$150.20,$332.33,First Eagle Investment Management Updated 24 Aug 2026,Q2 2026
 UNH - United Health Group Inc.,0.03,Add 3.82%,42364,$415.61,"$17,607,000",,$395.62,-4.81%,$252.95,$458.79,First Eagle Investment Management Updated 24 Aug 2026,Q2 2026
@@ -336,7 +336,7 @@ MCO - Moody's Corp.,3.23,Reduce 64.89%,302624,$452.92,"$137,064,000",,$462.77,2.
 GOOGL - Alphabet Inc.,0.35,Reduce 3.22%,41994,$357.36,"$15,007,000",,$347.64,-2.72%,$243.52,$408.10,AltaRock Partners Updated 17 Aug 2026,Q2 2026
 HLT - Hilton Worldwide Holdings,0.12,Reduce 0.91%,15202,$330.48,"$5,024,000",,$328.00,-0.75%,$253.04,$357.84,AltaRock Partners Updated 17 Aug 2026,Q2 2026
 C - Citigroup Inc.,18.5,Reduce 0.54%,836337,$139.96,"$117,054,000",,$122.27,-12.64%,$93.03,$147.21,Kahn Brothers Group Updated 17 Aug 2026,Q2 2026
-BAYRY - Bayer Ag Sponsored ADR,14.12,Add 0.07%,6518603,$13.70,"$89,308,000",,$12.33,-10.00%,$7.46,$15.23,Kahn Brothers Group Updated 17 Aug 2026,Q2 2026
+BAYRY - Bayer Ag Sponsored ADR,14.12,Add 0.07%,6518603,$13.70,"$89,308,000",,$12.54,-8.47%,$7.46,$15.23,Kahn Brothers Group Updated 17 Aug 2026,Q2 2026
 FLG - Flagstar Financial Inc.,9.62,Reduce 0.22%,4074720,$14.94,"$60,876,000",,$11.11,-25.64%,$10.54,$15.43,Kahn Brothers Group Updated 17 Aug 2026,Q2 2026
 GOOG - Alphabet Inc. CL C,6.75,Reduce 0.92%,120906,$353.33,"$42,720,000",,$343.65,-2.74%,$244.03,$403.96,Kahn Brothers Group Updated 17 Aug 2026,Q2 2026
 Z - Zillow Group Inc.,5.89,Add 116.84%,1182261,$31.52,"$37,265,000",,$28.33,-10.12%,$26.67,$79.40,Kahn Brothers Group Updated 17 Aug 2026,Q2 2026
@@ -356,16 +356,16 @@ XOM - ExxonMobil Holdings Corp.,0.38,Reduce 3.29%,17655,$136.73,"$2,414,000",,$1
 GNE - Genie Energy Ltd.,0.35,Reduce 13.18%,151941,$14.45,"$2,196,000",,$16.93,17.16%,$12.56,$17.09,Kahn Brothers Group Updated 17 Aug 2026,Q2 2026
 NVS - Novartis AG,0.33,Reduce 1.49%,13186,$156.76,"$2,067,000",,$146.88,-6.30%,$118.00,$165.46,Kahn Brothers Group Updated 17 Aug 2026,Q2 2026
 CSX - CSX Corp.,0.26,Reduce 4.66%,34781,$47.53,"$1,653,000",,$48.28,1.58%,$33.20,$53.45,Kahn Brothers Group Updated 17 Aug 2026,Q2 2026
-FRFHF - Fairfax Financial Holdings Ltd.,0.26,,1018,$1644.40,"$1,674,000",,$1610.00,-2.09%,$1500.00,$1933.22,Kahn Brothers Group Updated 17 Aug 2026,Q2 2026
+FRFHF - Fairfax Financial Holdings Ltd.,0.26,,1018,$1644.40,"$1,674,000",,$1602.80,-2.53%,$1500.00,$1933.22,Kahn Brothers Group Updated 17 Aug 2026,Q2 2026
 FBAK - First National Bank Alaska,0.25,,4920,$316.26,"$1,556,000",,$202.54,-35.96%,$165.01,$211.60,Kahn Brothers Group Updated 17 Aug 2026,Q2 2026
-TRMLF - Tourmaline Oil Corp,0.18,,26959,$41.80,"$1,127,000",,$45.87,9.74%,$40.04,$50.39,Kahn Brothers Group Updated 17 Aug 2026,Q2 2026
+TRMLF - Tourmaline Oil Corp,0.18,,26959,$41.80,"$1,127,000",,$45.44,8.71%,$40.04,$50.39,Kahn Brothers Group Updated 17 Aug 2026,Q2 2026
 JPM - JPMorgan Chase & Co.,0.15,Add 2.13%,2878,$327.31,"$942,000",,$335.28,2.44%,$275.06,$364.68,Kahn Brothers Group Updated 17 Aug 2026,Q2 2026
 AAPL - Apple Inc.,0.14,,3092,$289.46,"$895,000",,$342.96,18.48%,$242.76,$348.15,Kahn Brothers Group Updated 17 Aug 2026,Q2 2026
 MSFT - Microsoft Corp.,0.13,Add 3.63%,2168,$373.15,"$809,000",,$533.69,43.02%,$348.54,$551.15,Kahn Brothers Group Updated 17 Aug 2026,Q2 2026
 BAC - Bank of America Corp.,0.09,,9459,$56.98,"$539,000",,$51.39,-9.81%,$45.64,$64.89,Kahn Brothers Group Updated 17 Aug 2026,Q2 2026
 HLN - Haleon Plc ADR,0.09,Add 3.38%,58341,$9.32,"$544,000",,$9.68,3.86%,$8.59,$11.06,Kahn Brothers Group Updated 17 Aug 2026,Q2 2026
 SEIC - SEI Investments,0.09,,6596,$87.78,"$579,000",,$105.27,19.92%,$74.64,$112.15,Kahn Brothers Group Updated 17 Aug 2026,Q2 2026
-PEYUF - Peyto Exploration & Development Corp.,0.08,,31307,$16.67,"$522,000",,$17.47,4.80%,$12.59,$20.58,Kahn Brothers Group Updated 17 Aug 2026,Q2 2026
+PEYUF - Peyto Exploration & Development Corp.,0.08,,31307,$16.67,"$522,000",,$17.55,5.28%,$12.64,$20.58,Kahn Brothers Group Updated 17 Aug 2026,Q2 2026
 RFL - Rafael Holdings Inc.,0.08,Add 157.00%,150493,$3.28,"$494,000",,$1.43,-56.40%,$1.12,$3.96,Kahn Brothers Group Updated 17 Aug 2026,Q2 2026
 WRLC - Windrock Ltd Co,0.07,Add 50.28%,807,$550.19,"$444,000",,,,,,Kahn Brothers Group Updated 17 Aug 2026,Q2 2026
 CVX - Chevron Corp.,0.05,,1953,$165.90,"$324,000",,$222.04,33.84%,$142.51,$222.55,Kahn Brothers Group Updated 17 Aug 2026,Q2 2026
@@ -398,7 +398,7 @@ CVNA - Carvana Co.,2.31,Reduce 11.35%,12322311,$65.82,"$811,055,000",,$57.96,-11
 MCD - McDonald's Corp.,2.18,Reduce 21.95%,2829158,$270.31,"$764,750,000",,$238.31,-11.84%,$229.20,$335.18,Viking Global Investors Updated 14 Aug 2026,Q2 2026
 BBIO - BridgeBio Pharma Inc.,2.11,Reduce 15.99%,9949219,$74.48,"$741,018,000",,$64.94,-12.81%,$52.75,$93.42,Viking Global Investors Updated 14 Aug 2026,Q2 2026
 BA - Boeing Co.,2.02,Add 2.47%,3274825,$216.47,"$708,901,000",,$184.66,-14.69%,$176.77,$254.35,Viking Global Investors Updated 14 Aug 2026,Q2 2026
-MAA - Mid-America Apt Communties,2.0,Add 5.10%,5043318,$138.94,"$700,719,000",,$115.62,-16.78%,$113.95,$142.76,Viking Global Investors Updated 14 Aug 2026,Q2 2026
+MAA - Mid-America Apt Communties,2.0,Add 5.10%,5043318,$138.94,"$700,719,000",,$115.62,-16.78%,$112.44,$140.87,Viking Global Investors Updated 14 Aug 2026,Q2 2026
 DIS - Walt Disney Co.,1.96,Reduce 46.17%,7158406,$96.25,"$688,997,000",,$108.99,13.24%,$91.48,$115.42,Viking Global Investors Updated 14 Aug 2026,Q2 2026
 FDX - FedEx Corp.,1.92,Add 11.38%,2151983,$313.13,"$673,850,000",,$291.28,-6.98%,$182.16,$342.73,Viking Global Investors Updated 14 Aug 2026,Q2 2026
 MSCI - MSCI Inc.,1.85,Buy,1160687,$560.04,"$650,031,000",,$560.52,0.09%,$495.54,$642.47,Viking Global Investors Updated 14 Aug 2026,Q2 2026
@@ -480,7 +480,7 @@ ACI - Albertsons Co Inc.,6.09,Add 16.39%,8636262,$13.53,"$116,848,000",,$13.08,-
 REGN - Regeneron Pharmaceuticals,4.95,Add 16.58%,152322,$623.54,"$94,979,000",,$778.36,24.83%,$561.12,$859.34,Mason Hawkins - Southeastern Asset Management Updated 14 Aug 2026,Q2 2026
 FBIN - Fortune Brands Innovations Inc.,4.83,Reduce 21.65%,1687109,$54.90,"$92,623,000",,$38.82,-29.29%,$31.92,$63.70,Mason Hawkins - Southeastern Asset Management Updated 14 Aug 2026,Q2 2026
 KHC - Kraft Heinz Co.,4.45,Reduce 8.63%,3607946,$23.62,"$85,220,000",,$22.70,-3.90%,$20.34,$27.65,Mason Hawkins - Southeastern Asset Management Updated 14 Aug 2026,Q2 2026
-ABT - Abbott Labs,3.98,Buy,840747,$90.74,"$76,289,000",,$102.97,13.48%,$81.39,$129.62,Mason Hawkins - Southeastern Asset Management Updated 14 Aug 2026,Q2 2026
+ABT - Abbott Labs,3.98,Buy,840747,$90.74,"$76,289,000",,$102.97,13.48%,$80.89,$128.82,Mason Hawkins - Southeastern Asset Management Updated 14 Aug 2026,Q2 2026
 FDX - FedEx Corp.,3.18,Reduce 21.28%,194828,$313.13,"$61,007,000",,$291.28,-6.98%,$182.16,$342.73,Mason Hawkins - Southeastern Asset Management Updated 14 Aug 2026,Q2 2026
 MGM - MGM Resorts International,2.92,Reduce 29.67%,1169513,$47.81,"$55,914,000",,$28.96,-39.43%,$28.72,$51.59,Mason Hawkins - Southeastern Asset Management Updated 14 Aug 2026,Q2 2026
 ESRT - Empire State Realty Trust Inc.,2.45,Add 34.34%,8696434,$5.41,"$47,048,000",,$4.78,-11.65%,$3.93,$7.83,Mason Hawkins - Southeastern Asset Management Updated 14 Aug 2026,Q2 2026
@@ -490,7 +490,7 @@ GLIBK - GCI Liberty Inc. Series C,2.18,Add 46.50%,1935424,$21.56,"$41,728,000",,
 CNH - CNH Industrial NV,2.06,Reduce 5.34%,3518270,$11.23,"$39,510,000",,$11.98,6.68%,$8.91,$14.46,Mason Hawkins - Southeastern Asset Management Updated 14 Aug 2026,Q2 2026
 SHEN - Shenandoah Telecommunications Co.,2.06,Reduce 11.00%,2616797,$15.08,"$39,462,000",,$10.42,-30.90%,$9.67,$17.35,Mason Hawkins - Southeastern Asset Management Updated 14 Aug 2026,Q2 2026
 WTM - White Mountains Insurance,1.85,Reduce 9.33%,17104,$2073.37,"$35,463,000",,$2098.01,1.19%,$1829.30,$2333.00,Mason Hawkins - Southeastern Asset Management Updated 14 Aug 2026,Q2 2026
-GHC - Graham Holdings Co.,1.74,Reduce 22.79%,29156,$1141.45,"$33,280,000",,$1186.33,3.93%,$929.32,$1262.35,Mason Hawkins - Southeastern Asset Management Updated 14 Aug 2026,Q2 2026
+GHC - Graham Holdings Co.,1.74,Reduce 22.79%,29156,$1141.45,"$33,280,000",,$1186.33,3.93%,$927.85,$1260.34,Mason Hawkins - Southeastern Asset Management Updated 14 Aug 2026,Q2 2026
 BATRK - Atlanta Braves Holdings Inc. Series C,1.64,Reduce 9.82%,605091,$51.90,"$31,404,000",,$49.76,-4.12%,$37.76,$54.86,Mason Hawkins - Southeastern Asset Management Updated 14 Aug 2026,Q2 2026
 TRIP - TripAdvisor Inc.,1.62,Reduce 50.88%,2258466,$13.71,"$30,964,000",,$8.93,-34.87%,$8.02,$17.82,Mason Hawkins - Southeastern Asset Management Updated 14 Aug 2026,Q2 2026
 FIS - Fidelity National Information Services,1.56,Reduce 7.05%,769137,$38.88,"$29,904,000",,$35.47,-8.77%,$32.10,$66.44,Mason Hawkins - Southeastern Asset Management Updated 14 Aug 2026,Q2 2026
@@ -1120,7 +1120,7 @@ CRH - CRH plc,2.77,Add 80.36%,2665296,$107.00,"$285,187,000",,$79.20,-25.98%,$78
 CLH - Clean Harbors Inc.,2.59,Reduce 15.09%,892405,$298.75,"$266,606,000",,$319.24,6.86%,$201.34,$335.94,Henry Ellenbogen - Durable Capital Partners Updated 14 Aug 2026,Q2 2026
 SHOP - Shopify Inc.,2.59,Add 140.34%,2335694,$114.18,"$266,690,000",,$172.50,51.08%,$94.00,$182.19,Henry Ellenbogen - Durable Capital Partners Updated 14 Aug 2026,Q2 2026
 RKT - Rocket Companies Inc.,2.53,Reduce 14.59%,16488238,$15.75,"$259,690,000",,$10.53,-33.14%,$10.18,$24.36,Henry Ellenbogen - Durable Capital Partners Updated 14 Aug 2026,Q2 2026
-VSEC - VSE Corp.,2.18,Reduce 30.22%,980310,$228.50,"$224,001,000",,$158.65,-30.57%,$155.28,$247.85,Henry Ellenbogen - Durable Capital Partners Updated 14 Aug 2026,Q2 2026
+VSEC - VSE Corp.,2.18,Reduce 30.22%,980310,$228.50,"$224,001,000",,$158.65,-30.57%,$155.18,$247.69,Henry Ellenbogen - Durable Capital Partners Updated 14 Aug 2026,Q2 2026
 FLS - Flowserve Corp.,2.1,Add 205.84%,2911004,$74.16,"$215,880,000",,$70.20,-5.34%,$48.52,$91.59,Henry Ellenbogen - Durable Capital Partners Updated 14 Aug 2026,Q2 2026
 FOUR - Shift4 Payments Inc. CL A,2.09,Reduce 28.26%,4423633,$48.64,"$215,166,000",,$37.99,-21.90%,$34.56,$78.13,Henry Ellenbogen - Durable Capital Partners Updated 14 Aug 2026,Q2 2026
 WRBY - Warby Parker Inc.,1.89,,6396513,$30.34,"$194,070,000",,$24.92,-17.86%,$14.96,$31.00,Henry Ellenbogen - Durable Capital Partners Updated 14 Aug 2026,Q2 2026
@@ -1190,7 +1190,7 @@ ICE - Intercontinental Exchange Inc.,2.96,Add 10.45%,18050700,$123.11,"$2,222,22
 TRGP - Targa Resources Corp.,2.83,Reduce 9.01%,7937530,$268.14,"$2,128,369,000",,$290.91,8.49%,$141.11,$307.94,Bill Nygren - Oakmark Funds Updated 14 Aug 2026,Q2 2026
 FCNCA - First Citizens Bancshares,2.55,Reduce 3.03%,919347,$2080.79,"$1,912,968,000",,$2055.34,-1.22%,$1617.01,$2294.10,Bill Nygren - Oakmark Funds Updated 14 Aug 2026,Q2 2026
 ELV - Elevance Health Inc.,2.53,Add 2.67%,4924511,$386.73,"$1,904,456,000",,$428.09,10.69%,$270.87,$434.35,Bill Nygren - Oakmark Funds Updated 14 Aug 2026,Q2 2026
-DAL - Delta Air Lines Inc.,2.16,Reduce 3.74%,17329926,$93.66,"$1,623,121,000",,$76.65,-18.16%,$54.60,$95.44,Bill Nygren - Oakmark Funds Updated 14 Aug 2026,Q2 2026
+DAL - Delta Air Lines Inc.,2.16,Reduce 3.74%,17329926,$93.66,"$1,623,121,000",,$76.65,-18.16%,$54.45,$95.18,Bill Nygren - Oakmark Funds Updated 14 Aug 2026,Q2 2026
 COP - ConocoPhillips,2.1,Reduce 12.91%,15178673,$103.96,"$1,577,975,000",,$142.34,36.92%,$82.95,$142.55,Bill Nygren - Oakmark Funds Updated 14 Aug 2026,Q2 2026
 MRK - Merck & Co.,2.06,Reduce 2.38%,12073109,$128.50,"$1,551,395,000",,$147.37,14.68%,$79.67,$156.00,Bill Nygren - Oakmark Funds Updated 14 Aug 2026,Q2 2026
 WTW - Willis Towers Watson plc,2.05,Reduce 1.82%,5908033,$261.37,"$1,544,182,000",,$297.09,13.67%,$238.94,$350.34,Bill Nygren - Oakmark Funds Updated 14 Aug 2026,Q2 2026
@@ -1292,7 +1292,7 @@ TXN - Texas Instruments,0.02,Reduce 2.63%,46260,$298.08,"$13,789,000",,$280.65,-
 BIRK - Birkenstock Holding Plc,0.01,Buy,185100,$43.03,"$7,965,000",,$33.92,-21.17%,$29.93,$50.73,Bill Nygren - Oakmark Funds Updated 14 Aug 2026,Q2 2026
 BNY - Bank of New York Mellon Corp.,0.01,Reduce 1.31%,42419,$144.61,"$6,134,000",,$137.64,-4.82%,$101.34,$165.84,Bill Nygren - Oakmark Funds Updated 14 Aug 2026,Q2 2026
 WAT - Waters Corp.,0.01,Reduce 93.62%,18413,$375.06,"$6,906,000",,$436.61,16.41%,$282.77,$454.54,Bill Nygren - Oakmark Funds Updated 14 Aug 2026,Q2 2026
-ABBV - AbbVie Inc.,0.0,Reduce 9.77%,2420,$251.65,"$609,000",,$283.48,12.65%,$189.40,$285.40,Bill Nygren - Oakmark Funds Updated 14 Aug 2026,Q2 2026
+ABBV - AbbVie Inc.,0.0,Reduce 9.77%,2420,$251.65,"$609,000",,$283.48,12.65%,$188.25,$283.66,Bill Nygren - Oakmark Funds Updated 14 Aug 2026,Q2 2026
 ACWI - iShares MSCI ACWI ETF,0.0,,1092,$156.59,"$171,000",,$158.75,1.38%,$132.79,$162.80,Bill Nygren - Oakmark Funds Updated 14 Aug 2026,Q2 2026
 AMAT - Applied Materials,0.0,Reduce 11.59%,1945,$722.88,"$1,406,000",,$446.63,-38.22%,$202.28,$738.88,Bill Nygren - Oakmark Funds Updated 14 Aug 2026,Q2 2026
 AMD - Advanced Micro Devices,0.0,Buy,875,$580.57,"$508,000",,$570.82,-1.68%,$188.22,$658.52,Bill Nygren - Oakmark Funds Updated 14 Aug 2026,Q2 2026
@@ -1365,7 +1365,7 @@ MCO - Moody's Corp.,3.73,,24669778,$452.92,"$11,173,436,000",,$462.77,2.17%,$399
 GOOG - Alphabet Inc. CL C,3.21,Add 658.35%,27188433,$353.33,"$9,606,489,000",,$343.65,-2.74%,$244.03,$403.96,Warren Buffett - Berkshire Hathaway Updated 14 Aug 2026,Q2 2026
 KHC - Kraft Heinz Co.,2.57,,325634818,$23.62,"$7,691,494,000",,$22.70,-3.90%,$20.34,$27.65,Warren Buffett - Berkshire Hathaway Updated 14 Aug 2026,Q2 2026
 DVA - DaVita HealthCare Partners,2.15,Reduce 4.05%,28880209,$222.48,"$6,425,269,000",,$180.70,-18.78%,$101.00,$247.49,Warren Buffett - Berkshire Hathaway Updated 14 Aug 2026,Q2 2026
-DAL - Delta Air Lines Inc.,1.79,Add 43.99%,57320000,$93.66,"$5,368,591,000",,$76.65,-18.16%,$54.60,$95.44,Warren Buffett - Berkshire Hathaway Updated 14 Aug 2026,Q2 2026
+DAL - Delta Air Lines Inc.,1.79,Add 43.99%,57320000,$93.66,"$5,368,591,000",,$76.65,-18.16%,$54.45,$95.18,Warren Buffett - Berkshire Hathaway Updated 14 Aug 2026,Q2 2026
 SIRI - SiriusXM Holdings Inc,1.23,,124807117,$29.54,"$3,686,803,000",,$26.51,-10.26%,$19.15,$32.37,Warren Buffett - Berkshire Hathaway Updated 14 Aug 2026,Q2 2026
 VRSN - Verisign Inc.,0.76,,8989880,$251.56,"$2,261,495,000",,$301.41,19.82%,$206.93,$311.57,Warren Buffett - Berkshire Hathaway Updated 14 Aug 2026,Q2 2026
 KR - Kroger Co.,0.72,Reduce 22.00%,39000000,$55.53,"$2,165,671,000",,$63.09,13.61%,$53.78,$75.66,Warren Buffett - Berkshire Hathaway Updated 14 Aug 2026,Q2 2026
@@ -1912,7 +1912,7 @@ META - Meta Platforms Inc.,1.72,Add 2.54%,332871,$563.29,"$187,503,000",,$737.54
 FAST - Fastenal,1.71,Reduce 1.31%,3870891,$48.03,"$185,919,000",,$52.00,8.27%,$38.34,$52.92,Mairs & Power Funds Updated 14 Aug 2026,Q2 2026
 SHW - Sherwin-Williams,1.39,Add 0.65%,440586,$344.32,"$151,703,000",,$324.54,-5.74%,$289.19,$375.09,Mairs & Power Funds Updated 14 Aug 2026,Q2 2026
 CHRW - C.H. Robinson Worldwide,1.33,Reduce 9.14%,770708,$188.34,"$145,155,000",,$139.45,-25.96%,$123.47,$209.43,Mairs & Power Funds Updated 14 Aug 2026,Q2 2026
-FUL - H.B. Fuller Co.,1.3,Add 3.11%,2435168,$58.29,"$141,946,000",,$50.43,-13.48%,$46.70,$68.05,Mairs & Power Funds Updated 14 Aug 2026,Q2 2026
+FUL - H.B. Fuller Co.,1.3,Add 3.11%,2435168,$58.29,"$141,946,000",,$50.43,-13.48%,$46.47,$67.72,Mairs & Power Funds Updated 14 Aug 2026,Q2 2026
 VZ - Verizon Communications,1.28,Reduce 0.71%,3291850,$42.34,"$139,377,000",,$44.42,4.91%,$36.00,$50.88,Mairs & Power Funds Updated 14 Aug 2026,Q2 2026
 WM - Waste Management Inc.,1.21,Add 48.41%,591025,$222.88,"$131,728,000",,$215.75,-3.20%,$190.92,$246.06,Mairs & Power Funds Updated 14 Aug 2026,Q2 2026
 ROK - Rockwell Automation Inc.,1.17,Reduce 9.08%,257811,$495.08,"$127,637,000",,$423.42,-14.47%,$339.27,$495.83,Mairs & Power Funds Updated 14 Aug 2026,Q2 2026
@@ -1924,7 +1924,7 @@ HRL - Hormel Foods Corp.,0.77,Reduce 0.58%,3398047,$24.82,"$84,340,000",,$19.81,
 AJG - Arthur J. Gallagher & Co.,0.66,Buy,311539,$229.57,"$71,520,000",,$237.04,3.25%,$189.61,$301.03,Mairs & Power Funds Updated 14 Aug 2026,Q2 2026
 CASY - Casey's Gen'l Stores,0.66,Reduce 5.02%,91125,$794.79,"$72,425,000",,$653.61,-17.76%,$496.20,$927.15,Mairs & Power Funds Updated 14 Aug 2026,Q2 2026
 WFC - Wells Fargo,0.66,Reduce 36.14%,872186,$82.64,"$72,077,000",,$80.90,-2.11%,$72.36,$96.18,Mairs & Power Funds Updated 14 Aug 2026,Q2 2026
-ABT - Abbott Labs,0.61,Add 1.05%,729358,$90.74,"$66,182,000",,$102.97,13.48%,$81.39,$129.62,Mairs & Power Funds Updated 14 Aug 2026,Q2 2026
+ABT - Abbott Labs,0.61,Add 1.05%,729358,$90.74,"$66,182,000",,$102.97,13.48%,$80.89,$128.82,Mairs & Power Funds Updated 14 Aug 2026,Q2 2026
 TXN - Texas Instruments,0.59,Reduce 5.93%,217453,$298.07,"$64,816,000",,$280.65,-5.84%,$150.20,$332.33,Mairs & Power Funds Updated 14 Aug 2026,Q2 2026
 TNC - Tennant Co.,0.55,Reduce 15.14%,681800,$87.54,"$59,685,000",,$65.66,-24.99%,$59.62,$91.52,Mairs & Power Funds Updated 14 Aug 2026,Q2 2026
 ISRG - Intuitive Surgical Inc.,0.53,Add 46.63%,146459,$397.68,"$58,244,000",,$420.24,5.67%,$328.57,$603.88,Mairs & Power Funds Updated 14 Aug 2026,Q2 2026
@@ -1961,7 +1961,7 @@ PFG - Principal Financial Group,0.13,Reduce 17.45%,135283,$107.78,"$14,581,000",
 AIR - AAR Corp.,0.11,Reduce 6.11%,83933,$142.94,"$11,997,000",,$97.06,-32.10%,$76.10,$154.00,Mairs & Power Funds Updated 14 Aug 2026,Q2 2026
 BRK.B - Berkshire Hathaway CL B,0.11,Reduce 1.42%,23590,$500.38,"$11,804,000",,$526.35,5.19%,$464.01,$537.74,Mairs & Power Funds Updated 14 Aug 2026,Q2 2026
 PLXS - Plexus Corp.,0.11,Reduce 14.37%,39276,$300.67,"$11,809,000",,$245.72,-18.28%,$132.03,$307.06,Mairs & Power Funds Updated 14 Aug 2026,Q2 2026
-ABBV - AbbVie Inc.,0.1,Reduce 1.36%,44702,$251.64,"$11,249,000",,$283.48,12.65%,$189.40,$285.40,Mairs & Power Funds Updated 14 Aug 2026,Q2 2026
+ABBV - AbbVie Inc.,0.1,Reduce 1.36%,44702,$251.64,"$11,249,000",,$283.48,12.65%,$188.25,$283.66,Mairs & Power Funds Updated 14 Aug 2026,Q2 2026
 AMBA - Ambarella Inc.,0.1,Add 7.46%,126353,$85.80,"$10,841,000",,$61.46,-28.37%,$48.30,$96.69,Mairs & Power Funds Updated 14 Aug 2026,Q2 2026
 HSY - Hershey Co.,0.1,Reduce 5.45%,61044,$175.45,"$10,710,000",,$164.25,-6.38%,$156.16,$235.80,Mairs & Power Funds Updated 14 Aug 2026,Q2 2026
 KNF - Knife River Corp.,0.1,Reduce 4.50%,128377,$83.65,"$10,739,000",,$47.98,-42.64%,$47.79,$96.28,Mairs & Power Funds Updated 14 Aug 2026,Q2 2026
@@ -2235,7 +2235,7 @@ B - Barrick Mining Corp.,3.12,Add 22.14%,3206087,$36.73,"$117,760,000",,$38.89,5
 ITUB - ita Unibanco Holding S.A.,2.59,Reduce 1.73%,11977665,$8.17,"$97,858,000",,$9.68,18.48%,$6.13,$10.20,Howard Marks - Oaktree Capital Management Updated 14 Aug 2026,Q2 2026
 LBTYA - Liberty Global Ltd CL A,2.57,,8551191,$11.37,"$97,227,000",,$8.17,-28.14%,$8.13,$13.52,Howard Marks - Oaktree Capital Management Updated 14 Aug 2026,Q2 2026
 OCSL - Oaktree Specialty Lending Corp,2.49,Add 324.96%,7872199,$11.94,"$93,994,000",,$11.50,-3.69%,$10.07,$12.98,Howard Marks - Oaktree Capital Management Updated 14 Aug 2026,Q2 2026
-FCX - Freeport-McMoran Inc.,2.0,Reduce 1.56%,1201122,$62.89,"$75,539,000",,$69.62,10.70%,$38.27,$80.24,Howard Marks - Oaktree Capital Management Updated 14 Aug 2026,Q2 2026
+FCX - Freeport-McMoran Inc.,2.0,Reduce 1.56%,1201122,$62.89,"$75,539,000",,$69.62,10.70%,$38.18,$80.07,Howard Marks - Oaktree Capital Management Updated 14 Aug 2026,Q2 2026
 AERO - Grupo Aeromexico Sab De Cv,1.89,,3968686,$18.00,"$71,436,000",,$16.04,-10.89%,$12.26,$23.05,Howard Marks - Oaktree Capital Management Updated 14 Aug 2026,Q2 2026
 KRC - Kilroy Realty Corp.,1.83,,1850011,$37.47,"$69,320,000",,$33.30,-11.13%,$26.46,$40.89,Howard Marks - Oaktree Capital Management Updated 14 Aug 2026,Q2 2026
 SE - Sea Ltd,1.61,Buy,635443,$95.83,"$60,895,000",,$95.31,-0.54%,$77.05,$184.96,Howard Marks - Oaktree Capital Management Updated 14 Aug 2026,Q2 2026
@@ -2264,7 +2264,7 @@ LILA - Liberty LiLAC Group A,0.17,,839020,$7.84,"$6,578,000",,$8.10,3.32%,$4.73,
 BATL - Battalion Oil Corp.,0.1,,3009912,$1.31,"$3,943,000",,$1.03,-21.37%,$1.00,$29.70,Howard Marks - Oaktree Capital Management Updated 14 Aug 2026,Q2 2026
 DPC - Dpc Holdings Plc,0.1,Buy,75000,$49.07,"$3,680,000",,$32.62,-33.52%,$30.46,$57.25,Howard Marks - Oaktree Capital Management Updated 14 Aug 2026,Q2 2026
 SVC - Service Properties Trust,0.09,Buy,397676,$8.45,"$3,360,000",,$5.85,-30.77%,$5.58,$12.00,Howard Marks - Oaktree Capital Management Updated 14 Aug 2026,Q2 2026
-BTAIQ - Bioxcel Therapeutics Inc,0.05,Add 472.27%,1380248,$1.41,"$1,946,000",,$0.03,-97.87%,$0.02,$1.21,Howard Marks - Oaktree Capital Management Updated 14 Aug 2026,Q2 2026
+BTAIQ - Bioxcel Therapeutics Inc,0.05,Add 472.27%,1380248,$1.41,"$1,946,000",,$0.04,-97.16%,$0.02,$1.21,Howard Marks - Oaktree Capital Management Updated 14 Aug 2026,Q2 2026
 NNBR - NN Inc.,0.05,Buy,510943,$3.59,"$1,834,000",,$3.46,-3.62%,$1.10,$4.79,Howard Marks - Oaktree Capital Management Updated 14 Aug 2026,Q2 2026
 TEO - Telecom Argentina S.A.,0.04,Reduce 92.84%,116105,$13.00,"$1,509,000",,$12.42,-4.46%,$7.04,$16.34,Howard Marks - Oaktree Capital Management Updated 14 Aug 2026,Q2 2026
 ALVOW - Alvotech SA 27,0.03,,4666667,$0.23,"$1,073,000",,$0.27,17.39%,$0.12,$3.00,Howard Marks - Oaktree Capital Management Updated 14 Aug 2026,Q2 2026
@@ -2464,9 +2464,9 @@ TGT - Target Corp.,0.01,Reduce 1.06%,95639,$130.61,"$12,491,000",,$155.31,18.91%
 WMT - Walmart Inc.,0.01,Reduce 1.08%,172435,$113.26,"$19,530,000",,$116.16,2.56%,$98.06,$134.83,Dodge & Cox Funds Updated 13 Aug 2026,Q2 2026
 XOM - ExxonMobil Holdings Corp.,0.01,,73858,$136.72,"$10,098,000",,$177.01,29.47%,$107.28,$177.43,Dodge & Cox Funds Updated 13 Aug 2026,Q2 2026
 AAPL - Apple Inc.,0.0,Reduce 0.71%,31382,$289.37,"$9,081,000",,$342.96,18.52%,$242.76,$348.15,Dodge & Cox Funds Updated 13 Aug 2026,Q2 2026
-ABBV - AbbVie Inc.,0.0,,10393,$251.61,"$2,615,000",,$283.48,12.67%,$189.40,$285.40,Dodge & Cox Funds Updated 13 Aug 2026,Q2 2026
+ABBV - AbbVie Inc.,0.0,,10393,$251.61,"$2,615,000",,$283.48,12.67%,$188.25,$283.66,Dodge & Cox Funds Updated 13 Aug 2026,Q2 2026
 ABEV - Ambev S.A.,0.0,Reduce 17.50%,252700,$3.14,"$793,000",,$3.25,3.50%,$2.12,$3.42,Dodge & Cox Funds Updated 13 Aug 2026,Q2 2026
-ABT - Abbott Labs,0.0,,17324,$90.74,"$1,572,000",,$102.97,13.48%,$81.39,$129.62,Dodge & Cox Funds Updated 13 Aug 2026,Q2 2026
+ABT - Abbott Labs,0.0,,17324,$90.74,"$1,572,000",,$102.97,13.48%,$80.89,$128.82,Dodge & Cox Funds Updated 13 Aug 2026,Q2 2026
 ADI - Analog Devices,0.0,Reduce 4.05%,19210,$397.19,"$7,630,000",,$403.57,1.61%,$220.71,$444.56,Dodge & Cox Funds Updated 13 Aug 2026,Q2 2026
 AFYA - Afya Ltd,0.0,,51287,$14.84,"$761,000",,$14.39,-3.03%,$11.62,$16.16,Dodge & Cox Funds Updated 13 Aug 2026,Q2 2026
 ALL - Allstate Corp.,0.0,,2595,$237.76,"$617,000",,$236.17,-0.67%,$184.51,$276.07,Dodge & Cox Funds Updated 13 Aug 2026,Q2 2026
@@ -2584,7 +2584,7 @@ UBS - UBS AG,1.57,Reduce 23.21%,953734,$49.56,"$47,267,000",,$47.15,-4.86%,$35.3
 FISV - Fiserv Inc.,1.55,Reduce 1.50%,953637,$49.05,"$46,776,000",,$46.07,-6.08%,$43.87,$128.78,Samantha McLemore - Patient Capital Management Updated 13 Aug 2026,Q2 2026
 EXPE - Expedia Group Inc.,1.43,Add 0.02%,167814,$255.88,"$42,941,000",,$274.69,7.35%,$184.28,$341.51,Samantha McLemore - Patient Capital Management Updated 13 Aug 2026,Q2 2026
 OMF - OneMain Holdings,1.42,Reduce 10.11%,702369,$60.97,"$42,824,000",,$54.64,-10.38%,$44.20,$68.16,Samantha McLemore - Patient Capital Management Updated 13 Aug 2026,Q2 2026
-DAL - Delta Air Lines Inc.,1.34,Reduce 21.95%,431215,$93.66,"$40,388,000",,$76.65,-18.16%,$54.60,$95.44,Samantha McLemore - Patient Capital Management Updated 13 Aug 2026,Q2 2026
+DAL - Delta Air Lines Inc.,1.34,Reduce 21.95%,431215,$93.66,"$40,388,000",,$76.65,-18.16%,$54.45,$95.18,Samantha McLemore - Patient Capital Management Updated 13 Aug 2026,Q2 2026
 JD - JD.com Inc.,1.17,Reduce 1.55%,1377719,$25.48,"$35,104,000",,$26.68,4.71%,$23.66,$34.30,Samantha McLemore - Patient Capital Management Updated 13 Aug 2026,Q2 2026
 SOFI - SoFi Technologies Inc.,0.9,Add 13.53%,1505629,$17.93,"$26,996,000",,$14.22,-20.69%,$13.92,$32.73,Samantha McLemore - Patient Capital Management Updated 13 Aug 2026,Q2 2026
 TEM - Tempus Ai Inc,0.77,Reduce 9.39%,400698,$57.93,"$23,212,000",,$68.32,17.94%,$40.77,$97.25,Samantha McLemore - Patient Capital Management Updated 13 Aug 2026,Q2 2026
@@ -2744,23 +2744,23 @@ GOOG - Alphabet Inc. CL C,12.07,Reduce 9.02%,3048077,$353.33,"$1,076,977,000",,$
 BRK.A - Berkshire Hathaway CL A,12.01,Reduce 1.92%,1432,$748849.86,"$1,072,353,000",,$789585.01,5.44%,$698000.00,$806102.81,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
 PM - Philip Morris Intl.,9.18,Reduce 1.61%,4530846,$180.91,"$819,675,000",,$205.58,13.64%,$137.25,$205.99,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
 MA - Mastercard Inc.,8.76,Reduce 2.11%,1522395,$513.60,"$781,902,000",,$603.24,17.45%,$463.04,$606.61,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
-CFRHF - Compagnie Financiere Richemont SA,8.67,Reduce 2.96%,3345346,$231.27,"$773,662,000",,$202.33,-12.51%,$158.90,$247.85,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
-HKHHF - Heineken Holding NV,7.61,Reduce 2.15%,8905683,$76.32,"$679,640,000",,$73.59,-3.58%,$64.00,$84.80,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
-NSRGY - Nestle,6.11,Reduce 3.04%,5314898,$102.69,"$545,787,000",,$92.44,-9.98%,$87.52,$107.17,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
+CFRHF - Compagnie Financiere Richemont SA,8.67,Reduce 2.96%,3345346,$231.27,"$773,662,000",,$205.84,-11.00%,$158.90,$247.85,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
+HKHHF - Heineken Holding NV,7.61,Reduce 2.15%,8905683,$76.32,"$679,640,000",,$76.54,0.29%,$65.51,$84.80,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
+NSRGY - Nestle,6.11,Reduce 3.04%,5314898,$102.69,"$545,787,000",,$94.54,-7.94%,$87.52,$107.17,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
 BRK.B - Berkshire Hathaway CL B,6.05,Reduce 2.80%,1079364,$500.39,"$540,103,000",,$526.35,5.19%,$464.01,$537.74,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
 SUNB - Sunbelt Rentals Holdings Inc,4.96,Reduce 2.49%,5916003,$74.80,"$442,542,000",,$75.61,1.08%,$60.16,$85.44,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
 NFLX - Netflix Inc.,4.57,Add 1.77%,5710088,$71.40,"$407,700,000",,$70.57,-1.16%,$65.08,$124.86,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
 MLM - Martin Marietta,4.56,Reduce 1.40%,705367,$576.70,"$406,785,000",,$471.10,-18.31%,$464.92,$707.94,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
 UBER - Uber Technologies Inc.,4.11,Reduce 1.73%,5084015,$72.16,"$366,863,000",,$69.29,-3.98%,$65.41,$100.35,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
-ERFSF - Eurofins Scientific SE,3.6,Add 32.22%,4094034,$78.38,"$320,909,000",,$88.00,12.27%,$64.33,$92.97,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
+ERFSF - Eurofins Scientific SE,3.6,Add 32.22%,4094034,$78.38,"$320,909,000",,$86.61,10.50%,$64.33,$92.97,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
 DASH - DoorDash Inc.,2.45,Add 18.47%,1186104,$184.53,"$218,872,000",,$184.01,-0.28%,$143.30,$285.50,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
-PDRDF - Pernod Ricard,1.92,Reduce 5.17%,2351360,$73.01,"$171,675,000",,$73.74,1.00%,$65.20,$100.90,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
+PDRDF - Pernod Ricard,1.92,Reduce 5.17%,2351360,$73.01,"$171,675,000",,$71.90,-1.52%,$65.20,$100.90,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
 CMCSA - Comcast Corp.,0.6,Reduce 2.64%,2193660,$24.55,"$53,854,000",,$21.05,-14.26%,$20.48,$31.55,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
 BF.A - Brown-Forman Corp. CL A,0.49,Reduce 3.04%,1597815,$27.36,"$43,716,000",,$28.85,5.45%,$22.63,$30.62,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
 V - Visa Inc.,0.34,Reduce 6.99%,87256,$343.09,"$29,937,000",,$391.43,14.09%,$292.74,$397.19,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
 XOM - ExxonMobil Holdings Corp.,0.28,Reduce 6.57%,181200,$136.72,"$24,774,000",,$177.01,29.47%,$107.28,$177.43,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
 BF.B - Brown-Forman Corp.,0.19,Reduce 3.09%,639282,$26.65,"$17,037,000",,$28.29,6.15%,$22.23,$30.85,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
-BUDFF - Anheuser Busch Inbev SA NV,0.16,Reduce 6.91%,171294,$83.07,"$14,230,000",,$78.69,-5.27%,$58.11,$86.78,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
+BUDFF - Anheuser Busch Inbev SA NV,0.16,Reduce 6.91%,171294,$83.07,"$14,230,000",,$79.38,-4.44%,$58.99,$86.78,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
 MO - Altria Group Inc.,0.12,Reduce 9.64%,148603,$71.95,"$10,692,000",,$73.13,1.64%,$52.17,$75.85,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
 CR - Crane Co,0.11,Reduce 5.77%,43937,$223.07,"$9,801,000",,$203.97,-8.56%,$159.16,$230.22,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
 JPM - JPMorgan Chase & Co.,0.09,Reduce 83.39%,24719,$327.32,"$8,091,000",,$335.28,2.43%,$275.06,$364.68,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
@@ -2769,7 +2769,7 @@ UNP - Union Pacific,0.08,Reduce 6.50%,25841,$272.01,"$7,029,000",,$286.43,5.30%,
 DOV - Dover Corp.,0.05,Reduce 1.44%,18851,$224.29,"$4,228,000",,$193.33,-13.80%,$159.64,$235.79,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
 COST - Costco Co.,0.04,Reduce 26.49%,3399,$935.57,"$3,180,000",,$982.00,4.96%,$840.35,$1094.76,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
 GOOGL - Alphabet Inc.,0.04,Reduce 4.27%,11114,$357.39,"$3,972,000",,$347.64,-2.73%,$243.52,$408.10,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
-ABBV - AbbVie Inc.,0.03,,12410,$251.65,"$3,123,000",,$283.48,12.65%,$189.40,$285.40,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
+ABBV - AbbVie Inc.,0.03,,12410,$251.65,"$3,123,000",,$283.48,12.65%,$188.25,$283.66,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
 WRBY - Warby Parker Inc.,0.03,,80000,$30.34,"$2,427,000",,$24.92,-17.86%,$14.96,$31.00,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
 AKBLF - Alk Abello A s,0.02,Add 6.00%,53000,$37.36,"$1,980,000",,$33.70,-9.80%,$30.50,$38.89,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
 AXP - American Express,0.02,Reduce 20.97%,5125,$338.34,"$1,734,000",,$306.95,-9.28%,$288.37,$383.18,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
@@ -2779,21 +2779,21 @@ FLMNF - Fielmann Group Ag,0.02,,33000,$48.94,"$1,615,000",,$42.50,-13.16%,$42.50
 FLUIF - Fluidra SA,0.02,,70000,$22.64,"$1,585,000",,$22.51,-0.57%,$22.00,$29.81,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
 KNCRF - Konecranes Oyj,0.02,,52500,$30.72,"$1,613,000",,$37.95,23.54%,$28.27,$37.95,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
 LEVI - Levi Strauss & Co.,0.02,Add 1.21%,83725,$24.83,"$2,079,000",,$19.57,-21.18%,$17.50,$25.70,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
-LRLCF - L'Oreal SA,0.02,,3705,$438.60,"$1,625,000",,$426.00,-2.87%,$374.08,$477.54,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
+LRLCF - L'Oreal SA,0.02,,3705,$438.60,"$1,625,000",,$433.88,-1.08%,$374.08,$477.54,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
 LTSSF - Lotus Bakeries,0.02,,115,$13286.96,"$1,528,000",,$14266.56,7.37%,$8949.77,$14266.56,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
 MKC - McCormick & Co.,0.02,Reduce 1.56%,37981,$50.42,"$1,915,000",,$44.80,-11.15%,$42.79,$70.38,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
 RTLLF - Rational Ag,0.02,,2200,$732.27,"$1,611,000",,$650.00,-11.23%,$650.00,$859.22,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
 SSPPF - Ssp Group Plc,0.02,,700000,$2.49,"$1,744,000",,$2.54,2.01%,$1.67,$2.55,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
 VMC - Vulcan Materials,0.02,,7263,$295.06,"$2,143,000",,$241.77,-18.06%,$237.03,$329.20,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
-WILLF - Demant A s,0.02,,41000,$41.02,"$1,682,000",,$51.20,24.82%,$28.08,$51.20,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
+WILLF - Demant A s,0.02,,41000,$41.02,"$1,682,000",,$52.56,28.13%,$28.08,$53.08,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
 AAPL - Apple Inc.,0.01,Reduce 3.16%,4601,$289.28,"$1,331,000",,$342.96,18.56%,$242.76,$348.15,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
-ABT - Abbott Labs,0.01,,11510,$90.70,"$1,044,000",,$102.97,13.53%,$81.39,$129.62,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
+ABT - Abbott Labs,0.01,,11510,$90.70,"$1,044,000",,$102.97,13.53%,$80.89,$128.82,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
 CABJF - Carlsberg A/S,0.01,Add 2.66%,10135,$131.03,"$1,328,000",,$133.00,1.50%,$89.69,$144.65,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
-DVDCF - Davide Campari-Milano S.p.A.,0.01,Reduce 3.45%,195048,$6.23,"$1,215,000",,$6.88,10.43%,$6.07,$7.78,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
+DVDCF - Davide Campari-Milano S.p.A.,0.01,Reduce 3.45%,195048,$6.23,"$1,215,000",,$7.15,14.77%,$6.07,$7.78,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
 ECTXF - Electrolux Professional Ab B,0.01,,230000,$4.37,"$1,006,000",,$4.65,6.41%,$3.86,$5.94,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
 FBLA - Fb Bancorp Inc,0.01,,50000,$15.06,"$753,000",,$16.87,12.02%,$11.66,$17.36,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
 FULT - Fulton Financial Corp.,0.01,Reduce 9.60%,44250,$24.18,"$1,070,000",,$21.85,-9.64%,$16.02,$25.02,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
-HINKF - Heineken NV,0.01,,15131,$84.13,"$1,273,000",,$80.85,-3.90%,$71.18,$93.41,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
+HINKF - Heineken NV,0.01,,15131,$84.13,"$1,273,000",,$83.17,-1.14%,$71.18,$93.41,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
 HMRZF - Hennes & Mauritz Ab B Shs,0.01,,64000,$17.22,"$1,102,000",,$18.56,7.78%,$11.35,$19.70,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
 HRI - HERC Holdings Inc.,0.01,,6450,$143.41,"$925,000",,$123.11,-14.16%,$87.56,$185.59,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
 HRL - Hormel Foods Corp.,0.01,Reduce 2.63%,18500,$24.81,"$459,000",,$19.81,-20.15%,$18.77,$26.03,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
@@ -2802,7 +2802,7 @@ KMROF - Kalmar Oyj B Share,0.01,Add 1.85%,27500,$43.93,"$1,208,000",,,,,,Thomas 
 KO - Coca Cola Co.,0.01,Reduce 5.18%,12350,$81.30,"$1,004,000",,$91.78,12.89%,$65.19,$91.94,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
 LAMR - Lamar Advertising Co.,0.01,,5368,$155.92,"$837,000",,$145.58,-6.63%,$109.09,$164.46,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
 MSFT - Microsoft Corp.,0.01,Add 1.13%,3584,$373.05,"$1,337,000",,$533.69,43.06%,$348.54,$551.15,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
-NSRGF - Nestle Sa Reg,0.01,,11130,$102.96,"$1,146,000",,$90.63,-11.98%,$86.33,$107.88,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
+NSRGF - Nestle Sa Reg,0.01,,11130,$102.96,"$1,146,000",,$92.09,-10.56%,$86.33,$107.88,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
 PEP - PepsiCo Inc.,0.01,Reduce 0.98%,9115,$135.38,"$1,234,000",,$129.27,-4.51%,$123.47,$166.41,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
 PG - Procter & Gamble,0.01,Reduce 28.98%,6554,$146.63,"$961,000",,$156.53,6.75%,$134.62,$164.77,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
 PUIGF - Puig Brands SA B,0.01,,68000,$18.44,"$1,254,000",,$21.25,15.24%,$16.15,$21.75,Thomas Russo - Gardner Russo & Quinn Updated 13 Aug 2026,Q2 2026
@@ -2923,7 +2923,7 @@ BKD - Brookdale Senior Living Inc.,1.27,Add 6.72%,494826,$16.09,"$7,962,000",,$1
 PB - Prosperity Bancshares Inc.,1.19,,102168,$73.03,"$7,461,000",,$66.74,-8.61%,$59.01,$75.23,Third Avenue Management Updated 12 Aug 2026,Q2 2026
 ICFI - ICF International Inc.,1.15,Add 37.86%,98893,$72.86,"$7,205,000",,$86.67,18.95%,$58.62,$97.47,Third Avenue Management Updated 12 Aug 2026,Q2 2026
 SUPN - Supernus Pharmaceuticals,1.14,,152724,$46.51,"$7,103,000",,$40.18,-13.61%,$39.97,$59.68,Third Avenue Management Updated 12 Aug 2026,Q2 2026
-ALG - Alamo Group Inc.,1.11,Add 23.11%,42265,$164.49,"$6,952,000",,$153.93,-6.42%,$145.46,$219.00,Third Avenue Management Updated 12 Aug 2026,Q2 2026
+ALG - Alamo Group Inc.,1.11,Add 23.11%,42265,$164.49,"$6,952,000",,$153.93,-6.42%,$145.13,$218.51,Third Avenue Management Updated 12 Aug 2026,Q2 2026
 COLL - Collegium Pharmaceutical Inc.,1.06,Add 17.73%,182645,$36.20,"$6,612,000",,$22.51,-37.82%,$21.43,$50.79,Third Avenue Management Updated 12 Aug 2026,Q2 2026
 CPRX-OLD - Catalyst Pharmaceuticals Inc.,1.06,,210161,$31.43,"$6,605,000",,$31.50,0.22%,$19.05,$32.56,Third Avenue Management Updated 12 Aug 2026,Q2 2026
 MYRG - MYR Group Inc.,1.05,Reduce 54.66%,13066,$500.38,"$6,538,000",,$291.17,-41.81%,$190.14,$503.57,Third Avenue Management Updated 12 Aug 2026,Q2 2026
@@ -3224,7 +3224,7 @@ SUI - Sun Communities Inc.,0.02,Reduce 2.19%,42480,$119.92,"$5,094,000",,$114.24
 VICI - VICI Properties Inc.,0.02,Reduce 2.19%,215360,$26.55,"$5,718,000",,$22.94,-13.60%,$22.43,$29.61,Christopher Davis - Davis Advisors Updated 11 Aug 2026,Q2 2026
 CBRE - CBRE Group,0.01,Reduce 0.86%,25390,$134.70,"$3,420,000",,$128.87,-4.33%,$121.69,$174.27,Christopher Davis - Davis Advisors Updated 11 Aug 2026,Q2 2026
 LRCX - Lam Research,0.01,,2780,$433.45,"$1,205,000",,$286.92,-33.81%,$134.88,$438.03,Christopher Davis - Davis Advisors Updated 11 Aug 2026,Q2 2026
-MAA - Mid-America Apt Communties,0.01,Reduce 54.39%,21900,$138.95,"$3,043,000",,$115.62,-16.79%,$113.95,$142.76,Christopher Davis - Davis Advisors Updated 11 Aug 2026,Q2 2026
+MAA - Mid-America Apt Communties,0.01,Reduce 54.39%,21900,$138.95,"$3,043,000",,$115.62,-16.79%,$112.44,$140.87,Christopher Davis - Davis Advisors Updated 11 Aug 2026,Q2 2026
 TSM - Taiwan Semiconductor S.A.,0.01,Reduce 44.72%,3980,$477.64,"$1,901,000",,$430.00,-9.97%,$264.09,$487.47,Christopher Davis - Davis Advisors Updated 11 Aug 2026,Q2 2026
 CCK - Crown Holdings,0.0,Reduce 36.17%,5470,$111.88,"$612,000",,$111.10,-0.70%,$88.70,$122.91,Christopher Davis - Davis Advisors Updated 11 Aug 2026,Q2 2026
 IVE - Ishares S&P 500 Value ETF,0.0,Reduce 71.71%,3288,$227.19,"$747,000",,$234.06,3.02%,$199.87,$238.98,Christopher Davis - Davis Advisors Updated 11 Aug 2026,Q2 2026
@@ -3391,7 +3391,7 @@ UHS - Universal Health Services Inc.,0.86,Add 2.99%,1969327,$148.69,"$292,819,00
 AVT - Avnet Inc.,0.81,Reduce 45.18%,3120395,$88.82,"$277,153,000",,$95.85,7.91%,$43.35,$108.63,Richard Pzena - Pzena Investment Management Updated 07 Aug 2026,Q2 2026
 AAP - Advance Auto Parts,0.8,Add 2.06%,4389501,$62.22,"$273,115,000",,$41.62,-33.11%,$37.11,$64.24,Richard Pzena - Pzena Investment Management Updated 07 Aug 2026,Q2 2026
 KSPI - Jsc Kaspi.kz ADR,0.78,Add 14.95%,3071888,$86.64,"$266,148,000",,$94.91,9.55%,$64.26,$107.58,Richard Pzena - Pzena Investment Management Updated 07 Aug 2026,Q2 2026
-DAL - Delta Air Lines Inc.,0.72,Reduce 6.73%,2618707,$93.66,"$245,268,000",,$76.65,-18.16%,$54.60,$95.44,Richard Pzena - Pzena Investment Management Updated 07 Aug 2026,Q2 2026
+DAL - Delta Air Lines Inc.,0.72,Reduce 6.73%,2618707,$93.66,"$245,268,000",,$76.65,-18.16%,$54.45,$95.18,Richard Pzena - Pzena Investment Management Updated 07 Aug 2026,Q2 2026
 EQH - Equitable Holdings Inc.,0.72,Add 24.58%,5561804,$43.88,"$244,052,000",,$52.88,20.51%,$34.72,$55.23,Richard Pzena - Pzena Investment Management Updated 07 Aug 2026,Q2 2026
 MDT - Medtronic plc,0.72,Reduce 0.29%,3147999,$78.23,"$246,268,000",,$94.23,20.45%,$72.06,$102.92,Richard Pzena - Pzena Investment Management Updated 07 Aug 2026,Q2 2026
 GL - Globe Life Inc.,0.71,Add 32.11%,1355811,$178.68,"$242,256,000",,$167.41,-6.31%,$126.81,$191.17,Richard Pzena - Pzena Investment Management Updated 07 Aug 2026,Q2 2026
@@ -3532,7 +3532,7 @@ PG - Procter & Gamble,3.06,Reduce 13.73%,860442,$146.64,"$126,175,000",,$156.53,
 CDNS - Cadence Design Systems,2.81,Reduce 39.00%,308555,$375.32,"$115,807,000",,$329.46,-12.22%,$262.75,$416.69,Jensen Investment Management Updated 07 Aug 2026,Q2 2026
 MSI - Motorola Solutions Inc.,2.81,Add 64.45%,278721,$415.29,"$115,750,000",,$451.73,8.77%,$356.42,$493.57,Jensen Investment Management Updated 07 Aug 2026,Q2 2026
 APH - Amphenol Corp.,2.63,Add 172.74%,1229320,$88.16,"$108,377,000",,$82.69,-6.20%,$58.82,$89.93,Jensen Investment Management Updated 07 Aug 2026,Q2 2026
-ABT - Abbott Labs,1.95,Reduce 40.43%,885262,$90.74,"$80,329,000",,$102.97,13.48%,$81.39,$129.62,Jensen Investment Management Updated 07 Aug 2026,Q2 2026
+ABT - Abbott Labs,1.95,Reduce 40.43%,885262,$90.74,"$80,329,000",,$102.97,13.48%,$80.89,$128.82,Jensen Investment Management Updated 07 Aug 2026,Q2 2026
 VEEV - Veeva Systems Inc.,1.93,Reduce 20.65%,449489,$177.47,"$79,771,000",,$297.35,67.55%,$148.05,$309.32,Jensen Investment Management Updated 07 Aug 2026,Q2 2026
 TJX - TJX Companies Inc.,1.85,Add 2072.63%,503180,$151.50,"$76,232,000",,$142.83,-5.72%,$122.78,$169.47,Jensen Investment Management Updated 07 Aug 2026,Q2 2026
 VRSK - Verisk Analytics Inc.,1.65,Reduce 21.26%,379127,$179.53,"$68,065,000",,$180.58,0.58%,$155.10,$241.98,Jensen Investment Management Updated 07 Aug 2026,Q2 2026
@@ -3571,7 +3571,7 @@ KEYS - Keysight Technologies Inc.,0.08,Reduce 46.19%,9127,$350.06,"$3,195,000",,
 KR - Kroger Co.,0.08,Reduce 5.85%,62390,$55.54,"$3,465,000",,$63.09,13.59%,$53.78,$75.66,Jensen Investment Management Updated 07 Aug 2026,Q2 2026
 LEVI - Levi Strauss & Co.,0.08,Reduce 8.12%,128120,$24.83,"$3,181,000",,$19.57,-21.18%,$17.50,$25.70,Jensen Investment Management Updated 07 Aug 2026,Q2 2026
 RTX - RTX Corp.,0.08,Reduce 0.12%,17586,$189.75,"$3,337,000",,$186.47,-1.73%,$153.36,$226.41,Jensen Investment Management Updated 07 Aug 2026,Q2 2026
-ABBV - AbbVie Inc.,0.07,Reduce 0.72%,11064,$251.63,"$2,784,000",,$283.48,12.66%,$189.40,$285.40,Jensen Investment Management Updated 07 Aug 2026,Q2 2026
+ABBV - AbbVie Inc.,0.07,Reduce 0.72%,11064,$251.63,"$2,784,000",,$283.48,12.66%,$188.25,$283.66,Jensen Investment Management Updated 07 Aug 2026,Q2 2026
 CHD - Church & Dwight,0.07,Reduce 8.13%,31740,$96.88,"$3,075,000",,$102.63,5.94%,$80.29,$105.37,Jensen Investment Management Updated 07 Aug 2026,Q2 2026
 GNTX - Gentex Corp.,0.07,Reduce 18.77%,108470,$25.27,"$2,741,000",,$20.78,-17.77%,$20.15,$26.43,Jensen Investment Management Updated 07 Aug 2026,Q2 2026
 NKE - NIKE Inc.,0.07,Reduce 4.78%,71344,$41.05,"$2,929,000",,$35.30,-14.01%,$31.97,$68.19,Jensen Investment Management Updated 07 Aug 2026,Q2 2026
@@ -3613,7 +3613,7 @@ HSY - Hershey Co.,2.08,Add 6.74%,205272,$175.45,"$36,015,000",,$164.25,-6.38%,$1
 JEF - Jefferies Financial Group Inc.,1.98,Add 0.84%,685910,$49.98,"$34,282,000",,$43.91,-12.14%,$35.00,$65.11,Steven Check - Check Capital Management Updated 05 Aug 2026,Q2 2026
 BRK.A - Berkshire Hathaway CL A,1.21,Reduce 3.45%,28,$748857.14,"$20,968,000",,$789585.01,5.44%,$698000.00,$806102.81,Steven Check - Check Capital Management Updated 05 Aug 2026,Q2 2026
 W - Wayfair Inc.,0.9,Add 0.64%,169025,$92.42,"$15,621,000",,$104.78,13.37%,$55.60,$119.98,Steven Check - Check Capital Management Updated 05 Aug 2026,Q2 2026
-FRFHF - Fairfax Financial Holdings Ltd.,0.19,Add 803.65%,1979,$1644.26,"$3,254,000",,$1610.00,-2.08%,$1500.00,$1933.22,Steven Check - Check Capital Management Updated 05 Aug 2026,Q2 2026
+FRFHF - Fairfax Financial Holdings Ltd.,0.19,Add 803.65%,1979,$1644.26,"$3,254,000",,$1602.80,-2.52%,$1500.00,$1933.22,Steven Check - Check Capital Management Updated 05 Aug 2026,Q2 2026
 LLY - Eli Lilly & Co.,6.89,Reduce 27.08%,666912,$1199.43,"$799,914,000",,$1208.74,0.78%,$778.93,$1292.65,Polen Capital Management Updated 04 Aug 2026,Q2 2026
 NVDA - NVIDIA Corp.,6.86,Reduce 3.07%,3978446,$200.09,"$796,047,000",,$221.30,10.60%,$163.90,$243.37,Polen Capital Management Updated 04 Aug 2026,Q2 2026
 MSFT - Microsoft Corp.,6.74,Reduce 26.26%,2098613,$373.02,"$782,824,000",,$533.69,43.07%,$348.54,$551.15,Polen Capital Management Updated 04 Aug 2026,Q2 2026
@@ -3638,7 +3638,7 @@ META - Meta Platforms Inc.,1.6,Reduce 30.86%,329573,$563.29,"$185,645,000",,$737
 ISRG - Intuitive Surgical Inc.,1.53,Reduce 26.18%,447944,$397.68,"$178,139,000",,$420.24,5.67%,$328.57,$603.88,Polen Capital Management Updated 04 Aug 2026,Q2 2026
 ATI - Allegheny Technologies Inc.,1.39,Buy,819236,$197.10,"$161,471,000",,$187.84,-4.70%,$79.29,$243.57,Polen Capital Management Updated 04 Aug 2026,Q2 2026
 HWM - Howmet Aerospace Inc.,1.06,Buy,457124,$268.86,"$122,902,000",,$217.54,-19.09%,$187.07,$309.85,Polen Capital Management Updated 04 Aug 2026,Q2 2026
-EME - Emcor Group,0.74,Buy,103123,$829.88,"$85,580,000",,$745.35,-10.19%,$564.01,$951.47,Polen Capital Management Updated 04 Aug 2026,Q2 2026
+EME - Emcor Group,0.74,Buy,103123,$829.88,"$85,580,000",,$745.35,-10.19%,$563.71,$950.96,Polen Capital Management Updated 04 Aug 2026,Q2 2026
 IWF - iShares Russell 1000 Growth ETF,0.66,Reduce 62.29%,613639,$124.17,"$76,196,000",,$124.27,0.08%,$102.05,$129.80,Polen Capital Management Updated 04 Aug 2026,Q2 2026
 ROL - Rollins Inc.,0.57,Reduce 26.94%,1590903,$41.74,"$66,404,000",,$32.63,-21.83%,$29.29,$65.40,Polen Capital Management Updated 04 Aug 2026,Q2 2026
 AON - Aon Plc,0.47,Reduce 87.89%,164035,$331.69,"$54,409,000",,$275.35,-16.99%,$266.33,$381.47,Polen Capital Management Updated 04 Aug 2026,Q2 2026
@@ -3654,7 +3654,7 @@ DOCN - DigitalOcean Holdings Inc.,0.14,Add 5.35%,101350,$157.03,"$15,915,000",,$
 WULF - Terawulf Inc,0.12,Add 429.39%,563139,$24.70,"$13,910,000",,$11.54,-53.28%,$10.47,$29.84,Polen Capital Management Updated 04 Aug 2026,Q2 2026
 BE - Bloom Energy Corp.,0.11,Reduce 39.26%,40838,$302.71,"$12,362,000",,$239.34,-20.93%,$75.70,$351.28,Polen Capital Management Updated 04 Aug 2026,Q2 2026
 CECO - CECO Environmental Corp.,0.11,Reduce 3.67%,137977,$90.74,"$12,520,000",,$62.39,-31.24%,$42.82,$101.24,Polen Capital Management Updated 04 Aug 2026,Q2 2026
-BELFB - Bel Fuse Inc. CL B,0.09,Reduce 24.21%,32845,$333.05,"$10,939,000",,$223.43,-32.91%,$129.82,$335.20,Polen Capital Management Updated 04 Aug 2026,Q2 2026
+BELFB - Bel Fuse Inc. CL B,0.09,Reduce 24.21%,32845,$333.05,"$10,939,000",,$223.43,-32.91%,$129.78,$335.10,Polen Capital Management Updated 04 Aug 2026,Q2 2026
 GOOGL - Alphabet Inc.,0.09,Reduce 1.37%,27810,$357.39,"$9,939,000",,$347.64,-2.73%,$243.52,$408.10,Polen Capital Management Updated 04 Aug 2026,Q2 2026
 NU - Nu Holdings Ltd,0.09,Reduce 38.16%,752747,$13.36,"$10,057,000",,$14.93,11.75%,$11.20,$18.98,Polen Capital Management Updated 04 Aug 2026,Q2 2026
 LASR - nLight Inc.,0.08,Add 48.62%,133448,$69.62,"$9,291,000",,$35.89,-48.45%,$28.05,$86.95,Polen Capital Management Updated 04 Aug 2026,Q2 2026
@@ -3668,7 +3668,7 @@ BWXT - BWX Technologies Inc.,0.06,Reduce 3.01%,36974,$194.65,"$7,197,000",,$134.
 CCJ - Cameco Corp.,0.06,Add 241.26%,68968,$101.87,"$7,026,000",,$81.47,-20.03%,$77.55,$135.24,Polen Capital Management Updated 04 Aug 2026,Q2 2026
 SEI - Solaris Energy Infrastructure Inc.,0.06,Reduce 4.00%,80324,$80.46,"$6,463,000",,$69.37,-13.78%,$38.18,$86.02,Polen Capital Management Updated 04 Aug 2026,Q2 2026
 SPHR - Sphere Entertainment Co.,0.06,Reduce 20.22%,38529,$173.04,"$6,667,000",,$103.98,-39.91%,$58.18,$181.63,Polen Capital Management Updated 04 Aug 2026,Q2 2026
-VSEC - VSE Corp.,0.06,Reduce 28.99%,29853,$228.49,"$6,821,000",,$158.65,-30.57%,$155.28,$247.85,Polen Capital Management Updated 04 Aug 2026,Q2 2026
+VSEC - VSE Corp.,0.06,Reduce 28.99%,29853,$228.49,"$6,821,000",,$158.65,-30.57%,$155.18,$247.69,Polen Capital Management Updated 04 Aug 2026,Q2 2026
 YOU - Clear Secure Inc.,0.06,Reduce 9.68%,131773,$55.73,"$7,344,000",,$44.31,-20.49%,$29.71,$68.83,Polen Capital Management Updated 04 Aug 2026,Q2 2026
 AEHR - Aehr Test Systems,0.05,Reduce 16.67%,66157,$96.06,"$6,355,000",,$71.49,-25.58%,$18.70,$147.40,Polen Capital Management Updated 04 Aug 2026,Q2 2026
 DLO - DLocal Ltd,0.05,Reduce 0.61%,456087,$13.00,"$5,927,000",,$14.69,13.00%,$10.46,$16.50,Polen Capital Management Updated 04 Aug 2026,Q2 2026
@@ -3797,7 +3797,7 @@ WSC - WillScot Mobile Mini Hldgs Corp.,0.01,Buy,34229,$28.86,"$988,000",,$16.19,
 WYFI - Whitefiber Inc,0.01,Buy,26281,$38.85,"$1,021,000",,$12.73,-67.23%,$10.51,$46.87,Polen Capital Management Updated 04 Aug 2026,Q2 2026
 XPO - XPO Logistics,0.01,Buy,3396,$205.24,"$697,000",,$185.10,-9.81%,$121.48,$232.05,Polen Capital Management Updated 04 Aug 2026,Q2 2026
 ZGN - Ermenegildo Zegna Nv,0.01,Buy,111273,$13.02,"$1,449,000",,$12.79,-1.77%,$8.56,$15.95,Polen Capital Management Updated 04 Aug 2026,Q2 2026
-ABT - Abbott Labs,0.0,Reduce 79.07%,3156,$90.62,"$286,000",,$102.97,13.63%,$81.39,$129.62,Polen Capital Management Updated 04 Aug 2026,Q2 2026
+ABT - Abbott Labs,0.0,Reduce 79.07%,3156,$90.62,"$286,000",,$102.97,13.63%,$80.89,$128.82,Polen Capital Management Updated 04 Aug 2026,Q2 2026
 AEIS - Advanced Energy Industries,0.0,Buy,1503,$372.59,"$560,000",,$260.77,-30.01%,$184.58,$397.18,Polen Capital Management Updated 04 Aug 2026,Q2 2026
 ALH - Alliance Laundry Holdings In,0.0,Buy,12442,$26.52,"$330,000",,$20.71,-21.91%,$18.64,$28.23,Polen Capital Management Updated 04 Aug 2026,Q2 2026
 AMD - Advanced Micro Devices,0.0,Buy,417,$580.34,"$242,000",,$570.82,-1.64%,$188.22,$658.52,Polen Capital Management Updated 04 Aug 2026,Q2 2026
@@ -3927,7 +3927,7 @@ NSP - Insperity Inc.,0.06,,181336,$41.31,"$7,491,000",,$49.58,20.02%,$18.03,$55.
 XOM - ExxonMobil Holdings Corp.,0.06,Add 19.36%,56100,$136.72,"$7,670,000",,$177.01,29.47%,$107.28,$177.43,Thomas Gayner - Markel Group Updated 31 Jul 2026,Q2 2026
 CNI - Canadian Natl Railway Co.,0.05,,53500,$119.23,"$6,379,000",,$119.85,0.52%,$88.62,$130.84,Thomas Gayner - Markel Group Updated 31 Jul 2026,Q2 2026
 CP - Canadian Pacific Kansas City,0.05,Add 22.69%,73000,$86.64,"$6,325,000",,$86.12,-0.60%,$67.83,$96.69,Thomas Gayner - Markel Group Updated 31 Jul 2026,Q2 2026
-GHC - Graham Holdings Co.,0.05,,5200,$1141.35,"$5,935,000",,$1186.33,3.94%,$929.32,$1262.35,Thomas Gayner - Markel Group Updated 31 Jul 2026,Q2 2026
+GHC - Graham Holdings Co.,0.05,,5200,$1141.35,"$5,935,000",,$1186.33,3.94%,$927.85,$1260.34,Thomas Gayner - Markel Group Updated 31 Jul 2026,Q2 2026
 KMX - CarMax Inc.,0.05,,136500,$52.89,"$7,219,000",,$49.82,-5.80%,$30.26,$65.28,Thomas Gayner - Markel Group Updated 31 Jul 2026,Q2 2026
 SONY - Sony Group Corp.,0.05,,335000,$20.06,"$6,720,000",,$24.36,21.44%,$19.32,$30.22,Thomas Gayner - Markel Group Updated 31 Jul 2026,Q2 2026
 EMN - Eastman Chemical,0.04,,74950,$66.98,"$5,020,000",,$62.88,-6.12%,$53.44,$80.53,Thomas Gayner - Markel Group Updated 31 Jul 2026,Q2 2026
@@ -3954,8 +3954,8 @@ AMGN - Amgen,3.21,Add 10.66%,59771,$362.12,"$21,644,000",,$426.11,17.67%,$280.23
 CMCSA - Comcast Corp.,3.15,Add 55.54%,863372,$24.55,"$21,196,000",,$21.05,-14.26%,$20.48,$31.55,Torray Funds Updated 30 Jul 2026,Q2 2026
 ACN - Accenture,3.1,Buy,167690,$124.44,"$20,867,000",,$214.96,72.74%,$115.82,$282.94,Torray Funds Updated 30 Jul 2026,Q2 2026
 NEE - NextEra Energy Inc.,3.1,Add 19.09%,237562,$87.77,"$20,851,000",,$78.37,-10.71%,$74.41,$97.30,Torray Funds Updated 30 Jul 2026,Q2 2026
-ABBV - AbbVie Inc.,3.09,Reduce 11.74%,82602,$251.64,"$20,786,000",,$283.48,12.65%,$189.40,$285.40,Torray Funds Updated 30 Jul 2026,Q2 2026
-OKE - ONEOK Inc.,3.08,Add 0.06%,238831,$86.94,"$20,764,000",,$91.97,5.79%,$84.15,$97.66,Torray Funds Updated 30 Jul 2026,Q2 2026
+ABBV - AbbVie Inc.,3.09,Reduce 11.74%,82602,$251.64,"$20,786,000",,$283.48,12.65%,$188.25,$283.66,Torray Funds Updated 30 Jul 2026,Q2 2026
+OKE - ONEOK Inc.,3.08,Add 0.06%,238831,$86.94,"$20,764,000",,$91.97,5.79%,$61.67,$99.85,Torray Funds Updated 30 Jul 2026,Q2 2026
 PFE - Pfizer Inc.,3.07,Add 10.68%,859418,$24.08,"$20,695,000",,$29.21,21.30%,$22.57,$29.49,Torray Funds Updated 30 Jul 2026,Q2 2026
 PSX - Phillips 66,2.96,Reduce 16.48%,117795,$169.05,"$19,913,000",,$297.29,75.86%,$123.27,$297.42,Torray Funds Updated 30 Jul 2026,Q2 2026
 PEP - PepsiCo Inc.,2.94,Add 7.58%,146268,$135.40,"$19,805,000",,$129.27,-4.53%,$123.47,$166.41,Torray Funds Updated 30 Jul 2026,Q2 2026
@@ -3974,7 +3974,7 @@ APH - Amphenol Corp.,1.55,Reduce 6.18%,118470,$88.16,"$10,444,000",,$82.69,-6.20
 TW - Tradeweb Markets Inc.,1.12,Reduce 0.08%,75987,$99.66,"$7,573,000",,$110.68,11.06%,$91.30,$127.35,Torray Funds Updated 30 Jul 2026,Q2 2026
 V - Visa Inc.,1.12,Add 11.20%,22017,$343.10,"$7,554,000",,$391.43,14.09%,$292.74,$397.19,Torray Funds Updated 30 Jul 2026,Q2 2026
 VRTX - Vertex Pharmaceuticals,1.12,Reduce 1.11%,15215,$496.75,"$7,558,000",,$498.50,0.35%,$403.16,$560.25,Torray Funds Updated 30 Jul 2026,Q2 2026
-LZAGY - Lonza Group Ag Unspon ADR,0.92,Reduce 1.22%,91339,$67.50,"$6,165,000",,$68.05,0.81%,$57.99,$74.36,Torray Funds Updated 30 Jul 2026,Q2 2026
+LZAGY - Lonza Group Ag Unspon ADR,0.92,Reduce 1.22%,91339,$67.50,"$6,165,000",,$70.11,3.87%,$57.99,$74.36,Torray Funds Updated 30 Jul 2026,Q2 2026
 AJG - Arthur J. Gallagher & Co.,0.9,Reduce 9.50%,26276,$229.56,"$6,032,000",,$237.04,3.26%,$189.61,$301.03,Torray Funds Updated 30 Jul 2026,Q2 2026
 RBC - RBC Bearings Inc.,0.87,Add 0.35%,9112,$644.10,"$5,869,000",,$498.54,-22.60%,$364.50,$667.69,Torray Funds Updated 30 Jul 2026,Q2 2026
 ORLY - O'Reilly Automotive,0.83,Reduce 2.49%,60821,$92.09,"$5,601,000",,$86.69,-5.86%,$82.59,$103.82,Torray Funds Updated 30 Jul 2026,Q2 2026
@@ -4018,7 +4018,7 @@ LLY - Eli Lilly & Co.,0.07,,398,$1198.49,"$477,000",,$1208.74,0.86%,$778.93,$129
 MS - Morgan Stanley,0.07,Reduce 92.29%,2377,$209.09,"$497,000",,$181.51,-13.19%,$151.15,$230.98,Torray Funds Updated 30 Jul 2026,Q2 2026
 NOC - Northrop Grumman Corp.,0.07,,887,$509.58,"$452,000",,$495.69,-2.73%,$470.06,$767.12,Torray Funds Updated 30 Jul 2026,Q2 2026
 RKLB - Rocket Lab Corp.,0.07,Reduce 50.00%,4500,$101.56,"$457,000",,$59.18,-41.73%,$37.57,$151.00,Torray Funds Updated 30 Jul 2026,Q2 2026
-RYCEY - Rolls Royce Holdings Sp ADR,0.07,,25000,$19.24,"$481,000",,$17.93,-6.81%,$13.14,$21.22,Torray Funds Updated 30 Jul 2026,Q2 2026
+RYCEY - Rolls Royce Holdings Sp ADR,0.07,,25000,$19.24,"$481,000",,$17.87,-7.12%,$13.14,$21.22,Torray Funds Updated 30 Jul 2026,Q2 2026
 VUG - Vanguard Growth ETF,0.06,Reduce 58.10%,4616,$86.22,"$398,000",,$89.87,4.23%,$69.49,$93.00,Torray Funds Updated 30 Jul 2026,Q2 2026
 DHR - Danaher Corp.,0.05,,1871,$190.27,"$356,000",,$224.69,18.09%,$160.31,$241.35,Torray Funds Updated 30 Jul 2026,Q2 2026
 MMM - 3M Co.,0.05,,2000,$162.00,"$324,000",,$164.46,1.52%,$138.02,$184.09,Torray Funds Updated 30 Jul 2026,Q2 2026
