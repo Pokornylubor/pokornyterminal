@@ -4,8 +4,7 @@ import yfinance as yf
 import json
 import os
 import sys
-import base64
-import requests
+import subprocess
 import plotly.graph_objects as go
 
 # --- INITIAL SETUP ---
@@ -26,7 +25,7 @@ t = {
         "title": "POKORNY TERMINAL", "tab_port": "PORTFOLIO", "tab_watch": "WATCHLIST", 
         "tab_chart": "CHARTING", "tab_set": "SYSTÉMOVÁ KONFIGURACE", "curr_pos": "AKTUÁLNÍ POZICE", 
         "radar": "RADAR", "no_data": "ŽÁDNÁ DATA", "err": "ERR", "port_tickers": "TICKERY (PORTFOLIO)", 
-        "watch_tickers": "TICKERY (WATCHLIST)", "commit": "ULOŽIT ZMĚNY", "success": "SYSTÉM AKTUALIZOVÁN",
+        "watch_tickers": "TICKERY (WATCHLIST)", "commit": "ULOŽIT ZMĚNY", "success": "SYSTÉM AKTUALIZOVÁN A ULOŽEN NA GITHUB",
         "db_select": "DATABÁZE", "custom_tick": "VLASTNÍ TICKER", "chart_type": "TYP GRAFU",
         "interval": "INTERVAL", "loading": "STAHOVÁNÍ DAT...", "err_data": "DATA NEJSOU DOSTUPNÁ."
     },
@@ -34,7 +33,7 @@ t = {
         "title": "POKORNY TERMINAL", "tab_port": "PORTFOLIO", "tab_watch": "WATCHLIST", 
         "tab_chart": "CHARTING", "tab_set": "SYSTEM CONFIG", "curr_pos": "CURRENT POSITIONS", 
         "radar": "RADAR", "no_data": "NO DATA AVAILABLE", "err": "ERR", "port_tickers": "PORTFOLIO TICKERS", 
-        "watch_tickers": "WATCHLIST TICKERS", "commit": "COMMIT CHANGES", "success": "SYSTEM UPDATED",
+        "watch_tickers": "WATCHLIST TICKERS", "commit": "COMMIT CHANGES", "success": "SYSTEM UPDATED AND SAVED TO GITHUB",
         "db_select": "DATABASE", "custom_tick": "CUSTOM TICKER", "chart_type": "CHART TYPE",
         "interval": "INTERVAL", "loading": "LOADING DATA...", "err_data": "DATA NOT AVAILABLE."
     }
@@ -47,7 +46,7 @@ st.markdown("---")
 def load_data():
     if os.path.exists(WATCHLIST_FILE):
         try:
-            with open(WATCHLIST_FILE, "r") as f:
+            with open(WATCHLIST_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 if isinstance(data, list): return {"portfolio": data, "watchlist": [], "superinvestors": []}
                 return data
@@ -55,18 +54,23 @@ def load_data():
     return {"portfolio": ["GOOGL", "AMZN", "MSFT", "AMAT", "ASML", "NVDA", "UBER", "SOFI"], "watchlist": [], "superinvestors": ["Mohnish Pabrai", "Li Lu", "Michael Burry"]}
 
 def save_data(data):
-    with open(WATCHLIST_FILE, "w") as f: json.dump(data, f, indent=4)
+    with open(WATCHLIST_FILE, "w", encoding="utf-8") as f: 
+        json.dump(data, f, indent=4)
+    
     try:
         if "GITHUB_TOKEN" in st.secrets:
-            token, owner, repo = st.secrets["GITHUB_TOKEN"], st.secrets["GITHUB_OWNER"], st.secrets["GITHUB_REPO"]
-            url = f"https://api.github.com/repos/{owner}/{repo}/contents/watchlist.json"
-            headers = {"Authorization": f"token {token}", "Accept": "application/vnd.github.v3+json"}
-            sha = requests.get(url, headers=headers).json().get("sha")
-            content_b64 = base64.b64encode(json.dumps(data, indent=4).encode("utf-8")).decode("utf-8")
-            payload = {"message": "SYS: Watchlist Update", "content": content_b64, "branch": "main"}
-            if sha: payload["sha"] = sha
-            requests.put(url, headers=headers, json=payload)
-    except Exception: pass
+            token = st.secrets["GITHUB_TOKEN"]
+            owner = st.secrets["GITHUB_OWNER"]
+            repo = st.secrets["GITHUB_REPO"]
+            remote_url = f"https://{owner}:{token}@github.com/{owner}/{repo}.git"
+            
+            subprocess.run(["git", "config", "--global", "user.email", "bot@pokornyterminal.cz"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(["git", "config", "--global", "user.name", "Terminal Bot"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(["git", "add", WATCHLIST_FILE], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(["git", "commit", "-m", "Automatická úprava portfolia/watchlistu z Dashboardu"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(["git", "push", remote_url, "HEAD:main"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception: 
+        pass
 
 data = load_data()
 
@@ -120,7 +124,7 @@ with tab3:
                 df_c.index = df_c.index.tz_localize('UTC').tz_convert('Europe/Prague')
             else:
                 df_c.index = df_c.index.tz_convert('Europe/Prague')
-            df_c.index = df_c.index.tz_localize(None) # Očistí formát pro čistší zobrazení na ose
+            df_c.index = df_c.index.tz_localize(None) 
             
             if interval_display == "4H":
                 df_c = df_c.resample('4h').agg({
@@ -128,9 +132,8 @@ with tab3:
                 }).dropna()
 
             # --- ODSTRANĚNÍ MEZER V GRAFU ---
-            r_breaks = [dict(bounds=["sat", "mon"])] # Vždy skryje víkendy
+            r_breaks = [dict(bounds=["sat", "mon"])] 
             if interval_display in ["1M", "5M", "15M", "1H", "4H"]:
-                # Skryje zavřenou burzu (US akcie z pohledu CZ času) od 22:00 do 15:30
                 r_breaks.append(dict(bounds=[22, 15.5], pattern="hour"))
 
             fig = go.Figure()
@@ -168,7 +171,7 @@ with tab3:
                     spikethickness=1,
                     spikedash='solid',
                     spikecolor='#787B86',
-                    rangebreaks=r_breaks # Aplikace našeho filtru mezer
+                    rangebreaks=r_breaks
                 )
             )
             
