@@ -1,46 +1,4 @@
 {
-    "portfolio": [
-        "GOOGL",
-        "AMZN",
-        "MSFT",
-        "AMAT",
-        "ASML",
-        "NVDA",
-        "UBER",
-        "SOFI",
-        "APP",
-        "CRWV"
-    ],
-    "watchlist": [
-        "NBIS",
-        "IREN",
-        "BE",
-        "MU",
-        "SNDK",
-        "AMD",
-        "VST",
-        "FSLR",
-        "TSM",
-        "HOOD"
-    ],
-    "superinvestors": [
-        "Bill Ackman - Pershing Square Capital Management Updated 14 Aug 2026",
-        "Chris Hohn - TCI Fund Management Updated 14 Aug 2026",
-        "Terry Smith - Fundsmith Updated 14 Aug 2026",
-        "Seth Klarman - Baupost Group Updated 13 Aug 2026",
-        "Valley Forge Capital Management Updated 14 Aug 2026",
-        "Warren Buffett - Berkshire Hathaway Updated 14 Aug 2026",
-        "David Tepper - Appaloosa Management Updated 14 Aug 2026",
-        "Mohnish Pabrai - Pabrai Investments Updated 13 Aug 2026",
-        "Carl Icahn - Icahn Capital Management Updated 14 Aug 2026"
-    ],
-    "cot_watchlist": [
-        "E-MINI S&P 500 - CHICAGO MERCANTILE EXCHANGE",
-        "NASDAQ MINI - CHICAGO MERCANTILE EXCHANGE",
-        "VIX FUTURES - CBOE FUTURES EXCHANGE",
-        "WTI FINANCIAL CRUDE OIL - NEW YORK MERCANTILE EXCHANGE",
-        "GOLD - COMMODITY EXCHANGE INC."
-    ],
     "saved_ciks": {
         "Warren Buffett (Berkshire Hathaway)": "1067983",
         "Michael Burry (Scion Asset Management)": "1649339",
@@ -55,5 +13,7 @@
         "Situational Awareness LP": "0002045724",
         "Thiel Macro LLC": "0001562087"
     },
-    "sec_favorites": []
+    "sec_favorites": [
+        "Bill Ackman (Pershing Square)"
+    ]
 }
