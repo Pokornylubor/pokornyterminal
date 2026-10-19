@@ -28,7 +28,7 @@ t = {
         "title": "SEC 13F REPORTY",
         "desc": "BLESKOVÉ NAČÍTÁNÍ HISTORICKÝCH DAT PORTFOLIÍ PŘÍMO ZE SEC EDGAR.",
         "exp_db": "⚙️ SPRÁVA DATABÁZE (PŘIDAT / UPRAVIT / SMAZAT)",
-        "sel_inv": "VÝBĚR 13F REPORTU (FONDU):",
+        "sel_inv": "VÝBĚR A VYHLEDÁVÁNÍ 13F REPORTU:",
         "cik_lbl": "CIK KÓD:",
         "name_lbl": "NÁZEV FONDU:",
         "save_new": "ULOŽIT NOVÝ FOND",
@@ -43,7 +43,7 @@ t = {
         "title": "SEC 13F REPORTS",
         "desc": "LIGHTNING FAST HISTORICAL PORTFOLIO DATA FROM SEC EDGAR.",
         "exp_db": "⚙️ DATABASE MANAGEMENT (ADD / EDIT / DELETE)",
-        "sel_inv": "SELECT 13F REPORT (FUND):",
+        "sel_inv": "SELECT AND SEARCH 13F REPORT:",
         "cik_lbl": "CIK CODE:",
         "name_lbl": "FUND NAME:",
         "save_new": "COMMIT NEW FUND",
@@ -147,20 +147,13 @@ st.markdown("---")
 if not fund_names:
     st.info("Databáze je prázdná. Přidejte fond v sekci 'SPRÁVA DATABÁZE'.")
 else:
-    # Nový oddělený vyhledávač
-    c_search, c_select = st.columns([1, 2])
-    with c_search:
-        hledani = st.text_input("🔍 Vyhledat report (napište název):", "")
-    
-    # Filtrace fondů podle vyhledávání
-    nalezene_fondy = [f for f in fund_names if hledani.lower() in f.lower()]
-    
-    with c_select:
-        if not nalezene_fondy:
-            st.warning("Žádný report neodpovídá hledání.")
-            vyber = None
-        else:
-            vyber = st.selectbox(_["sel_inv"], nalezene_fondy)
+    # Jeden chytrý našeptávač, který nahradil původní vyhledávání i roletku
+    vyber = st.selectbox(
+        _["sel_inv"], 
+        options=fund_names, 
+        index=None, 
+        placeholder="🔍 Začněte psát název fondu (např. 'Buf')..."
+    )
 
     if vyber:
         cik = str(ALL_FUNDS[vyber]).zfill(10)
