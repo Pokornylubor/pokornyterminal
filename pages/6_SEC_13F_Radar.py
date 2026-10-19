@@ -147,68 +147,82 @@ st.markdown("---")
 if not fund_names:
     st.info("Databáze je prázdná. Přidejte fond v sekci 'SPRÁVA DATABÁZE'.")
 else:
-    vyber = st.selectbox(_["sel_inv"], fund_names)
-
-    cik = str(ALL_FUNDS[vyber]).zfill(10)
-    csv_path = os.path.join(SEC_DATA_DIR, f"{cik}.csv")
-    meta_path = os.path.join(SEC_DATA_DIR, f"{cik}_meta.json")
+    # Nový oddělený vyhledávač
+    c_search, c_select = st.columns([1, 2])
+    with c_search:
+        hledani = st.text_input("🔍 Vyhledat report (napište název):", "")
     
-    st.markdown("<br>", unsafe_allow_html=True)
-    c_upd = st.columns([4, 1])[1]
-    with c_upd:
-        if st.button(_["btn_upd"], use_container_width=True):
-            with st.spinner(_["spin_upd"]):
-                sec_updater.update_sec_funds(target_cik=cik)
-                try:
-                    if "GITHUB_TOKEN" in st.secrets:
-                        token = st.secrets["GITHUB_TOKEN"]
-                        owner = st.secrets["GITHUB_OWNER"]
-                        repo = st.secrets["GITHUB_REPO"]
-                        remote_url = f"https://{owner}:{token}@github.com/{owner}/{repo}.git"
-                        
-                        subprocess.run(["git", "config", "--global", "user.email", "bot@pokornyterminal.cz"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                        subprocess.run(["git", "config", "--global", "user.name", "Terminal Bot"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                        subprocess.run(["git", "add", "sec_data/"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                        subprocess.run(["git", "commit", "-m", f"Okamžité stažení 13F reportu (CIK: {cik}) z mobilu"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                        subprocess.run(["git", "push", remote_url, "HEAD:main"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                except Exception: pass
-            st.rerun()
+    # Filtrace fondů podle vyhledávání
+    nalezene_fondy = [f for f in fund_names if hledani.lower() in f.lower()]
+    
+    with c_select:
+        if not nalezene_fondy:
+            st.warning("Žádný report neodpovídá hledání.")
+            vyber = None
+        else:
+            vyber = st.selectbox(_["sel_inv"], nalezene_fondy)
+
+    if vyber:
+        cik = str(ALL_FUNDS[vyber]).zfill(10)
+        csv_path = os.path.join(SEC_DATA_DIR, f"{cik}.csv")
+        meta_path = os.path.join(SEC_DATA_DIR, f"{cik}_meta.json")
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        c_upd = st.columns([4, 1])[1]
+        with c_upd:
+            if st.button(_["btn_upd"], use_container_width=True):
+                with st.spinner(_["spin_upd"]):
+                    sec_updater.update_sec_funds(target_cik=cik)
+                    try:
+                        if "GITHUB_TOKEN" in st.secrets:
+                            token = st.secrets["GITHUB_TOKEN"]
+                            owner = st.secrets["GITHUB_OWNER"]
+                            repo = st.secrets["GITHUB_REPO"]
+                            remote_url = f"https://{owner}:{token}@github.com/{owner}/{repo}.git"
+                            
+                            subprocess.run(["git", "config", "--global", "user.email", "bot@pokornyterminal.cz"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                            subprocess.run(["git", "config", "--global", "user.name", "Terminal Bot"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                            subprocess.run(["git", "add", "sec_data/"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                            subprocess.run(["git", "commit", "-m", f"Okamžité stažení 13F reportu (CIK: {cik}) z mobilu"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                            subprocess.run(["git", "push", remote_url, "HEAD:main"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    except Exception: pass
+                st.rerun()
+                
+        if os.path.exists(csv_path) and os.path.exists(meta_path):
+            with open(meta_path, "r", encoding="utf-8") as f: meta = json.load(f)
             
-    if os.path.exists(csv_path) and os.path.exists(meta_path):
-        with open(meta_path, "r", encoding="utf-8") as f: meta = json.load(f)
-        
-        rep_str = "Reported:" if st.session_state.get("lang") == "EN" else "Zobrazen report:"
-        asof_str = "As of" if st.session_state.get("lang") == "EN" else "Ke dni"
-        last_str = "Last updated:" if st.session_state.get("lang") == "EN" else "Naposledy staženo:"
-        
-        st.info(f"**{vyber.split('(')[0].strip()}** | {rep_str} **{meta['kvartal']}** ({asof_str} {meta['report_date']}) | *{last_str} {meta['last_updated']}*")
-        
-        df = pd.read_csv(csv_path)
-        df[" "] = "" 
-        
-        def style_df(row):
-            styles = [''] * len(row)
-            act_val = str(row['RecentActivity'])
-            if "Buy" in act_val or "Add" in act_val or "New" in act_val: styles[2] = 'color: #26A69A; font-weight: bold;'
-            elif "Reduce" in act_val or "Sell" in act_val: styles[2] = 'color: #EF5350; font-weight: bold;'
-            if pd.notnull(row['+/-Reported Price']):
-                try:
-                    val = float(row['+/-Reported Price'])
-                    if val > 0: styles[8] = 'color: #26A69A;' 
-                    elif val < 0: styles[8] = 'color: #EF5350;'
-                except: pass
-            return styles
+            rep_str = "Reported:" if st.session_state.get("lang") == "EN" else "Zobrazen report:"
+            asof_str = "As of" if st.session_state.get("lang") == "EN" else "Ke dni"
+            last_str = "Last updated:" if st.session_state.get("lang") == "EN" else "Naposledy staženo:"
             
-        styled_df = df.style.apply(style_df, axis=1).format({
-            "% of Portfolio": "{:.2f}%",
-            "Shares": "{:,.0f}",
-            "ReportedPrice*": "${:,.2f}",
-            "Value": "${:,.0f}",
-            "Current Price": lambda x: f"${x:,.2f}" if pd.notnull(x) else "",
-            "+/-Reported Price": lambda x: f"{x:+.2f}%" if pd.notnull(x) else "",
-            "52Week Low": lambda x: f"${x:,.2f}" if pd.notnull(x) else "",
-            "52Week High": lambda x: f"${x:,.2f}" if pd.notnull(x) else ""
-        })
-        st.dataframe(styled_df, use_container_width=True, hide_index=True, height=650)
-    else:
-        st.warning(_["warn_nodata"])
+            st.info(f"**{vyber.split('(')[0].strip()}** | {rep_str} **{meta['kvartal']}** ({asof_str} {meta['report_date']}) | *{last_str} {meta['last_updated']}*")
+            
+            df = pd.read_csv(csv_path)
+            df[" "] = "" 
+            
+            def style_df(row):
+                styles = [''] * len(row)
+                act_val = str(row['RecentActivity'])
+                if "Buy" in act_val or "Add" in act_val or "New" in act_val: styles[2] = 'color: #26A69A; font-weight: bold;'
+                elif "Reduce" in act_val or "Sell" in act_val: styles[2] = 'color: #EF5350; font-weight: bold;'
+                if pd.notnull(row['+/-Reported Price']):
+                    try:
+                        val = float(row['+/-Reported Price'])
+                        if val > 0: styles[8] = 'color: #26A69A;' 
+                        elif val < 0: styles[8] = 'color: #EF5350;'
+                    except: pass
+                return styles
+                
+            styled_df = df.style.apply(style_df, axis=1).format({
+                "% of Portfolio": "{:.2f}%",
+                "Shares": "{:,.0f}",
+                "ReportedPrice*": "${:,.2f}",
+                "Value": "${:,.0f}",
+                "Current Price": lambda x: f"${x:,.2f}" if pd.notnull(x) else "",
+                "+/-Reported Price": lambda x: f"{x:+.2f}%" if pd.notnull(x) else "",
+                "52Week Low": lambda x: f"${x:,.2f}" if pd.notnull(x) else "",
+                "52Week High": lambda x: f"${x:,.2f}" if pd.notnull(x) else ""
+            })
+            st.dataframe(styled_df, use_container_width=True, hide_index=True, height=650)
+        else:
+            st.warning(_["warn_nodata"])
