@@ -1,6 +1,32 @@
 import streamlit as st
 
+def check_password():
+    # Pokud je uživatel už ověřený, pustíme ho dál
+    if st.session_state.get("password_correct", False):
+        return True
+
+    st.markdown("### 🔒 POKORNY TERMINAL - UZAMČENO")
+    
+    def overeni():
+        # Porovná zadané heslo s heslem uloženým v tajných proměnných
+        if st.session_state["zadane_heslo"] == st.secrets["APP_PASSWORD"]:
+            st.session_state["password_correct"] = True
+            del st.session_state["zadane_heslo"] # Smaže heslo z paměti po přihlášení
+        else:
+            st.session_state["password_correct"] = False
+
+    st.text_input("Zadejte administrátorské heslo:", type="password", on_change=overeni, key="zadane_heslo")
+    
+    if "password_correct" in st.session_state and not st.session_state["password_correct"]:
+        st.error("Nesprávné heslo.")
+        
+    return False
+
 def vykresli_menu():
+    # Pokud heslo nesedí, skript se zde zastaví a zbytek aplikace se nenačte
+    if not check_password():
+        st.stop()
+
     st.markdown("""
         <style>
             [data-testid="stSidebarNav"] {display: none;}
