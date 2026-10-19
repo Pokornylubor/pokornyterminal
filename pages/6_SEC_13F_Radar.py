@@ -152,7 +152,7 @@ else:
         _["sel_inv"], 
         options=fund_names, 
         index=None, 
-        placeholder="🔍 Začněte psát název fondu (např. 'Buf')..."
+        placeholder="🔍"
     )
 
     if vyber:
