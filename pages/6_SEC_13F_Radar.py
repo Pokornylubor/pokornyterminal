@@ -28,13 +28,11 @@ t = {
         "title": "SEC 13F RADAR (SUPERINVESTOŘI)",
         "desc": "BLESKOVÉ NAČÍTÁNÍ HISTORICKÝCH DAT PORTFOLIÍ PŘÍMO ZE SEC EDGAR.",
         "exp": "SYSTÉMOVÁ KONFIGURACE: OBLÍBENÍ",
+        "exp_db": "⚙️ SPRÁVA DATABÁZE (PŘIDAT / UPRAVIT / SMAZAT)",
         "fav": "OBLÍBENÍ SUPERINVESTOŘI:",
         "save_cloud": "ULOŽIT ZMĚNY",
         "show_all": "ZOBRAZIT VŠECHNY Z DATABÁZE",
         "sel_inv": "VÝBĚR SUPERINVESTORA",
-        "manual_opt": "➕ PŘIDAT VLASTNÍ FOND (CIK)",
-        "edit_opt": "✏️ ÚPRAVA FONDU (NÁZEV / CIK)",
-        "del_opt": "🗑️ SPRÁVA A MAZÁNÍ FONDŮ",
         "cik_lbl": "CIK KÓD:",
         "name_lbl": "NÁZEV FONDU:",
         "save_new": "ULOŽIT NOVÝ FOND",
@@ -49,13 +47,11 @@ t = {
         "title": "SEC 13F RADAR (SUPERINVESTORS)",
         "desc": "LIGHTNING FAST HISTORICAL PORTFOLIO DATA FROM SEC EDGAR.",
         "exp": "SYSTEM CONFIG: FAVORITES",
+        "exp_db": "⚙️ DATABASE MANAGEMENT (ADD / EDIT / DELETE)",
         "fav": "FAVORITE SUPERINVESTORS:",
         "save_cloud": "COMMIT CHANGES",
         "show_all": "SHOW ALL FROM DATABASE",
         "sel_inv": "SELECT SUPERINVESTOR",
-        "manual_opt": "➕ ADD CUSTOM FUND (CIK)",
-        "edit_opt": "✏️ EDIT FUND (NAME / CIK)",
-        "del_opt": "🗑️ MANAGE AND DELETE FUNDS",
         "cik_lbl": "CIK CODE:",
         "name_lbl": "FUND NAME:",
         "save_new": "COMMIT NEW FUND",
@@ -94,16 +90,13 @@ def save_data(data):
     commit_watchlist_to_github() 
 
 def load_watchlist():
-    # Čisté načtení databáze bez jakýchkoliv defaultních fondů napevno v kódu
     data = {"saved_ciks": {}, "sec_favorites": []}
     if os.path.exists(WATCHLIST_FILE):
         try:
             with open(WATCHLIST_FILE, "r", encoding="utf-8") as f: 
                 loaded_data = json.load(f)
-                if "saved_ciks" in loaded_data:
-                    data["saved_ciks"] = loaded_data["saved_ciks"]
-                if "sec_favorites" in loaded_data:
-                    data["sec_favorites"] = loaded_data["sec_favorites"]
+                if "saved_ciks" in loaded_data: data["saved_ciks"] = loaded_data["saved_ciks"]
+                if "sec_favorites" in loaded_data: data["sec_favorites"] = loaded_data["sec_favorites"]
         except: pass
     return data
 
@@ -112,93 +105,81 @@ ALL_FUNDS = data["saved_ciks"]
 fund_names = sorted(list(ALL_FUNDS.keys()))
 vychozi_vyber = [f for f in data["sec_favorites"] if f in fund_names]
 
-with st.expander(_["exp"], expanded=False):
-    vybrani = st.multiselect(_["fav"], options=fund_names, default=vychozi_vyber)
-    if st.button(_["save_cloud"], use_container_width=True):
-        data["sec_favorites"] = vybrani
-        save_data(data)
-        st.rerun()
+# --- SEKCE NASTAVENÍ (HORNÍ LIŠTY) ---
+col_exp1, col_exp2 = st.columns(2)
+
+with col_exp1:
+    with st.expander(_["exp"], expanded=False):
+        vybrani = st.multiselect(_["fav"], options=fund_names, default=vychozi_vyber)
+        if st.button(_["save_cloud"], use_container_width=True):
+            data["sec_favorites"] = vybrani
+            save_data(data)
+            st.rerun()
+
+with col_exp2:
+    with st.expander(_["exp_db"], expanded=False):
+        akce = st.radio("Zvolte operaci:", ["➕ Přidat", "✏️ Upravit", "🗑️ Smazat"], horizontal=True, label_visibility="collapsed")
+        st.markdown("---")
+        
+        if akce == "➕ Přidat":
+            cik_input = st.text_input(_["cik_lbl"], "").strip()
+            novy_nazev = st.text_input(_["name_lbl"], "").strip()
+            if cik_input and novy_nazev and st.button(_["save_new"], use_container_width=True):
+                data["saved_ciks"][novy_nazev] = cik_input
+                save_data(data)
+                st.success(_["succ_save"])
+                st.rerun()
+                
+        elif akce == "✏️ Upravit":
+            if not fund_names:
+                st.info("Databáze je prázdná.")
+            else:
+                fond_k_uprave = st.selectbox("Vyber fond k úpravě:", options=fund_names)
+                if fond_k_uprave:
+                    aktualni_cik = str(ALL_FUNDS[fond_k_uprave])
+                    novy_cik = st.text_input(_["cik_lbl"], aktualni_cik).strip()
+                    novy_nazev = st.text_input(_["name_lbl"], fond_k_uprave).strip()
+                    if st.button(_["edit_btn"], use_container_width=True):
+                        if novy_nazev and novy_cik:
+                            if novy_nazev != fond_k_uprave:
+                                del data["saved_ciks"][fond_k_uprave]
+                                data["sec_favorites"] = [novy_nazev if f == fond_k_uprave else f for f in data["sec_favorites"]]
+                            data["saved_ciks"][novy_nazev] = novy_cik
+                            save_data(data)
+                            st.success(_["succ_edit"])
+                            st.rerun()
+                        else:
+                            st.warning("Název i CIK musí být vyplněny.")
+                            
+        elif akce == "🗑️ Smazat":
+            if not fund_names:
+                st.info("Databáze je prázdná.")
+            else:
+                fond_k_odstraneni = st.selectbox("Vyber fond k odstranění:", options=fund_names)
+                if st.button("❌ TRVALE SMAZAT FOND", use_container_width=True):
+                    del data["saved_ciks"][fond_k_odstraneni]
+                    if fond_k_odstraneni in data["sec_favorites"]:
+                        data["sec_favorites"].remove(fond_k_odstraneni)
+                    save_data(data)
+                    st.success(f"✅ Fond '{fond_k_odstraneni}' byl odstraněn.")
+                    st.rerun()
 
 st.markdown("---")
 
+# --- HLAVNÍ SEKCE ZOBRAZENÍ PORTFOLIA ---
 c1, c2 = st.columns([1, 4])
 with c1:
     st.markdown("<div style='margin-top: 32px;'></div>", unsafe_allow_html=True)
     zobrazit_vse = st.checkbox(_["show_all"], value=False if vychozi_vyber else True)
     
 nabidka = fund_names if (not vychozi_vyber or zobrazit_vse) else vychozi_vyber
-nabidka.append(_["manual_opt"])
-nabidka.append(_["edit_opt"])
-nabidka.append(_["del_opt"])
 
-with c2:
-    vyber = st.selectbox(_["sel_inv"], nabidka)
-
-# --- SEKCE PŘIDÁNÍ FONDU ---
-if vyber == _["manual_opt"]:
-    m1, m2, m3 = st.columns([2, 2, 1])
-    with m1: cik_input = st.text_input(_["cik_lbl"], "").strip()
-    with m2: novy_nazev = st.text_input(_["name_lbl"], "").strip()
-    with m3:
-        st.markdown("<br>", unsafe_allow_html=True)
-        if cik_input and novy_nazev and st.button(_["save_new"], use_container_width=True):
-            data["saved_ciks"][novy_nazev] = cik_input
-            save_data(data)
-            st.success(_["succ_save"])
-            st.rerun()
-
-# --- SEKCE ÚPRAVY FONDU ---
-elif vyber == _["edit_opt"]:
-    st.markdown(f"### {_['edit_opt']}")
-    if not fund_names:
-        st.info("Databáze fondů je prázdná. Nejprve nějaký přidejte.")
-    else:
-        fond_k_uprave = st.selectbox("Vyber fond k úpravě ze systému:", options=fund_names)
-        
-        if fond_k_uprave:
-            aktualni_cik = str(ALL_FUNDS[fond_k_uprave])
-            
-            m1, m2, m3 = st.columns([2, 2, 1])
-            with m1: novy_cik = st.text_input(_["cik_lbl"], aktualni_cik).strip()
-            with m2: novy_nazev = st.text_input(_["name_lbl"], fond_k_uprave).strip()
-            with m3:
-                st.markdown("<br>", unsafe_allow_html=True)
-                if st.button(_["edit_btn"], use_container_width=True):
-                    if novy_nazev and novy_cik:
-                        if novy_nazev != fond_k_uprave:
-                            if fond_k_uprave in data["saved_ciks"]:
-                                del data["saved_ciks"][fond_k_uprave]
-                            if fond_k_uprave in data["sec_favorites"]:
-                                data["sec_favorites"] = [novy_nazev if f == fond_k_uprave else f for f in data["sec_favorites"]]
-                        
-                        data["saved_ciks"][novy_nazev] = novy_cik
-                        save_data(data)
-                        st.success(_["succ_edit"])
-                        st.rerun()
-                    else:
-                        st.warning("Název fondu i CIK musí být vyplněny.")
-
-# --- SEKCE MAZÁNÍ FONDU ---
-elif vyber == _["del_opt"]:
-    st.markdown("### 🗑️ TRVALÉ ODSTRANĚNÍ FONDU")
-    if not fund_names:
-        st.info("Databáze fondů je prázdná. Není co mazat.")
-    else:
-        fond_k_odstraneni = st.selectbox("Vyber fond k odstranění ze systému:", options=fund_names)
-        st.warning("⚠️ Akce je nevratná. Fond zmizí z nabídky a bude vymazán i z repozitáře na GitHubu.")
-        
-        if st.button("❌ TRVALE SMAZAT FOND", use_container_width=True):
-            if fond_k_odstraneni in data["saved_ciks"]:
-                del data["saved_ciks"][fond_k_odstraneni]
-            if fond_k_odstraneni in data["sec_favorites"]:
-                data["sec_favorites"].remove(fond_k_odstraneni)
-                
-            save_data(data)
-            st.success(f"✅ Fond '{fond_k_odstraneni}' byl navždy odstraněn z databáze!")
-            st.rerun()
-
-# --- SEKCE ZOBRAZENÍ TABULKY ---
+if not nabidka:
+    st.info("Databáze je prázdná nebo nemáš žádné oblíbené. Přidej fond v sekci 'SPRÁVA DATABÁZE'.")
 else:
+    with c2:
+        vyber = st.selectbox(_["sel_inv"], nabidka)
+
     cik = str(ALL_FUNDS[vyber]).zfill(10)
     csv_path = os.path.join(SEC_DATA_DIR, f"{cik}.csv")
     meta_path = os.path.join(SEC_DATA_DIR, f"{cik}_meta.json")
@@ -209,7 +190,6 @@ else:
         if st.button(_["btn_upd"], use_container_width=True):
             with st.spinner(_["spin_upd"]):
                 sec_updater.update_sec_funds(target_cik=cik)
-                
                 try:
                     if "GITHUB_TOKEN" in st.secrets:
                         token = st.secrets["GITHUB_TOKEN"]
@@ -222,8 +202,7 @@ else:
                         subprocess.run(["git", "add", "sec_data/"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                         subprocess.run(["git", "commit", "-m", f"Okamžité stažení portfolia (CIK: {cik}) z mobilu"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                         subprocess.run(["git", "push", remote_url, "HEAD:main"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                except Exception:
-                    pass
+                except Exception: pass
             st.rerun()
             
     if os.path.exists(csv_path) and os.path.exists(meta_path):
@@ -243,7 +222,6 @@ else:
             act_val = str(row['RecentActivity'])
             if "Buy" in act_val or "Add" in act_val or "New" in act_val: styles[2] = 'color: #26A69A; font-weight: bold;'
             elif "Reduce" in act_val or "Sell" in act_val: styles[2] = 'color: #EF5350; font-weight: bold;'
-            
             if pd.notnull(row['+/-Reported Price']):
                 try:
                     val = float(row['+/-Reported Price'])
@@ -262,7 +240,6 @@ else:
             "52Week Low": lambda x: f"${x:,.2f}" if pd.notnull(x) else "",
             "52Week High": lambda x: f"${x:,.2f}" if pd.notnull(x) else ""
         })
-        
         st.dataframe(styled_df, use_container_width=True, hide_index=True, height=650)
     else:
         st.warning(_["warn_nodata"])
