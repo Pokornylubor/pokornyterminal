@@ -17,7 +17,26 @@
         "Bill Ackman (Pershing Square)"
     ],
     "portfolio": [
-        "AMZN"
+        "AMZN",
+        "GOOGL",
+        "MSFT",
+        "AMAT",
+        "ASML",
+        "NVDA",
+        "UBER",
+        "APP",
+        "SOFI",
+        "CRWV"
     ],
-    "watchlist": []
+    "watchlist": [
+        "NBIS",
+        "IREN",
+        "BE",
+        "MU",
+        "SNDK",
+        "FSLR",
+        "AMD",
+        "VST",
+        "TSM"
+    ]
 }
