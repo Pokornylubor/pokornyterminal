@@ -29,7 +29,7 @@ t = {
         "cloud_err1": "CLOUD ZAMÍTL PŘÍSTUP. KÓD:",
         "cloud_err2": "CHYBA SPOJENÍ S CLOUDEM:",
         
-        "p3_title": "FÁZE 3: LOKÁLNÍ ENGINE (SEC EDGAR)",
+        "p3_title": "FÁZE 3: CLOUDOVÝ ENGINE (SEC EDGAR)",
         "p3_desc": "Využívá výkon tohoto PC k očištění SEC dat a automaticky je odešle na GitHub.",
         "p3_btn": "SPUSTIT LOKÁLNÍ STAHOVÁNÍ SEC",
         "p3_stat": "STAHOVÁNÍ DATA SEC A SYNCHRONIZACE CLOUDU...",
@@ -130,41 +130,11 @@ if st.button(_["p2_btn"], use_container_width=True):
 st.markdown("---")
 
 # ==========================================
-# FÁZE 3: LOKÁL - SEC Data + Odesílač
+# FÁZE 3: CLOUD - SEC EDGAR
 # ==========================================
 st.markdown(f"### {_['p3_title']}")
-st.markdown(_["p3_desc"])
+st.markdown("Využívá servery GitHubu. Stáhne čerstvá data přímo z americké komise SEC.")
 
-if st.button(_["p3_btn"], use_container_width=True):
-    with st.status(_["p3_stat"], expanded=True) as status:
-        try:
-            aktualni_slozka = os.path.dirname(os.path.abspath(__file__))
-            hlavni_slozka = os.path.dirname(aktualni_slozka)
-            cesta_sec = os.path.join(hlavni_slozka, "sec_updater.py")
-            
-            if os.path.exists(cesta_sec):
-                st.write(_["p3_step1"])
-                subprocess.run([sys.executable, cesta_sec], cwd=hlavni_slozka, check=True)
-                st.write(_["p3_step1ok"])
-                
-                st.write(_["p3_step2"])
-                subprocess.run(["git", "pull", "origin", "main", "--no-edit"], cwd=hlavni_slozka)
-                
-                st.write(_["p3_step3"])
-                subprocess.run(["git", "add", "."], cwd=hlavni_slozka, check=True)
-                
-                commit = subprocess.run(["git", "commit", "-m", "SYS: Aktualizace SEC dat (Lokál)"], cwd=hlavni_slozka, capture_output=True)
-                
-                if commit.returncode == 0:
-                    st.write(_["p3_step4"])
-                    subprocess.run(["git", "push"], cwd=hlavni_slozka, check=True)
-                    status.update(label=_["p3_done"], state="complete", expanded=False)
-                else:
-                    status.update(label=_["p3_same"], state="complete", expanded=False)
-                    
-            else:
-                status.update(label=_["p3_nofile"], state="error")
-                
-        except Exception as e:
-            status.update(label=_["p3_err"], state="error")
-            st.error(f"{e}")
+if st.button("SPUSTIT SEC EDGAR NA CLOUDU", use_container_width=True):
+    with st.spinner(_["cloud_spin"]):
+        spust_cloud_workflow("sec_edgar_faze3.yml")

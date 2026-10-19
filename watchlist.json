@@ -35,5 +35,9 @@
         "VIX FUTURES - CBOE FUTURES EXCHANGE",
         "WTI FINANCIAL CRUDE OIL - NEW YORK MERCANTILE EXCHANGE",
         "GOLD - COMMODITY EXCHANGE INC."
-    ]
+    ],
+    "saved_ciks": {
+        "Leopold Aschenbrenner": "0002038540"
+    },
+    "sec_favorites": []
 }
