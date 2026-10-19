@@ -41,6 +41,18 @@
         "WTI FINANCIAL CRUDE OIL - NEW YORK MERCANTILE EXCHANGE",
         "GOLD - COMMODITY EXCHANGE INC."
     ],
-    "saved_ciks": {},
+    "saved_ciks": {
+        "Warren Buffett (Berkshire Hathaway)": "1067983",
+        "Michael Burry (Scion Asset Management)": "1649339",
+        "Stanley Druckenmiller (Duquesne Family Office)": "1536411",
+        "Chris Hohn (TCI Fund Management)": "1647251",
+        "Bill Ackman (Pershing Square)": "0002026053",
+        "Ray Dalio (Bridgewater Associates)": "1350694",
+        "David Tepper (Appaloosa)": "1009207",
+        "Seth Klarman (Baupost Group)": "1061768",
+        "Jim Simons (Renaissance Technologies)": "1037389",
+        "Carl Icahn (Icahn Capital)": "921669",
+        "Peter Thiel": "0001211060"
+    },
     "sec_favorites": []
 }
