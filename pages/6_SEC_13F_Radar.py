@@ -182,7 +182,25 @@ else:
     with c_upd:
         if st.button(_["btn_upd"], use_container_width=True):
             with st.spinner(_["spin_upd"]):
+                # 1. Okamžité stažení dat přímo do aplikace (bleskovka)
                 sec_updater.update_sec_funds(target_cik=cik)
+                
+                # 2. Neviditelné odeslání stažených tabulek natrvalo na GitHub
+                try:
+                    if "GITHUB_TOKEN" in st.secrets:
+                        import subprocess
+                        token = st.secrets["GITHUB_TOKEN"]
+                        owner = st.secrets["GITHUB_OWNER"]
+                        repo = st.secrets["GITHUB_REPO"]
+                        remote_url = f"https://{owner}:{token}@github.com/{owner}/{repo}.git"
+                        
+                        subprocess.run(["git", "config", "--global", "user.email", "bot@pokornyterminal.cz"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                        subprocess.run(["git", "config", "--global", "user.name", "Terminal Bot"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                        subprocess.run(["git", "add", "sec_data/"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                        subprocess.run(["git", "commit", "-m", f"Okamžité stažení portfolia (CIK: {cik}) z mobilu"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                        subprocess.run(["git", "push", remote_url, "HEAD:main"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                except Exception:
+                    pass
             st.rerun()
             
     if os.path.exists(csv_path) and os.path.exists(meta_path):
