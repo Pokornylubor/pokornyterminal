@@ -33,7 +33,7 @@ t = {
         "annual": "Roční (Annual)",
         "quarterly": "Kvartální (Quarterly)",
         "loading": "STAHOVÁNÍ VÝKAZŮ...",
-        "err_data": "DATA PRO TENTO TICKER NEJSOU DOSTUPNÁ (Yahoo Finance dočasně omezil přístup, zkuste to za chvíli).",
+        "err_data": "DATA PRO TENTO TICKER NEJSOU DOSTUPNÁ.",
         "tab_matrix": "📑 FINANČNÍ MATICE & VÝHLED",
         "tab_val": "📊 VALUACE & KPI",
         "tab_ana": "🎯 ANALYTICI & KONSENZUS",
@@ -85,7 +85,7 @@ t = {
         "annual": "Annual",
         "quarterly": "Quarterly",
         "loading": "LOADING STATEMENTS...",
-        "err_data": "DATA FOR THIS TICKER NOT AVAILABLE (Yahoo Finance rate limit, try again later).",
+        "err_data": "DATA FOR THIS TICKER NOT AVAILABLE.",
         "tab_matrix": "📑 FINANCIAL MATRIX & OUTLOOK",
         "tab_val": "📊 VALUATION & KPIs",
         "tab_ana": "🎯 ANALYSTS & CONSENSUS",
@@ -175,9 +175,31 @@ def format_val(val, currency_code, is_pct=False, is_eps=False, force_currency=Fa
 if final_tick:
     with st.spinner(f"{_['loading']} {final_tick}..."):
         tkr = yf.Ticker(final_tick, session=session)
-        info = tkr.info
         
-        if not info or ("currentPrice" not in info and "regularMarketPrice" not in info and "longName" not in info):
+        # Bezpečné načtení info s ošetřením HTTPError/blokace
+        try:
+            info = tkr.info or {}
+        except:
+            info = {}
+            
+        is_quarterly = (period_type == _["quarterly"])
+        
+        try:
+            financials = tkr.quarterly_financials if is_quarterly else tkr.financials
+        except:
+            financials = pd.DataFrame()
+            
+        try:
+            cashflow = tkr.quarterly_cashflow if is_quarterly else tkr.cashflow
+        except:
+            cashflow = pd.DataFrame()
+            
+        try:
+            balance_sheet = tkr.balance_sheet
+        except:
+            balance_sheet = pd.DataFrame()
+
+        if financials is None or financials.empty:
             st.error(_["err_data"])
             st.stop()
             
@@ -219,13 +241,8 @@ if final_tick:
             except:
                 return latest_fx
 
-        is_quarterly = (period_type == _["quarterly"])
-        financials = tkr.quarterly_financials if is_quarterly else tkr.financials
-        cashflow = tkr.quarterly_cashflow if is_quarterly else tkr.cashflow
-        balance_sheet = tkr.balance_sheet
-        
-        q_fin_for_kpi = tkr.quarterly_financials
-        q_cf_for_kpi = tkr.quarterly_cashflow
+        q_fin_for_kpi = tkr.quarterly_financials if not is_quarterly else financials
+        q_cf_for_kpi = tkr.quarterly_cashflow if not is_quarterly else cashflow
         
         def get_ltm_from_quarterly(df, keys):
             if df is None or df.empty: return None
@@ -261,7 +278,7 @@ if final_tick:
         calc_debt_eq = None
         roic, roce, roi = None, None, None 
         
-        if not balance_sheet.empty:
+        if balance_sheet is not None and not balance_sheet.empty:
             try:
                 total_debt = balance_sheet.loc['Total Debt'].iloc[0] if 'Total Debt' in balance_sheet.index else 0
                 stockholders_eq = balance_sheet.loc['Stockholders Equity'].iloc[0] if 'Stockholders Equity' in balance_sheet.index else 0
