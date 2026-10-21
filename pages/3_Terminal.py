@@ -29,7 +29,7 @@ t = {
         "annual": "Roční (Annual)",
         "quarterly": "Kvartální (Quarterly)",
         "loading": "STAHOVÁNÍ INSTITUCIONÁLNÍCH DAT...",
-        "err_data": "DATA PRO TENTO TICKER NEJSOU DOSTUPNÁ (Yahoo Finance dočasně blokuje cloudovou IP. Zkus zvolit jiný ticker).",
+        "err_data": "DATA PRO TENTO TICKER NEJSOU DOSTUPNÁ (Yahoo Finance dočasně omezil přístup z cloudu. Zkus to za chvíli nebo vyber jiný ticker).",
         "tab_matrix": "📑 FINANČNÍ MATICE & VÝHLED",
         "tab_val": "📊 VALUACE & KPI",
         "tab_ana": "🎯 ANALYTICI & REVIZE",
@@ -169,22 +169,31 @@ final_tick = custom_tick.upper().strip() if custom_tick.strip() else sel_tick
 def get_ticker_data(ticker):
     try:
         tkr = yf.Ticker(ticker)
-        # Zkušební stažení výkazů jako ověření, že ticker vůbec existuje
+        # Bezpečný pokus o stažení základních výkazů
         fin = tkr.financials
         if fin is None or fin.empty:
             return None
+            
+        # Pokusíme se bezpečně vytáhnout ostatní atributy, pokud selžou, nepoloží to aplikaci
+        def safe_get(func, default=None):
+            try:
+                res = func()
+                return res if res is not None else default
+            except:
+                return default
+
         return {
-            "info": tkr.info,
+            "info": safe_get(lambda: tkr.info, {}),
             "financials": fin,
-            "balance_sheet": tkr.balance_sheet,
-            "cashflow": tkr.cashflow,
-            "quarterly_financials": tkr.quarterly_financials,
-            "quarterly_cashflow": tkr.quarterly_cashflow,
-            "revenue_estimate": tkr.revenue_estimate,
-            "earnings_estimate": tkr.earnings_estimate,
-            "eps_revisions": tkr.eps_revisions,
-            "calendar": tkr.calendar,
-            "earnings_history": tkr.earnings_history
+            "balance_sheet": safe_get(lambda: tkr.balance_sheet, pd.DataFrame()),
+            "cashflow": safe_get(lambda: tkr.cashflow, pd.DataFrame()),
+            "quarterly_financials": safe_get(lambda: tkr.quarterly_financials, pd.DataFrame()),
+            "quarterly_cashflow": safe_get(lambda: tkr.quarterly_cashflow, pd.DataFrame()),
+            "revenue_estimate": safe_get(lambda: tkr.revenue_estimate, pd.DataFrame()),
+            "earnings_estimate": safe_get(lambda: tkr.earnings_estimate, pd.DataFrame()),
+            "eps_revisions": safe_get(lambda: tkr.eps_revisions, pd.DataFrame()),
+            "calendar": safe_get(lambda: tkr.calendar, {}),
+            "earnings_history": safe_get(lambda: tkr.earnings_history, pd.DataFrame())
         }
     except:
         return None
