@@ -25,7 +25,7 @@ session.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Apple
 # --- DICTIONARY ---
 t = {
     "CZ": {
-        "title": "🏛️ HLOUBKOVÝ ANALYTICKÝ TERMINÁL",
+        "title": "🏛️ TERMINÁL",
         "desc": "INSTITUCIONÁLNÍ ČASOVÁ OSA VÝKAZŮ, VALUACE, KONSENZUS A EARNINGS.",
         "db_select": "DATABÁZE",
         "custom_tick": "VLASTNÍ TICKER",
@@ -123,7 +123,7 @@ t = {
         "eh_na4": "Historie kvartálních earnings není dostupná."
     },
     "EN": {
-        "title": "🏛️ DEEP INSTITUTIONAL TERMINAL",
+        "title": "🏛️ TERMINAL",
         "desc": "INSTITUTIONAL FINANCIAL STATEMENTS TIMELINE, VALUATION, CONSENSUS & EARNINGS.",
         "db_select": "DATABASE",
         "custom_tick": "CUSTOM TICKER",
