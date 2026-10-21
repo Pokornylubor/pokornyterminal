@@ -109,8 +109,9 @@ t = {
         "est_q2": "Q+2 (Odhad)",
         "earn_next_h": "Nadcházející kvartální report",
         "earn_hist_h": "Historie překonání odhadů (Beat / Miss)",
-        "earn_date_lbl": "Termín příštích earnings",
-        "earn_eps_lbl": "Očekávaný EPS odhad",
+        "earn_date_lbl": "Termín",
+        "earn_eps_lbl": "Odhad EPS",
+        "earn_rev_lbl": "Očekávané tržby",
         "eh_date": "Kvartál",
         "eh_act": "Skutečné EPS",
         "eh_est": "Odhad EPS",
@@ -206,8 +207,9 @@ t = {
         "est_q2": "Q+2 (Est)",
         "earn_next_h": "Upcoming Earnings Report",
         "earn_hist_h": "Earnings Surprise History (Beat / Miss)",
-        "earn_date_lbl": "Next Earnings Date",
-        "earn_eps_lbl": "Consensus EPS Estimate",
+        "earn_date_lbl": "Date",
+        "earn_eps_lbl": "Consensus EPS",
+        "earn_rev_lbl": "Consensus Revenue",
         "eh_date": "Quarter",
         "eh_act": "Actual EPS",
         "eh_est": "Estimated EPS",
@@ -595,14 +597,24 @@ if final_tick:
                 
                 if next_date:
                     eps_est_val = None
+                    rev_est_val = None
                     try:
                         eps_est_val = tkr.earnings_estimate.loc["0q", "avg"]
+                        rev_est_val = tkr.revenue_estimate.loc["0q", "avg"]
                     except:
                         pass
                         
-                    ec1, ec2 = st.columns(2)
+                    ec1, ec2, ec3 = st.columns(3)
                     ec1.metric(_["earn_date_lbl"], next_date.strftime("%d. %m. %Y"))
                     ec2.metric(_["earn_eps_lbl"], f"${eps_est_val:.2f}" if pd.notna(eps_est_val) else "N/A")
+                    
+                    rev_str = "N/A"
+                    if pd.notna(rev_est_val):
+                        if rev_est_val >= 1e9: rev_str = f"${rev_est_val/1e9:.2f} B"
+                        elif rev_est_val >= 1e6: rev_str = f"${rev_est_val/1e6:.2f} M"
+                        else: rev_str = f"${rev_est_val:,.2f}"
+                        
+                    ec3.metric(_["earn_rev_lbl"], rev_str)
                 else:
                     st.info(_["eh_na1"])
             except:
