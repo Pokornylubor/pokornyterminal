@@ -4,6 +4,7 @@ import yfinance as yf
 import json
 import os
 import sys
+import plotly.graph_objects as go
 
 # --- INITIAL SETUP ---
 st.set_page_config(page_title="POKORNY TERMINAL | VALUATION", layout="wide", initial_sidebar_state="collapsed")
@@ -21,13 +22,13 @@ menu.vykresli_menu()
 t = {
     "CZ": {
         "title": "🏛️ HLOUBKOVÝ ANALYTICKÝ TERMINÁL",
-        "desc": "KOMPLEXNÍ INSTITUCIONÁLNÍ POHLED: MATICE VÝKAZŮ, VALUACE A KONSENZUÁLNÍ ODHADY.",
+        "desc": "INSTITUCIONÁLNÍ ČASOVÁ OSA VÝKAZŮ, VALUACE A KONSENZUÁLNÍ ODHADY.",
         "db_select": "DATABÁZE",
         "custom_tick": "VLASTNÍ TICKER",
         "periodicity": "PERIODICITA MATICE:",
         "annual": "Roční (Annual)",
         "quarterly": "Kvartální (Quarterly)",
-        "loading": "STAHOVÁNÍ ŽIVÝCH DAT...",
+        "loading": "STAHOVÁNÍ VÝKAZŮ...",
         "err_data": "DATA PRO TENTO TICKER NEJSOU DOSTUPNÁ.",
         "tab_matrix": "📑 FINANČNÍ MATICE & VÝHLED",
         "tab_val": "📊 VALUACE & KPI",
@@ -56,17 +57,30 @@ t = {
         "r_fcf": "Volné cash flow (Free Cash Flow)",
         "r_fcfm": " ↳ FCF marže",
         "currency_lbl": "Měna výkazů:",
-        "convert_usd": "Převést výkazy z {curr} do USD (dle historických kurzů)"
+        "convert_usd": "Převést výkazy z {curr} do USD (dle historických kurzů)",
+        "raw_h": "STRUKTUROVANÁ DATABÁZE VÝKAZŮ:",
+        "raw_c": "Vyčištěná data z výkazů.",
+        "raw_inc": "1. INCOME STATEMENT (Výkaz zisků a ztrát)",
+        "raw_bal": "2. BALANCE SHEET (Rozvaha)",
+        "raw_cf": "3. CASH FLOW STATEMENT (Výkaz peněžních toků)",
+        "raw_na": "Výkaz není dostupný.",
+        "h_de": "Celkový dluh / Vlastní kapitál.",
+        "h_cr": "Běžná likvidita: Krátkodobá aktiva / Krátkodobé závazky.",
+        "h_qr": "Pohotová likvidita: (Krátkodobá aktiva - Zásoby) / Krátkodobé závazky.",
+        "h_roe": "Return on Equity: Čistý zisk / Vlastní kapitál.",
+        "h_roic": "Return on Invested Capital.",
+        "h_roa": "Return on Assets.",
+        "h_roce": "Return on Capital Employed."
     },
     "EN": {
         "title": "🏛️ DEEP INSTITUTIONAL TERMINAL",
-        "desc": "COMPREHENSIVE ANALYSIS: FINANCIAL MATRIX, VALUATION & CONSENSUS ESTIMATES.",
+        "desc": "INSTITUTIONAL FINANCIAL STATEMENTS TIMELINE, VALUATION & CONSENSUS.",
         "db_select": "DATABASE",
         "custom_tick": "CUSTOM TICKER",
         "periodicity": "MATRIX PERIODICITY:",
         "annual": "Annual",
         "quarterly": "Quarterly",
-        "loading": "PULLING LIVE DATA...",
+        "loading": "LOADING STATEMENTS...",
         "err_data": "DATA FOR THIS TICKER NOT AVAILABLE.",
         "tab_matrix": "📑 FINANCIAL MATRIX & OUTLOOK",
         "tab_val": "📊 VALUATION & KPIs",
@@ -95,7 +109,20 @@ t = {
         "r_fcf": "Free Cash Flow (FCF)",
         "r_fcfm": " ↳ FCF Margin",
         "currency_lbl": "Reporting Currency:",
-        "convert_usd": "Convert statements from {curr} to USD (using historical rates)"
+        "convert_usd": "Convert statements from {curr} to USD (using historical rates)",
+        "raw_h": "STRUCTURED STATEMENTS DATABASE:",
+        "raw_c": "Cleaned statement data.",
+        "raw_inc": "1. INCOME STATEMENT",
+        "raw_bal": "2. BALANCE SHEET",
+        "raw_cf": "3. CASH FLOW STATEMENT",
+        "raw_na": "Statement not available.",
+        "h_de": "Total Debt / Total Equity.",
+        "h_cr": "Current Ratio: Current Assets / Current Liabilities.",
+        "h_qr": "Quick Ratio.",
+        "h_roe": "Return on Equity.",
+        "h_roic": "Return on Invested Capital.",
+        "h_roa": "Return on Assets.",
+        "h_roce": "Return on Capital Employed."
     }
 }
 _ = t.get(st.session_state.get("lang", "CZ"), t["CZ"])
@@ -144,22 +171,11 @@ def format_val(val, currency_code, is_pct=False, is_eps=False, force_currency=Fa
 if final_tick:
     with st.spinner(f"{_['loading']} {final_tick}..."):
         tkr = yf.Ticker(final_tick)
+        info = tkr.info
         
-        # Bezpečné ověření přes výkazy namísto zablokovaného tkr.info
-        try:
-            financials_test = tkr.financials
-        except:
-            financials_test = pd.DataFrame()
-
-        if financials_test is None or financials_test.empty:
+        if not info or ("currentPrice" not in info and "regularMarketPrice" not in info and "longName" not in info):
             st.error(_["err_data"])
             st.stop()
-            
-        # Bezpečné vytažení info bez pádu
-        try:
-            info = tkr.info or {}
-        except:
-            info = {}
             
         short_name = info.get("shortName", final_tick)
         curr_price = info.get("currentPrice", info.get("regularMarketPrice", 0.0))
@@ -200,45 +216,33 @@ if final_tick:
                 return latest_fx
 
         is_quarterly = (period_type == _["quarterly"])
-        try:
-            financials = tkr.quarterly_financials if is_quarterly else tkr.financials
-        except:
-            financials = pd.DataFrame()
-
-        try:
-            cashflow = tkr.quarterly_cashflow if is_quarterly else tkr.cashflow
-        except:
-            cashflow = pd.DataFrame()
-
-        try:
-            balance_sheet = tkr.balance_sheet
-        except:
-            balance_sheet = pd.DataFrame()
+        financials = tkr.quarterly_financials if is_quarterly else tkr.financials
+        cashflow = tkr.quarterly_cashflow if is_quarterly else tkr.cashflow
+        balance_sheet = tkr.balance_sheet
         
-        q_fin_for_kpi = tkr.quarterly_financials if not is_quarterly else financials
-        q_cf_for_kpi = tkr.quarterly_cashflow if not is_quarterly else cashflow
+        q_fin_for_kpi = tkr.quarterly_financials
+        q_cf_for_kpi = tkr.quarterly_cashflow
         
-        # --- LTM VÝPOČTY PRO KPI DASHBOARD ---
-        def sum_ltm(df, row_names):
+        def get_ltm_from_quarterly(df, keys):
             if df is None or df.empty: return None
-            for row in row_names:
-                if row in df.index:
-                    vals = df.loc[row].iloc[:4]
+            for key in keys:
+                if key in df.index:
+                    vals = df.loc[key].iloc[:4]
                     if len(vals) == 4 and not vals.isna().all(): return vals.sum()
             return None
 
-        total_rev_ltm = sum_ltm(q_fin_for_kpi, ['Total Revenue']) or info.get("totalRevenue")
-        net_income_ltm = sum_ltm(q_fin_for_kpi, ['Net Income', 'Net Income Common Stockholders']) or info.get("netIncomeToCommon", info.get("netIncome"))
-        ebitda_ltm = sum_ltm(q_fin_for_kpi, ['Normalized EBITDA', 'EBITDA']) or info.get("ebitda")
+        total_rev_ltm = get_ltm_from_quarterly(q_fin_for_kpi, ['Total Revenue']) or info.get("totalRevenue")
+        net_income_ltm = get_ltm_from_quarterly(q_fin_for_kpi, ['Net Income', 'Net Income Common Stockholders']) or info.get("netIncomeToCommon", info.get("netIncome"))
+        ebitda_ltm = get_ltm_from_quarterly(q_fin_for_kpi, ['Normalized EBITDA', 'EBITDA']) or info.get("ebitda")
         
-        fcf = sum_ltm(q_cf_for_kpi, ['Free Cash Flow'])
-        if fcf is None and q_cf_for_kpi is not None and not q_cf_for_kpi.empty:
-            ocf = sum_ltm(q_cf_for_kpi, ['Operating Cash Flow'])
-            capex = sum_ltm(q_cf_for_kpi, ['Capital Expenditure'])
+        fcf = get_ltm_from_quarterly(q_cf_for_kpi, ['Free Cash Flow'])
+        if fcf is None:
+            ocf = get_ltm_from_quarterly(q_cf_for_kpi, ['Operating Cash Flow'])
+            capex = get_ltm_from_quarterly(q_cf_for_kpi, ['Capital Expenditure'])
             if ocf and capex is not None: fcf = ocf - abs(capex)
             else: fcf = info.get("freeCashflow")
-
-        eps_ltm_kpi = info.get("trailingEps") 
+                
+        eps_ltm = info.get("trailingEps") 
         pe = info.get("trailingPE")
         fwd_pe = info.get("forwardPE")
         peg = info.get("pegRatio")
@@ -253,7 +257,7 @@ if final_tick:
         calc_debt_eq = None
         roic, roce, roi = None, None, None 
         
-        if balance_sheet is not None and not balance_sheet.empty:
+        if not balance_sheet.empty:
             try:
                 total_debt = balance_sheet.loc['Total Debt'].iloc[0] if 'Total Debt' in balance_sheet.index else 0
                 stockholders_eq = balance_sheet.loc['Stockholders Equity'].iloc[0] if 'Stockholders Equity' in balance_sheet.index else 0
@@ -270,16 +274,17 @@ if final_tick:
         gross_margin = info.get("grossMargins")
         op_margin = info.get("operatingMargins")
         profit_margin = info.get("profitMargins")
+        
         ebitda_margin = (ebitda_ltm / total_rev_ltm) if ebitda_ltm and total_rev_ltm and total_rev_ltm > 0 else None
         fcf_margin = (fcf / total_rev_ltm) if fcf and total_rev_ltm and total_rev_ltm > 0 else None
         
         if net_income_ltm and 'invested_capital' in locals() and invested_capital > 0: roic = net_income_ltm / invested_capital
-        if net_income_ltm and 'total_assets' in locals() and total_assets > 0: roi = net_income_ltm / total_assets 
-        if financials is not None and not financials.empty and 'capital_employed' in locals() and capital_employed > 0:
+        if not financials.empty and 'capital_employed' in locals() and capital_employed > 0:
              try:
                  ebit = financials.loc['EBIT'].iloc[0] if 'EBIT' in financials.index else (financials.loc['Operating Income'].iloc[0] if 'Operating Income' in financials.index else 0)
                  if ebit: roce = ebit / capital_employed
              except: pass
+        if net_income_ltm and 'total_assets' in locals() and total_assets > 0: roi = net_income_ltm / total_assets 
 
         st.markdown("---")
 
@@ -291,7 +296,7 @@ if final_tick:
             matrix_dict = {}
             last_hist_year = 2024
             
-            if financials is not None and not financials.empty:
+            if not financials.empty:
                 hist_cols = sorted(financials.columns)
                 last_hist_year = hist_cols[-1].year
                 
@@ -316,7 +321,7 @@ if final_tick:
                     matrix_dict[col_label][_["r_eps"]] = (eps * rate) if pd.notna(eps) else None
                     
                     fcf_val = None
-                    if cashflow is not None and not cashflow.empty and col in cashflow.columns:
+                    if not cashflow.empty and col in cashflow.columns:
                         if "Free Cash Flow" in cashflow.index:
                             fcf_val = cashflow.loc["Free Cash Flow", col]
                         elif "Operating Cash Flow" in cashflow.index and "Capital Expenditure" in cashflow.index:
@@ -328,47 +333,16 @@ if final_tick:
                 rate = latest_fx if convert_to_usd else 1.0
                 matrix_dict[ltm_col] = {}
                 matrix_dict[ltm_col][_["r_rev"]] = (total_rev_ltm * rate) if pd.notna(total_rev_ltm) else None
-                matrix_dict[ltm_col][_["r_gp"]] = (sum_ltm(q_fin_for_kpi, ["Gross Profit"]) * rate) if sum_ltm(q_fin_for_kpi, ["Gross Profit"]) is not None else None
-                matrix_dict[ltm_col][_["r_ebit"]] = (sum_ltm(q_fin_for_kpi, ["Operating Income", "EBIT"]) * rate) if sum_ltm(q_fin_for_kpi, ["Operating Income", "EBIT"]) is not None else None
+                matrix_dict[ltm_col][_["r_gp"]] = (get_ltm_from_quarterly(q_fin_for_kpi, ["Gross Profit"]) * rate) if get_ltm_from_quarterly(q_fin_for_kpi, ["Gross Profit"]) is not None else None
+                matrix_dict[ltm_col][_["r_ebit"]] = (get_ltm_from_quarterly(q_fin_for_kpi, ["Operating Income", "EBIT"]) * rate) if get_ltm_from_quarterly(q_fin_for_kpi, ["Operating Income", "EBIT"]) is not None else None
                 matrix_dict[ltm_col][_["r_ni"]] = (net_income_ltm * rate) if pd.notna(net_income_ltm) else None
-                
-                ltm_eps_matrix = sum_ltm(q_fin_for_kpi, ["Diluted EPS", "Basic EPS"])
-                matrix_dict[ltm_col][_["r_eps"]] = (ltm_eps_matrix * rate) if pd.notna(ltm_eps_matrix) else None
+                matrix_dict[ltm_col][_["r_eps"]] = (eps_ltm * rate) if pd.notna(eps_ltm) else None
                 matrix_dict[ltm_col][_["r_fcf"]] = (fcf * rate) if pd.notna(fcf) else None
-
-            try:
-                rev_est = tkr.revenue_estimate
-                eps_est = tkr.earnings_estimate
-                
-                if is_quarterly:
-                    est_keys = [("0q", "Q+1 (Est)"), ("+1q", "Q+2 (Est)")]
-                else:
-                    est_keys = [("0y", f"{last_hist_year + 1}E"), ("+1y", f"{last_hist_year + 2}E")]
-                    
-                for k, label in est_keys:
-                    col_name = label
-                    rate = latest_fx if convert_to_usd else 1.0
-                    matrix_dict[col_name] = {}
-                    
-                    e_val = eps_est.loc[k, "avg"] if (eps_est is not None and not eps_est.empty and k in eps_est.index and "avg" in eps_est.columns) else None
-                    matrix_dict[col_name][_["r_eps"]] = (e_val * rate) if pd.notna(e_val) else None
-                    
-                    r_val = rev_est.loc[k, "avg"] if (rev_est is not None and not rev_est.empty and k in rev_est.index and "avg" in rev_est.columns) else None
-                    matrix_dict[col_name][_["r_rev"]] = (r_val * rate) if pd.notna(r_val) else None
-                    matrix_dict[col_name][_["r_gp"]] = None
-                    matrix_dict[col_name][_["r_ebit"]] = None
-                    
-                    shares = info.get("sharesOutstanding")
-                    matrix_dict[col_name][_["r_ni"]] = (e_val * rate * shares) if (pd.notna(e_val) and shares) else None
-                    matrix_dict[col_name][_["r_fcf"]] = None
-            except:
-                pass
 
             df_matrix = pd.DataFrame(matrix_dict)
             
             if _["r_rev"] in df_matrix.index:
                 rev_series = pd.to_numeric(df_matrix.loc[_["r_rev"]], errors='coerce')
-                
                 clean_series = rev_series.drop("LTM", errors="ignore")
                 growth_series = clean_series.pct_change()
                 if "LTM" in df_matrix.columns:
@@ -397,7 +371,6 @@ if final_tick:
             df_matrix = df_matrix.reindex(existing_ordered)
 
             df_display = df_matrix.copy().astype(object)
-            
             pct_rows = [_["r_rev_growth"], _["r_gm"], _["r_om"], _["r_nm"], _["r_fcfm"]]
             
             for r in df_display.index:
@@ -454,7 +427,7 @@ if final_tick:
             vkpi5.metric("LTM EBITDA", fmt_kpi(ebitda_ltm * fx_m if ebitda_ltm else None, is_curr=True, curr_label=display_currency))
             vkpi5.metric("LTM Net Income", fmt_kpi(net_income_ltm * fx_m if net_income_ltm else None, is_curr=True, curr_label=display_currency)) 
             vkpi5.metric("LTM FCF", fmt_kpi(fcf * fx_m if fcf else None, is_curr=True, curr_label=display_currency))
-            vkpi5.metric("LTM EPS", fmt_kpi(eps_ltm_kpi, is_curr=True, curr_label=trading_currency))
+            vkpi5.metric("LTM EPS", fmt_kpi(eps_ltm, is_curr=True, curr_label=trading_currency))
 
         with tab_ana:
             st.subheader(_["targets_h"])
@@ -474,7 +447,7 @@ if final_tick:
 
         with tab_raw:
             st.subheader(f"Balance Sheet — {final_tick}")
-            if balance_sheet is not None and not balance_sheet.empty:
+            if not balance_sheet.empty:
                 bs_display = balance_sheet.copy()
                 for col in bs_display.columns:
                     rate = get_rate(col)
