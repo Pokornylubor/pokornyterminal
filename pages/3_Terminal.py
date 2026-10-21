@@ -4,7 +4,6 @@ import yfinance as yf
 import json
 import os
 import sys
-from datetime import datetime
 
 # --- INITIAL SETUP ---
 st.set_page_config(page_title="POKORNY TERMINAL | VALUATION", layout="wide", initial_sidebar_state="collapsed")
@@ -22,18 +21,17 @@ menu.vykresli_menu()
 t = {
     "CZ": {
         "title": "🏛️ HLOUBKOVÝ ANALYTICKÝ TERMINÁL",
-        "desc": "KOMPLEXNÍ INSTITUCIONÁLNÍ POHLED: MATICE VÝKAZŮ, VALUACE, KONSENZY A EARNINGS KALENDÁŘ.",
+        "desc": "KOMPLEXNÍ INSTITUCIONÁLNÍ POHLED: MATICE VÝKAZŮ, VALUACE A KONSENZUÁLNÍ ODHADY.",
         "db_select": "DATABÁZE",
         "custom_tick": "VLASTNÍ TICKER",
         "periodicity": "PERIODICITA MATICE:",
         "annual": "Roční (Annual)",
         "quarterly": "Kvartální (Quarterly)",
-        "loading": "STAHOVÁNÍ INSTITUCIONÁLNÍCH DAT...",
-        "err_data": "DATA PRO TENTO TICKER NEJSOU DOSTUPNÁ (Yahoo Finance dočasně omezil přístup z cloudu. Zkus to za chvíli nebo vyber jiný ticker).",
+        "loading": "STAHOVÁNÍ ŽIVÝCH DAT...",
+        "err_data": "DATA PRO TENTO TICKER NEJSOU DOSTUPNÁ.",
         "tab_matrix": "📑 FINANČNÍ MATICE & VÝHLED",
         "tab_val": "📊 VALUACE & KPI",
-        "tab_ana": "🎯 ANALYTICI & REVIZE",
-        "tab_earn": "📅 EARNINGS & HISTORIE",
+        "tab_ana": "🎯 ANALYTICI & KONSENZUS",
         "tab_raw": "🗄️ STRUKTUROVANÁ ROZVAHA",
         "targets_h": "Wall Street Konsenzus & Cílové Ceny",
         "t_low": "Bear Target",
@@ -41,9 +39,6 @@ t = {
         "t_high": "Bull Target",
         "t_rec": "Doporučení",
         "t_num": "Počet analytiků",
-        "rev_h": "Historie revizí odhadů (Posledních 30 dní)",
-        "earn_next_h": "Nadcházející kvartální report",
-        "earn_hist_h": "Historie překonání odhadů (Beat / Miss)",
         "met_val": "VALUACE",
         "met_mul": "MULTIPLIKÁTORY & LIKVIDITA",
         "met_mar": "MARŽE (KASKÁDA)",
@@ -61,38 +56,21 @@ t = {
         "r_fcf": "Volné cash flow (Free Cash Flow)",
         "r_fcfm": " ↳ FCF marže",
         "currency_lbl": "Měna výkazů:",
-        "convert_usd": "Převést výkazy z {curr} do USD (dle historických kurzů)",
-        "per_0q": "Aktuální kvartál",
-        "per_1q": "Příští kvartál",
-        "per_0y": "Aktuální rok",
-        "per_1y": "Příští rok",
-        "rev_col_per": "Období",
-        "rev_up7": "Zvýšeno (7 dní)",
-        "rev_up30": "Zvýšeno (30 dní)",
-        "rev_down7": "Sníženo (7 dní)",
-        "rev_down30": "Sníženo (30 dní)",
-        "eh_date": "Kvartál",
-        "eh_act": "Skutečné EPS",
-        "eh_est": "Odhad EPS",
-        "eh_diff": "Rozdíl (Beat/Miss)",
-        "eh_surp": "Překvapení (%)",
-        "earn_date_lbl": "Termín příštích earnings",
-        "earn_eps_lbl": "Očekávaný EPS odhad"
+        "convert_usd": "Převést výkazy z {curr} do USD (dle historických kurzů)"
     },
     "EN": {
         "title": "🏛️ DEEP INSTITUTIONAL TERMINAL",
-        "desc": "COMPREHENSIVE ANALYSIS: FINANCIAL MATRIX, VALUATION, CONSENSUS & EARNINGS CALENDAR.",
+        "desc": "COMPREHENSIVE ANALYSIS: FINANCIAL MATRIX, VALUATION & CONSENSUS ESTIMATES.",
         "db_select": "DATABASE",
         "custom_tick": "CUSTOM TICKER",
         "periodicity": "MATRIX PERIODICITY:",
         "annual": "Annual",
         "quarterly": "Quarterly",
-        "loading": "PULLING INSTITUTIONAL DATA...",
-        "err_data": "DATA FOR THIS TICKER NOT AVAILABLE (Yahoo Finance IP rate limit / try another ticker).",
+        "loading": "PULLING LIVE DATA...",
+        "err_data": "DATA FOR THIS TICKER NOT AVAILABLE.",
         "tab_matrix": "📑 FINANCIAL MATRIX & OUTLOOK",
         "tab_val": "📊 VALUATION & KPIs",
-        "tab_ana": "🎯 ANALYSTS & REVISIONS",
-        "tab_earn": "📅 EARNINGS & TRACK RECORD",
+        "tab_ana": "🎯 ANALYSTS & CONSENSUS",
         "tab_raw": "🗄️ STRUCTURED BALANCE SHEET",
         "targets_h": "Wall Street Consensus & Price Targets",
         "t_low": "Bear Target",
@@ -100,9 +78,6 @@ t = {
         "t_high": "Bull Target",
         "t_rec": "Recommendation",
         "t_num": "Analyst Coverage",
-        "rev_h": "Estimate Revisions History (Last 30 Days)",
-        "earn_next_h": "Upcoming Earnings Report",
-        "earn_hist_h": "Earnings Surprise History (Beat / Miss)",
         "met_val": "VALUATION",
         "met_mul": "MULTIPLES & LIQUIDITY",
         "met_mar": "MARGINS (CASCADE)",
@@ -120,23 +95,7 @@ t = {
         "r_fcf": "Free Cash Flow (FCF)",
         "r_fcfm": " ↳ FCF Margin",
         "currency_lbl": "Reporting Currency:",
-        "convert_usd": "Convert statements from {curr} to USD (using historical rates)",
-        "per_0q": "Current Quarter",
-        "per_1q": "Next Quarter",
-        "per_0y": "Current Year",
-        "per_1y": "Next Year",
-        "rev_col_per": "Period",
-        "rev_up7": "Up (Last 7D)",
-        "rev_up30": "Up (Last 30D)",
-        "rev_down7": "Down (Last 7D)",
-        "rev_down30": "Down (Last 30D)",
-        "eh_date": "Quarter",
-        "eh_act": "Actual EPS",
-        "eh_est": "Estimated EPS",
-        "eh_diff": "Difference",
-        "eh_surp": "Surprise (%)",
-        "earn_date_lbl": "Next Earnings Date",
-        "earn_eps_lbl": "Consensus EPS Estimate"
+        "convert_usd": "Convert statements from {curr} to USD (using historical rates)"
     }
 }
 _ = t.get(st.session_state.get("lang", "CZ"), t["CZ"])
@@ -165,39 +124,6 @@ period_type = col_sel3.radio(_["periodicity"], [_["annual"], _["quarterly"]], ho
 
 final_tick = custom_tick.upper().strip() if custom_tick.strip() else sel_tick
 
-@st.cache_data(ttl=3600)
-def get_ticker_data(ticker):
-    try:
-        tkr = yf.Ticker(ticker)
-        # Bezpečný pokus o stažení základních výkazů
-        fin = tkr.financials
-        if fin is None or fin.empty:
-            return None
-            
-        # Pokusíme se bezpečně vytáhnout ostatní atributy, pokud selžou, nepoloží to aplikaci
-        def safe_get(func, default=None):
-            try:
-                res = func()
-                return res if res is not None else default
-            except:
-                return default
-
-        return {
-            "info": safe_get(lambda: tkr.info, {}),
-            "financials": fin,
-            "balance_sheet": safe_get(lambda: tkr.balance_sheet, pd.DataFrame()),
-            "cashflow": safe_get(lambda: tkr.cashflow, pd.DataFrame()),
-            "quarterly_financials": safe_get(lambda: tkr.quarterly_financials, pd.DataFrame()),
-            "quarterly_cashflow": safe_get(lambda: tkr.quarterly_cashflow, pd.DataFrame()),
-            "revenue_estimate": safe_get(lambda: tkr.revenue_estimate, pd.DataFrame()),
-            "earnings_estimate": safe_get(lambda: tkr.earnings_estimate, pd.DataFrame()),
-            "eps_revisions": safe_get(lambda: tkr.eps_revisions, pd.DataFrame()),
-            "calendar": safe_get(lambda: tkr.calendar, {}),
-            "earnings_history": safe_get(lambda: tkr.earnings_history, pd.DataFrame())
-        }
-    except:
-        return None
-
 def format_val(val, currency_code, is_pct=False, is_eps=False, force_currency=False):
     if val is None or pd.isna(val) or val == "-": return "-"
     try:
@@ -217,19 +143,13 @@ def format_val(val, currency_code, is_pct=False, is_eps=False, force_currency=Fa
 
 if final_tick:
     with st.spinner(f"{_['loading']} {final_tick}..."):
-        raw_data = get_ticker_data(final_tick)
+        tkr = yf.Ticker(final_tick)
+        info = tkr.info
         
-        if raw_data is None:
+        if not info or ("currentPrice" not in info and "regularMarketPrice" not in info):
             st.error(_["err_data"])
             st.stop()
             
-        info = raw_data["info"] or {}
-        financials = raw_data["financials"]
-        balance_sheet = raw_data["balance_sheet"]
-        cashflow = raw_data["cashflow"]
-        q_fin = raw_data["quarterly_financials"]
-        q_cf = raw_data["quarterly_cashflow"]
-        
         short_name = info.get("shortName", final_tick)
         curr_price = info.get("currentPrice", info.get("regularMarketPrice", 0.0))
         currency_code = info.get("financialCurrency", info.get("currency", "USD"))
@@ -269,10 +189,14 @@ if final_tick:
                 return latest_fx
 
         is_quarterly = (period_type == _["quarterly"])
-        active_financials = q_fin if is_quarterly else financials
-        active_cashflow = q_cf if is_quarterly else cashflow
+        financials = tkr.quarterly_financials if is_quarterly else tkr.financials
+        cashflow = tkr.quarterly_cashflow if is_quarterly else tkr.cashflow
+        balance_sheet = tkr.balance_sheet
         
         # --- LTM VÝPOČTY PRO KPI DASHBOARD ---
+        q_fin_for_kpi = tkr.quarterly_financials
+        q_cf_for_kpi = tkr.quarterly_cashflow
+        
         def sum_ltm(df, row_names):
             if df is None or df.empty: return None
             for row in row_names:
@@ -281,14 +205,14 @@ if final_tick:
                     if len(vals) == 4 and not vals.isna().all(): return vals.sum()
             return None
 
-        total_rev_ltm = sum_ltm(q_fin, ['Total Revenue']) or info.get("totalRevenue")
-        net_income_ltm = sum_ltm(q_fin, ['Net Income', 'Net Income Common Stockholders']) or info.get("netIncomeToCommon", info.get("netIncome"))
-        ebitda_ltm = sum_ltm(q_fin, ['Normalized EBITDA', 'EBITDA']) or info.get("ebitda")
+        total_rev_ltm = sum_ltm(q_fin_for_kpi, ['Total Revenue']) or info.get("totalRevenue")
+        net_income_ltm = sum_ltm(q_fin_for_kpi, ['Net Income', 'Net Income Common Stockholders']) or info.get("netIncomeToCommon", info.get("netIncome"))
+        ebitda_ltm = sum_ltm(q_fin_for_kpi, ['Normalized EBITDA', 'EBITDA']) or info.get("ebitda")
         
-        fcf = sum_ltm(q_cf, ['Free Cash Flow'])
-        if fcf is None and q_cf is not None and not q_cf.empty:
-            ocf = sum_ltm(q_cf, ['Operating Cash Flow'])
-            capex = sum_ltm(q_cf, ['Capital Expenditure'])
+        fcf = sum_ltm(q_cf_for_kpi, ['Free Cash Flow'])
+        if fcf is None and not q_cf_for_kpi.empty:
+            ocf = sum_ltm(q_cf_for_kpi, ['Operating Cash Flow'])
+            capex = sum_ltm(q_cf_for_kpi, ['Capital Expenditure'])
             if ocf and capex is not None: fcf = ocf - abs(capex)
             else: fcf = info.get("freeCashflow")
 
@@ -307,7 +231,7 @@ if final_tick:
         calc_debt_eq = None
         roic, roce, roi = None, None, None 
         
-        if balance_sheet is not None and not balance_sheet.empty:
+        if not balance_sheet.empty:
             try:
                 total_debt = balance_sheet.loc['Total Debt'].iloc[0] if 'Total Debt' in balance_sheet.index else 0
                 stockholders_eq = balance_sheet.loc['Stockholders Equity'].iloc[0] if 'Stockholders Equity' in balance_sheet.index else 0
@@ -329,17 +253,15 @@ if final_tick:
         
         if net_income_ltm and 'invested_capital' in locals() and invested_capital > 0: roic = net_income_ltm / invested_capital
         if net_income_ltm and 'total_assets' in locals() and total_assets > 0: roi = net_income_ltm / total_assets 
-        if financials is not None and not financials.empty and 'capital_employed' in locals() and capital_employed > 0:
+        if not tkr.financials.empty and 'capital_employed' in locals() and capital_employed > 0:
              try:
-                 ebit = financials.loc['EBIT'].iloc[0] if 'EBIT' in financials.index else (financials.loc['Operating Income'].iloc[0] if 'Operating Income' in financials.index else 0)
+                 ebit = tkr.financials.loc['EBIT'].iloc[0] if 'EBIT' in tkr.financials.index else (tkr.financials.loc['Operating Income'].iloc[0] if 'Operating Income' in tkr.financials.index else 0)
                  if ebit: roce = ebit / capital_employed
              except: pass
 
         st.markdown("---")
 
-        tab_matrix, tab_val, tab_ana, tab_earn, tab_raw = st.tabs([
-            _["tab_matrix"], _["tab_val"], _["tab_ana"], _["tab_earn"], _["tab_raw"]
-        ])
+        tab_matrix, tab_val, tab_ana, tab_raw = st.tabs([_["tab_matrix"], _["tab_val"], _["tab_ana"], _["tab_raw"]])
 
         with tab_matrix:
             st.subheader(f"Finanční časová osa — {_['currency_lbl']} {display_currency}")
@@ -347,8 +269,8 @@ if final_tick:
             matrix_dict = {}
             last_hist_year = 2024
             
-            if active_financials is not None and not active_financials.empty:
-                hist_cols = sorted(active_financials.columns)
+            if not financials.empty:
+                hist_cols = sorted(financials.columns)
                 last_hist_year = hist_cols[-1].year
                 
                 for col in hist_cols:
@@ -356,27 +278,27 @@ if final_tick:
                     col_label = f"{col.year}-Q{col.quarter}" if is_quarterly else str(col.year)
                     matrix_dict[col_label] = {}
                     
-                    rev = active_financials.loc["Total Revenue", col] if "Total Revenue" in active_financials.index else None
+                    rev = financials.loc["Total Revenue", col] if "Total Revenue" in financials.index else None
                     matrix_dict[col_label][_["r_rev"]] = (rev * rate) if pd.notna(rev) else None
                     
-                    gp = active_financials.loc["Gross Profit", col] if "Gross Profit" in active_financials.index else None
+                    gp = financials.loc["Gross Profit", col] if "Gross Profit" in financials.index else None
                     matrix_dict[col_label][_["r_gp"]] = (gp * rate) if pd.notna(gp) else None
                     
-                    ebit = active_financials.loc["Operating Income", col] if "Operating Income" in active_financials.index else (active_financials.loc["EBIT", col] if "EBIT" in active_financials.index else None)
+                    ebit = financials.loc["Operating Income", col] if "Operating Income" in financials.index else (financials.loc["EBIT", col] if "EBIT" in financials.index else None)
                     matrix_dict[col_label][_["r_ebit"]] = (ebit * rate) if pd.notna(ebit) else None
                     
-                    ni = active_financials.loc["Net Income Common Stockholders", col] if "Net Income Common Stockholders" in active_financials.index else (active_financials.loc["Net Income", col] if "Net Income" in active_financials.index else None)
+                    ni = financials.loc["Net Income Common Stockholders", col] if "Net Income Common Stockholders" in financials.index else (financials.loc["Net Income", col] if "Net Income" in financials.index else None)
                     matrix_dict[col_label][_["r_ni"]] = (ni * rate) if pd.notna(ni) else None
                     
-                    eps = active_financials.loc["Diluted EPS", col] if "Diluted EPS" in active_financials.index else (active_financials.loc["Basic EPS", col] if "Basic EPS" in active_financials.index else None)
+                    eps = financials.loc["Diluted EPS", col] if "Diluted EPS" in financials.index else (financials.loc["Basic EPS", col] if "Basic EPS" in financials.index else None)
                     matrix_dict[col_label][_["r_eps"]] = (eps * rate) if pd.notna(eps) else None
                     
                     fcf_val = None
-                    if active_cashflow is not None and not active_cashflow.empty and col in active_cashflow.columns:
-                        if "Free Cash Flow" in active_cashflow.index:
-                            fcf_val = active_cashflow.loc["Free Cash Flow", col]
-                        elif "Operating Cash Flow" in active_cashflow.index and "Capital Expenditure" in active_cashflow.index:
-                            fcf_val = active_cashflow.loc["Operating Cash Flow", col] - abs(active_cashflow.loc["Capital Expenditure", col])
+                    if not cashflow.empty and col in cashflow.columns:
+                        if "Free Cash Flow" in cashflow.index:
+                            fcf_val = cashflow.loc["Free Cash Flow", col]
+                        elif "Operating Cash Flow" in cashflow.index and "Capital Expenditure" in cashflow.index:
+                            fcf_val = cashflow.loc["Operating Cash Flow", col] - abs(cashflow.loc["Capital Expenditure", col])
                     matrix_dict[col_label][_["r_fcf"]] = (fcf_val * rate) if pd.notna(fcf_val) else None
 
             if not is_quarterly:
@@ -384,17 +306,17 @@ if final_tick:
                 rate = latest_fx if convert_to_usd else 1.0
                 matrix_dict[ltm_col] = {}
                 matrix_dict[ltm_col][_["r_rev"]] = (total_rev_ltm * rate) if pd.notna(total_rev_ltm) else None
-                matrix_dict[ltm_col][_["r_gp"]] = (sum_ltm(q_fin, ["Gross Profit"]) * rate) if sum_ltm(q_fin, ["Gross Profit"]) is not None else None
-                matrix_dict[ltm_col][_["r_ebit"]] = (sum_ltm(q_fin, ["Operating Income", "EBIT"]) * rate) if sum_ltm(q_fin, ["Operating Income", "EBIT"]) is not None else None
+                matrix_dict[ltm_col][_["r_gp"]] = (sum_ltm(q_fin_for_kpi, ["Gross Profit"]) * rate) if sum_ltm(q_fin_for_kpi, ["Gross Profit"]) is not None else None
+                matrix_dict[ltm_col][_["r_ebit"]] = (sum_ltm(q_fin_for_kpi, ["Operating Income", "EBIT"]) * rate) if sum_ltm(q_fin_for_kpi, ["Operating Income", "EBIT"]) is not None else None
                 matrix_dict[ltm_col][_["r_ni"]] = (net_income_ltm * rate) if pd.notna(net_income_ltm) else None
                 
-                ltm_eps_matrix = sum_ltm(q_fin, ["Diluted EPS", "Basic EPS"])
+                ltm_eps_matrix = sum_ltm(q_fin_for_kpi, ["Diluted EPS", "Basic EPS"])
                 matrix_dict[ltm_col][_["r_eps"]] = (ltm_eps_matrix * rate) if pd.notna(ltm_eps_matrix) else None
                 matrix_dict[ltm_col][_["r_fcf"]] = (fcf * rate) if pd.notna(fcf) else None
 
             try:
-                rev_est = raw_data["revenue_estimate"]
-                eps_est = raw_data["earnings_estimate"]
+                rev_est = tkr.revenue_estimate
+                eps_est = tkr.earnings_estimate
                 
                 if is_quarterly:
                     est_keys = [("0q", "Q+1 (Est)"), ("+1q", "Q+2 (Est)")]
@@ -406,10 +328,10 @@ if final_tick:
                     rate = latest_fx if convert_to_usd else 1.0
                     matrix_dict[col_name] = {}
                     
-                    e_val = eps_est.loc[k, "avg"] if (eps_est is not None and not eps_est.empty and k in eps_est.index and "avg" in eps_est.columns) else None
+                    e_val = eps_est.loc[k, "avg"] if (not eps_est.empty and k in eps_est.index and "avg" in eps_est.columns) else None
                     matrix_dict[col_name][_["r_eps"]] = (e_val * rate) if pd.notna(e_val) else None
                     
-                    r_val = rev_est.loc[k, "avg"] if (rev_est is not None and not rev_est.empty and k in rev_est.index and "avg" in rev_est.columns) else None
+                    r_val = rev_est.loc[k, "avg"] if (not rev_est.empty and k in rev_est.index and "avg" in rev_est.columns) else None
                     matrix_dict[col_name][_["r_rev"]] = (r_val * rate) if pd.notna(r_val) else None
                     matrix_dict[col_name][_["r_gp"]] = None
                     matrix_dict[col_name][_["r_ebit"]] = None
@@ -527,94 +449,10 @@ if final_tick:
             c3.metric(_["t_high"], f"{target_high:.2f} {trading_currency}", f"{(target_high - curr_price) / curr_price * 100:+.1f}%" if curr_price else "N/A")
             c4.metric(_["t_rec"], rec_mean)
             c5.metric(_["t_num"], num_analysts)
-            
-            st.markdown("---")
-            st.subheader(_["rev_h"])
-            try:
-                revs = raw_data["eps_revisions"]
-                if revs is not None and not revs.empty:
-                    rev_map = {
-                        "period": _["rev_col_per"],
-                        "upLast7days": _["rev_up7"],
-                        "upLast30days": _["rev_up30"],
-                        "downLast7Days": _["rev_down7"],
-                        "downLast30days": _["rev_down30"]
-                    }
-                    revs = revs.rename(columns=rev_map)
-                    
-                    period_map = {"0q": _["per_0q"], "+1q": _["per_1q"], "0y": _["per_0y"], "+1y": _["per_1y"]}
-                    if _["rev_col_per"] in revs.columns:
-                        revs[_["rev_col_per"]] = revs[_["rev_col_per"]].map(lambda x: period_map.get(x, x))
-                        
-                    if "currency" in revs.columns:
-                        revs = revs.drop(columns=["currency"])
-                        
-                    st.dataframe(revs, use_container_width=True)
-                else:
-                    st.info("Historie revizí odhadů není pro tento ticker dostupná.")
-            except:
-                st.info("Historie revizí odhadů není k dispozici.")
-
-        with tab_earn:
-            st.subheader(_["earn_next_h"])
-            try:
-                cal = raw_data["calendar"]
-                next_date = None
-                if isinstance(cal, dict) and 'Earnings Date' in cal:
-                    dates = cal['Earnings Date']
-                    if len(dates) > 0:
-                        next_date = dates[0]
-                
-                if next_date:
-                    eps_est_val = None
-                    try:
-                        eps_est_val = raw_data["earnings_estimate"].loc["0q", "avg"]
-                    except:
-                        pass
-                        
-                    ec1, ec2 = st.columns(2)
-                    ec1.metric(_["earn_date_lbl"], next_date.strftime("%d. %m. %Y"))
-                    ec2.metric(_["earn_eps_lbl"], f"${eps_est_val:.2f}" if pd.notna(eps_est_val) else "N/A")
-                else:
-                    st.info("Oficiální datum příštího reportu zatím nebylo stanoveno.")
-            except:
-                st.info("Nepodařilo se načíst budoucí earnings.")
-                
-            st.markdown("---")
-            st.subheader(_["earn_hist_h"])
-            try:
-                eh = raw_data["earnings_history"]
-                if eh is not None and not eh.empty:
-                    df_eh = eh.copy()
-                    
-                    if isinstance(df_eh.index, pd.DatetimeIndex):
-                        df_eh.index = df_eh.index.strftime("%Y-%m-%d")
-                        df_eh.index.name = _["eh_date"]
-                    elif "quarter" in df_eh.columns:
-                        df_eh["quarter"] = pd.to_datetime(df_eh["quarter"]).dt.strftime("%Y-%m-%d")
-                    
-                    eh_map = {
-                        "epsActual": _["eh_act"],
-                        "epsEstimate": _["eh_est"],
-                        "epsDifference": _["eh_diff"],
-                        "surprisePercent": _["eh_surp"]
-                    }
-                    df_eh = df_eh.rename(columns=eh_map)
-                    
-                    if _["eh_diff"] in df_eh.columns:
-                        df_eh[_["eh_diff"]] = df_eh[_["eh_diff"]].apply(lambda x: f"{x:+.2f}" if pd.notna(x) else "-")
-                    if _["eh_surp"] in df_eh.columns:
-                        df_eh[_["eh_surp"]] = df_eh[_["eh_surp"]].apply(lambda x: f"{x*100:+.2f} %" if pd.notna(x) else "-")
-                        
-                    st.dataframe(df_eh, use_container_width=True)
-                else:
-                    st.info("Historie kvartálních překvapení není k dispozici.")
-            except:
-                st.info("Historie kvartálních earnings není dostupná.")
 
         with tab_raw:
             st.subheader(f"Balance Sheet — {final_tick}")
-            if balance_sheet is not None and not balance_sheet.empty:
+            if not balance_sheet.empty:
                 bs_display = balance_sheet.copy()
                 for col in bs_display.columns:
                     rate = get_rate(col)
