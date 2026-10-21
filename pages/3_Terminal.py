@@ -21,7 +21,7 @@ menu.vykresli_menu()
 t = {
     "CZ": {
         "title": "🏛️ HLOUBKOVÝ ANALYTICKÝ TERMINÁL",
-        "desc": "KOMPLEXNÍ INSTITUCIONÁLNÍ POHLED: MATICE VÝKAZŮ, VALUACE A KONSENZUÁLNÍ ODHADY.",
+        "desc": "KOMPLEXNÍ INSTITUCIONÁLNÍ POHLED: MATICE VÝKAZŮ, VALUACE, KONSENZY A EARNINGS.",
         "db_select": "DATABÁZE",
         "custom_tick": "VLASTNÍ TICKER",
         "periodicity": "PERIODICITA MATICE:",
@@ -31,7 +31,8 @@ t = {
         "err_data": "DATA PRO TENTO TICKER NEJSOU DOSTUPNÁ.",
         "tab_matrix": "📑 FINANČNÍ MATICE & VÝHLED",
         "tab_val": "📊 VALUACE & KPI",
-        "tab_ana": "🎯 ANALYTICI & KONSENZUS",
+        "tab_ana": "🎯 ANALYTICI & REVIZE",
+        "tab_earn": "📅 EARNINGS & HISTORIE",
         "tab_raw": "🗄️ STRUKTUROVANÁ ROZVAHA",
         "targets_h": "Wall Street Konsenzus & Cílové Ceny",
         "t_low": "Bear Target",
@@ -39,6 +40,9 @@ t = {
         "t_high": "Bull Target",
         "t_rec": "Doporučení",
         "t_num": "Počet analytiků",
+        "rev_h": "Historie revizí odhadů (Posledních 30 dní)",
+        "earn_next_h": "Nadcházející kvartální report",
+        "earn_hist_h": "Historie překonání odhadů (Beat / Miss)",
         "met_val": "VALUACE",
         "met_mul": "MULTIPLIKÁTORY & LIKVIDITA",
         "met_mar": "MARŽE (KASKÁDA)",
@@ -56,11 +60,27 @@ t = {
         "r_fcf": "Volné cash flow (Free Cash Flow)",
         "r_fcfm": " ↳ FCF marže",
         "currency_lbl": "Měna výkazů:",
-        "convert_usd": "Převést výkazy z {curr} do USD (dle historických kurzů)"
+        "convert_usd": "Převést výkazy z {curr} do USD (dle historických kurzů)",
+        "per_0q": "Aktuální kvartál",
+        "per_1q": "Příští kvartál",
+        "per_0y": "Aktuální rok",
+        "per_1y": "Příští rok",
+        "rev_col_per": "Období",
+        "rev_up7": "Zvýšeno (7 dní)",
+        "rev_up30": "Zvýšeno (30 dní)",
+        "rev_down7": "Sníženo (7 dní)",
+        "rev_down30": "Sníženo (30 dní)",
+        "eh_date": "Kvartál",
+        "eh_act": "Skutečné EPS",
+        "eh_est": "Odhad EPS",
+        "eh_diff": "Rozdíl (Beat/Miss)",
+        "eh_surp": "Překvapení (%)",
+        "earn_date_lbl": "Termín příštích earnings",
+        "earn_eps_lbl": "Očekávaný EPS odhad"
     },
     "EN": {
         "title": "🏛️ DEEP INSTITUTIONAL TERMINAL",
-        "desc": "COMPREHENSIVE ANALYSIS: FINANCIAL MATRIX, VALUATION & CONSENSUS ESTIMATES.",
+        "desc": "COMPREHENSIVE ANALYSIS: FINANCIAL MATRIX, VALUATION, CONSENSUS & EARNINGS.",
         "db_select": "DATABASE",
         "custom_tick": "CUSTOM TICKER",
         "periodicity": "MATRIX PERIODICITY:",
@@ -70,7 +90,8 @@ t = {
         "err_data": "DATA FOR THIS TICKER NOT AVAILABLE.",
         "tab_matrix": "📑 FINANCIAL MATRIX & OUTLOOK",
         "tab_val": "📊 VALUATION & KPIs",
-        "tab_ana": "🎯 ANALYSTS & CONSENSUS",
+        "tab_ana": "🎯 ANALYSTS & REVISIONS",
+        "tab_earn": "📅 EARNINGS & TRACK RECORD",
         "tab_raw": "🗄️ STRUCTURED BALANCE SHEET",
         "targets_h": "Wall Street Consensus & Price Targets",
         "t_low": "Bear Target",
@@ -78,6 +99,9 @@ t = {
         "t_high": "Bull Target",
         "t_rec": "Recommendation",
         "t_num": "Analyst Coverage",
+        "rev_h": "Estimate Revisions History (Last 30 Days)",
+        "earn_next_h": "Upcoming Earnings Report",
+        "earn_hist_h": "Earnings Surprise History (Beat / Miss)",
         "met_val": "VALUATION",
         "met_mul": "MULTIPLES & LIQUIDITY",
         "met_mar": "MARGINS (CASCADE)",
@@ -95,7 +119,23 @@ t = {
         "r_fcf": "Free Cash Flow (FCF)",
         "r_fcfm": " ↳ FCF Margin",
         "currency_lbl": "Reporting Currency:",
-        "convert_usd": "Convert statements from {curr} to USD (using historical rates)"
+        "convert_usd": "Convert statements from {curr} to USD (using historical rates)",
+        "per_0q": "Current Quarter",
+        "per_1q": "Next Quarter",
+        "per_0y": "Current Year",
+        "per_1y": "Next Year",
+        "rev_col_per": "Period",
+        "rev_up7": "Up (Last 7D)",
+        "rev_up30": "Up (Last 30D)",
+        "rev_down7": "Down (Last 7D)",
+        "rev_down30": "Down (Last 30D)",
+        "eh_date": "Quarter",
+        "eh_act": "Actual EPS",
+        "eh_est": "Estimated EPS",
+        "eh_diff": "Difference",
+        "eh_surp": "Surprise (%)",
+        "earn_date_lbl": "Next Earnings Date",
+        "earn_eps_lbl": "Consensus EPS Estimate"
     }
 }
 _ = t.get(st.session_state.get("lang", "CZ"), t["CZ"])
@@ -143,10 +183,13 @@ def format_val(val, currency_code, is_pct=False, is_eps=False, force_currency=Fa
 
 if final_tick:
     with st.spinner(f"{_['loading']} {final_tick}..."):
-        tkr = yf.Ticker(final_tick)
-        info = tkr.info
-        
-        if not info or ("currentPrice" not in info and "regularMarketPrice" not in info):
+        try:
+            tkr = yf.Ticker(final_tick)
+            info = tkr.info
+        except:
+            info = {}
+            
+        if not info or ("currentPrice" not in info and "regularMarketPrice" not in info and "longName" not in info):
             st.error(_["err_data"])
             st.stop()
             
@@ -189,14 +232,27 @@ if final_tick:
                 return latest_fx
 
         is_quarterly = (period_type == _["quarterly"])
-        financials = tkr.quarterly_financials if is_quarterly else tkr.financials
-        cashflow = tkr.quarterly_cashflow if is_quarterly else tkr.cashflow
-        balance_sheet = tkr.balance_sheet
+        
+        # Bezpečné načítání výkazů s ošetřením chyb
+        try:
+            financials = tkr.quarterly_financials if is_quarterly else tkr.financials
+        except:
+            financials = pd.DataFrame()
+            
+        try:
+            cashflow = tkr.quarterly_cashflow if is_quarterly else tkr.cashflow
+        except:
+            cashflow = pd.DataFrame()
+            
+        try:
+            balance_sheet = tkr.balance_sheet
+        except:
+            balance_sheet = pd.DataFrame()
+            
+        q_fin_for_kpi = tkr.quarterly_financials if not is_quarterly else financials
+        q_cf_for_kpi = tkr.quarterly_cashflow if not is_quarterly else cashflow
         
         # --- LTM VÝPOČTY PRO KPI DASHBOARD ---
-        q_fin_for_kpi = tkr.quarterly_financials
-        q_cf_for_kpi = tkr.quarterly_cashflow
-        
         def sum_ltm(df, row_names):
             if df is None or df.empty: return None
             for row in row_names:
@@ -210,7 +266,7 @@ if final_tick:
         ebitda_ltm = sum_ltm(q_fin_for_kpi, ['Normalized EBITDA', 'EBITDA']) or info.get("ebitda")
         
         fcf = sum_ltm(q_cf_for_kpi, ['Free Cash Flow'])
-        if fcf is None and not q_cf_for_kpi.empty:
+        if fcf is None and q_cf_for_kpi is not None and not q_cf_for_kpi.empty:
             ocf = sum_ltm(q_cf_for_kpi, ['Operating Cash Flow'])
             capex = sum_ltm(q_cf_for_kpi, ['Capital Expenditure'])
             if ocf and capex is not None: fcf = ocf - abs(capex)
@@ -231,7 +287,7 @@ if final_tick:
         calc_debt_eq = None
         roic, roce, roi = None, None, None 
         
-        if not balance_sheet.empty:
+        if balance_sheet is not None and not balance_sheet.empty:
             try:
                 total_debt = balance_sheet.loc['Total Debt'].iloc[0] if 'Total Debt' in balance_sheet.index else 0
                 stockholders_eq = balance_sheet.loc['Stockholders Equity'].iloc[0] if 'Stockholders Equity' in balance_sheet.index else 0
@@ -253,15 +309,17 @@ if final_tick:
         
         if net_income_ltm and 'invested_capital' in locals() and invested_capital > 0: roic = net_income_ltm / invested_capital
         if net_income_ltm and 'total_assets' in locals() and total_assets > 0: roi = net_income_ltm / total_assets 
-        if not tkr.financials.empty and 'capital_employed' in locals() and capital_employed > 0:
+        if financials is not None and not financials.empty and 'capital_employed' in locals() and capital_employed > 0:
              try:
-                 ebit = tkr.financials.loc['EBIT'].iloc[0] if 'EBIT' in tkr.financials.index else (tkr.financials.loc['Operating Income'].iloc[0] if 'Operating Income' in tkr.financials.index else 0)
+                 ebit = financials.loc['EBIT'].iloc[0] if 'EBIT' in financials.index else (financials.loc['Operating Income'].iloc[0] if 'Operating Income' in financials.index else 0)
                  if ebit: roce = ebit / capital_employed
              except: pass
 
         st.markdown("---")
 
-        tab_matrix, tab_val, tab_ana, tab_raw = st.tabs([_["tab_matrix"], _["tab_val"], _["tab_ana"], _["tab_raw"]])
+        tab_matrix, tab_val, tab_ana, tab_earn, tab_raw = st.tabs([
+            _["tab_matrix"], _["tab_val"], _["tab_ana"], _["tab_earn"], _["tab_raw"]
+        ])
 
         with tab_matrix:
             st.subheader(f"Finanční časová osa — {_['currency_lbl']} {display_currency}")
@@ -269,7 +327,7 @@ if final_tick:
             matrix_dict = {}
             last_hist_year = 2024
             
-            if not financials.empty:
+            if financials is not None and not financials.empty:
                 hist_cols = sorted(financials.columns)
                 last_hist_year = hist_cols[-1].year
                 
@@ -294,7 +352,7 @@ if final_tick:
                     matrix_dict[col_label][_["r_eps"]] = (eps * rate) if pd.notna(eps) else None
                     
                     fcf_val = None
-                    if not cashflow.empty and col in cashflow.columns:
+                    if cashflow is not None and not cashflow.empty and col in cashflow.columns:
                         if "Free Cash Flow" in cashflow.index:
                             fcf_val = cashflow.loc["Free Cash Flow", col]
                         elif "Operating Cash Flow" in cashflow.index and "Capital Expenditure" in cashflow.index:
@@ -328,10 +386,10 @@ if final_tick:
                     rate = latest_fx if convert_to_usd else 1.0
                     matrix_dict[col_name] = {}
                     
-                    e_val = eps_est.loc[k, "avg"] if (not eps_est.empty and k in eps_est.index and "avg" in eps_est.columns) else None
+                    e_val = eps_est.loc[k, "avg"] if (eps_est is not None and not eps_est.empty and k in eps_est.index and "avg" in eps_est.columns) else None
                     matrix_dict[col_name][_["r_eps"]] = (e_val * rate) if pd.notna(e_val) else None
                     
-                    r_val = rev_est.loc[k, "avg"] if (not rev_est.empty and k in rev_est.index and "avg" in rev_est.columns) else None
+                    r_val = rev_est.loc[k, "avg"] if (rev_est is not None and not rev_est.empty and k in rev_est.index and "avg" in rev_est.columns) else None
                     matrix_dict[col_name][_["r_rev"]] = (r_val * rate) if pd.notna(r_val) else None
                     matrix_dict[col_name][_["r_gp"]] = None
                     matrix_dict[col_name][_["r_ebit"]] = None
@@ -449,6 +507,55 @@ if final_tick:
             c3.metric(_["t_high"], f"{target_high:.2f} {trading_currency}", f"{(target_high - curr_price) / curr_price * 100:+.1f}%" if curr_price else "N/A")
             c4.metric(_["t_rec"], rec_mean)
             c5.metric(_["t_num"], num_analysts)
+            
+            st.markdown("---")
+            st.subheader(_["rev_h"])
+            try:
+                revs = tkr.eps_revisions
+                if revs is not None and not revs.empty:
+                    st.dataframe(revs, use_container_width=True)
+                else:
+                    st.info("Historie revizí odhadů není pro tento ticker dostupná.")
+            except:
+                st.info("Historie revizí odhadů není k dispozici.")
+
+        with tab_earn:
+            st.subheader(_["earn_next_h"])
+            try:
+                ed = tkr.get_earnings_dates(limit=6)
+                if ed is not None and not ed.empty:
+                    now = pd.Timestamp.now(tz='UTC')
+                    if ed.index.tz is None:
+                        ed.index = ed.index.tz_localize('UTC')
+                    else:
+                        ed.index = ed.index.tz_convert('UTC')
+                        
+                    future_ed = ed[ed.index >= now]
+                    if not future_ed.empty:
+                        next_date = future_ed.index.min()
+                        next_eps = future_ed.loc[next_date, "EPS Estimate"]
+                        if isinstance(next_eps, pd.Series): next_eps = next_eps.iloc[0]
+                        
+                        ec1, ec2 = st.columns(2)
+                        ec1.metric(_["earn_date_lbl"], next_date.strftime("%d. %m. %Y (%H:%M)"))
+                        ec2.metric(_["earn_eps_lbl"], f"${next_eps:.2f}" if pd.notna(next_eps) else "N/A")
+                    else:
+                        st.info("Oficiální datum příštího reportu zatím nebylo stanoveno.")
+                else:
+                    st.info("Kalendář výsledků není dostupný.")
+            except:
+                st.info("Nepodařilo se načíst budoucí earnings.")
+                
+            st.markdown("---")
+            st.subheader(_["earn_hist_h"])
+            try:
+                eh = tkr.earnings_history
+                if eh is not None and not eh.empty:
+                    st.dataframe(eh, use_container_width=True)
+                else:
+                    st.info("Historie kvartálních překvapení není k dispozici.")
+            except:
+                st.info("Historie kvartálních earnings není dostupná.")
 
         with tab_raw:
             st.subheader(f"Balance Sheet — {final_tick}")
