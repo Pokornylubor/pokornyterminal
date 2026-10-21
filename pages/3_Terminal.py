@@ -74,7 +74,38 @@ t = {
         "h_roe": "Return on Equity: Čistý zisk / Vlastní kapitál.",
         "h_roic": "Return on Invested Capital.",
         "h_roa": "Return on Assets.",
-        "h_roce": "Return on Capital Employed."
+        "h_roce": "Return on Capital Employed.",
+        "matrix_h": "Finanční časová osa",
+        "kpi_h": "KPI Dashboard",
+        "kpi_pe": "P/E (Trailing)",
+        "kpi_fpe": "Forward P/E",
+        "kpi_peg": "PEG Ratio",
+        "kpi_ps": "Cena / Tržby (P/S)",
+        "kpi_pfcf": "Cena / FCF",
+        "kpi_evebitda": "EV / EBITDA",
+        "kpi_pb": "Cena / Účetní hodnota (P/B)",
+        "kpi_de": "Dluh / Vlastní kapitál",
+        "kpi_cr": "Běžná likvidita",
+        "kpi_qr": "Pohotová likvidita",
+        "kpi_gm": "Hrubá marže",
+        "kpi_ebitdam": "EBITDA marže",
+        "kpi_om": "Provozní marže",
+        "kpi_nm": "Čistá marže",
+        "kpi_fcfm": "FCF marže",
+        "kpi_roe": "ROE",
+        "kpi_roic": "ROIC",
+        "kpi_roa": "ROA",
+        "kpi_roce": "ROCE",
+        "kpi_roi": "ROI (Proxy)",
+        "kpi_rev": "LTM Tržby",
+        "kpi_ebitda": "LTM EBITDA",
+        "kpi_ni": "LTM Čistý zisk",
+        "kpi_fcf": "LTM FCF",
+        "kpi_eps": "LTM EPS",
+        "bal_h": "Rozvaha",
+        "bal_na": "Rozvaha není k dispozici.",
+        "est_q1": "Q+1 (Odhad)",
+        "est_q2": "Q+2 (Odhad)"
     },
     "EN": {
         "title": "🏛️ DEEP INSTITUTIONAL TERMINAL",
@@ -126,7 +157,38 @@ t = {
         "h_roe": "Return on Equity.",
         "h_roic": "Return on Invested Capital.",
         "h_roa": "Return on Assets.",
-        "h_roce": "Return on Capital Employed."
+        "h_roce": "Return on Capital Employed.",
+        "matrix_h": "Financial Timeline",
+        "kpi_h": "KPI Dashboard",
+        "kpi_pe": "P/E (Trailing)",
+        "kpi_fpe": "Forward P/E",
+        "kpi_peg": "PEG Ratio",
+        "kpi_ps": "Price / Sales",
+        "kpi_pfcf": "Price / FCF",
+        "kpi_evebitda": "EV / EBITDA",
+        "kpi_pb": "Price / Book",
+        "kpi_de": "Debt / Equity",
+        "kpi_cr": "Current Ratio",
+        "kpi_qr": "Quick Ratio",
+        "kpi_gm": "Gross Margin",
+        "kpi_ebitdam": "EBITDA Margin",
+        "kpi_om": "Operating Margin",
+        "kpi_nm": "Net Margin",
+        "kpi_fcfm": "FCF Margin",
+        "kpi_roe": "ROE",
+        "kpi_roic": "ROIC",
+        "kpi_roa": "ROA",
+        "kpi_roce": "ROCE",
+        "kpi_roi": "ROI (Proxy)",
+        "kpi_rev": "LTM Revenue",
+        "kpi_ebitda": "LTM EBITDA",
+        "kpi_ni": "LTM Net Income",
+        "kpi_fcf": "LTM FCF",
+        "kpi_eps": "LTM EPS",
+        "bal_h": "Balance Sheet",
+        "bal_na": "Balance sheet is not available.",
+        "est_q1": "Q+1 (Est)",
+        "est_q2": "Q+2 (Est)"
     }
 }
 _ = t.get(st.session_state.get("lang", "CZ"), t["CZ"])
@@ -176,7 +238,6 @@ if final_tick:
     with st.spinner(f"{_['loading']} {final_tick}..."):
         tkr = yf.Ticker(final_tick, session=session)
         
-        # Bezpečné načtení info s ošetřením HTTPError/blokace
         try:
             info = tkr.info or {}
         except:
@@ -312,7 +373,7 @@ if final_tick:
         tab_matrix, tab_val, tab_ana, tab_raw = st.tabs([_["tab_matrix"], _["tab_val"], _["tab_ana"], _["tab_raw"]])
 
         with tab_matrix:
-            st.subheader(f"Finanční časová osa — {_['currency_lbl']} {display_currency}")
+            st.subheader(f"{_['matrix_h']} — {_['currency_lbl']} {display_currency}")
             
             matrix_dict = {}
             last_hist_year = 2024
@@ -365,7 +426,7 @@ if final_tick:
                 eps_est = tkr.earnings_estimate
                 
                 if is_quarterly:
-                    est_keys = [("0q", "Q+1 (Est)"), ("+1q", "Q+2 (Est)")]
+                    est_keys = [("0q", _["est_q1"]), ("+1q", _["est_q2"])]
                 else:
                     est_keys = [("0y", f"{last_hist_year + 1}E"), ("+1y", f"{last_hist_year + 2}E")]
                     
@@ -430,7 +491,7 @@ if final_tick:
             st.table(df_display)
 
         with tab_val:
-            st.subheader(f"{short_name} ({final_tick}) — KPI Dashboard")
+            st.subheader(f"{short_name} ({final_tick}) — {_['kpi_h']}")
             vkpi1, vkpi2, vkpi3, vkpi4, vkpi5 = st.columns(5)
             
             def fmt_kpi(val, is_pct=False, is_curr=False, curr_label="USD"):
@@ -443,40 +504,40 @@ if final_tick:
                 return f"{val:.2f}"
                 
             vkpi1.markdown(f"**{_['met_val']}**")
-            vkpi1.metric("P/E (Trailing)", fmt_kpi(pe))
-            vkpi1.metric("Forward P/E", fmt_kpi(fwd_pe))
-            vkpi1.metric("PEG Ratio", fmt_kpi(peg))
-            vkpi1.metric("Price / Sales", fmt_kpi(ps))
-            vkpi1.metric("Price / FCF", fmt_kpi(p_fcf))
+            vkpi1.metric(_["kpi_pe"], fmt_kpi(pe))
+            vkpi1.metric(_["kpi_fpe"], fmt_kpi(fwd_pe))
+            vkpi1.metric(_["kpi_peg"], fmt_kpi(peg))
+            vkpi1.metric(_["kpi_ps"], fmt_kpi(ps))
+            vkpi1.metric(_["kpi_pfcf"], fmt_kpi(p_fcf))
             
             vkpi2.markdown(f"**{_['met_mul']}**")
-            vkpi2.metric("EV / EBITDA", fmt_kpi(ev_ebitda))
-            vkpi2.metric("Price / Book", fmt_kpi(pb))
-            vkpi2.metric("Debt / Equity", fmt_kpi(calc_debt_eq))
-            vkpi2.metric("Current Ratio", fmt_kpi(current_ratio))
-            vkpi2.metric("Quick Ratio", fmt_kpi(quick_ratio))
+            vkpi2.metric(_["kpi_evebitda"], fmt_kpi(ev_ebitda))
+            vkpi2.metric(_["kpi_pb"], fmt_kpi(pb))
+            vkpi2.metric(_["kpi_de"], fmt_kpi(calc_debt_eq))
+            vkpi2.metric(_["kpi_cr"], fmt_kpi(current_ratio))
+            vkpi2.metric(_["kpi_qr"], fmt_kpi(quick_ratio))
             
             vkpi3.markdown(f"**{_['met_mar']}**")
-            vkpi3.metric("Gross Margin", fmt_kpi(gross_margin, True))
-            vkpi3.metric("EBITDA Margin", fmt_kpi(ebitda_margin, True))
-            vkpi3.metric("Operating Margin", fmt_kpi(op_margin, True))
-            vkpi3.metric("Profit Margin (Net)", fmt_kpi(profit_margin, True))
-            vkpi3.metric("FCF Margin", fmt_kpi(fcf_margin, True))
+            vkpi3.metric(_["kpi_gm"], fmt_kpi(gross_margin, True))
+            vkpi3.metric(_["kpi_ebitdam"], fmt_kpi(ebitda_margin, True))
+            vkpi3.metric(_["kpi_om"], fmt_kpi(op_margin, True))
+            vkpi3.metric(_["kpi_nm"], fmt_kpi(profit_margin, True))
+            vkpi3.metric(_["kpi_fcfm"], fmt_kpi(fcf_margin, True))
             
             vkpi4.markdown(f"**{_['met_ret']}**")
-            vkpi4.metric("ROE", fmt_kpi(roe, True))
-            vkpi4.metric("ROIC", fmt_kpi(roic, True))
-            vkpi4.metric("ROA", fmt_kpi(roa, True))
-            vkpi4.metric("ROCE", fmt_kpi(roce, True))
-            vkpi4.metric("ROI (Proxy)", fmt_kpi(roi, True))
+            vkpi4.metric(_["kpi_roe"], fmt_kpi(roe, True))
+            vkpi4.metric(_["kpi_roic"], fmt_kpi(roic, True))
+            vkpi4.metric(_["kpi_roa"], fmt_kpi(roa, True))
+            vkpi4.metric(_["kpi_roce"], fmt_kpi(roce, True))
+            vkpi4.metric(_["kpi_roi"], fmt_kpi(roi, True))
 
             vkpi5.markdown(f"**{_['met_ltm']}**")
             fx_m = latest_fx if convert_to_usd else 1.0
-            vkpi5.metric("LTM Revenue", fmt_kpi(total_rev_ltm * fx_m if total_rev_ltm else None, is_curr=True, curr_label=display_currency))
-            vkpi5.metric("LTM EBITDA", fmt_kpi(ebitda_ltm * fx_m if ebitda_ltm else None, is_curr=True, curr_label=display_currency))
-            vkpi5.metric("LTM Net Income", fmt_kpi(net_income_ltm * fx_m if net_income_ltm else None, is_curr=True, curr_label=display_currency)) 
-            vkpi5.metric("LTM FCF", fmt_kpi(fcf * fx_m if fcf else None, is_curr=True, curr_label=display_currency))
-            vkpi5.metric("LTM EPS", fmt_kpi(eps_ltm, is_curr=True, curr_label=trading_currency))
+            vkpi5.metric(_["kpi_rev"], fmt_kpi(total_rev_ltm * fx_m if total_rev_ltm else None, is_curr=True, curr_label=display_currency))
+            vkpi5.metric(_["kpi_ebitda"], fmt_kpi(ebitda_ltm * fx_m if ebitda_ltm else None, is_curr=True, curr_label=display_currency))
+            vkpi5.metric(_["kpi_ni"], fmt_kpi(net_income_ltm * fx_m if net_income_ltm else None, is_curr=True, curr_label=display_currency)) 
+            vkpi5.metric(_["kpi_fcf"], fmt_kpi(fcf * fx_m if fcf else None, is_curr=True, curr_label=display_currency))
+            vkpi5.metric(_["kpi_eps"], fmt_kpi(eps_ltm, is_curr=True, curr_label=trading_currency))
 
         with tab_ana:
             st.subheader(_["targets_h"])
@@ -495,7 +556,7 @@ if final_tick:
             c5.metric(_["t_num"], num_analysts)
 
         with tab_raw:
-            st.subheader(f"Balance Sheet — {final_tick}")
+            st.subheader(f"{_['bal_h']} — {final_tick}")
             if not balance_sheet.empty:
                 bs_display = balance_sheet.copy()
                 for col in bs_display.columns:
@@ -507,4 +568,4 @@ if final_tick:
                     bs_display[col] = bs_display[col].apply(lambda x: format_val(x, display_currency, force_currency=True))
                 st.dataframe(bs_display, use_container_width=True)
             else:
-                st.info("Rozvaha není k dispozici.")
+                st.info(_["bal_na"])
