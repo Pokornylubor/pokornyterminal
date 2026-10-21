@@ -114,11 +114,11 @@ t = {
         "eh_date": "Kvartál",
         "eh_act": "Skutečné EPS",
         "eh_est": "Odhad EPS",
-        "eh_diff": "Rozdíl (Beat/Miss)",
-        "eh_surp": "Překvapení (%)",
+        "eh_diff": "Rozdíl",
+        "eh_surp": "Překonání odhadu (%)",
         "eh_na1": "Oficiální datum příštího reportu zatím nebylo stanoveno.",
         "eh_na2": "Termín příštích earnings není momentálně k dispozici.",
-        "eh_na3": "Historie kvartálních překvapení není k dispozici.",
+        "eh_na3": "Historie kvartálních překonání není k dispozici.",
         "eh_na4": "Historie kvartálních earnings není dostupná."
     },
     "EN": {
@@ -212,7 +212,7 @@ t = {
         "eh_act": "Actual EPS",
         "eh_est": "Estimated EPS",
         "eh_diff": "Difference",
-        "eh_surp": "Surprise (%)",
+        "eh_surp": "Beat / Miss (%)",
         "eh_na1": "Official next earnings date not set yet.",
         "eh_na2": "Next earnings date is currently unavailable.",
         "eh_na3": "Earnings surprise history is not available.",
@@ -634,7 +634,7 @@ if final_tick:
                     if _["eh_surp"] in df_eh.columns:
                         df_eh[_["eh_surp"]] = df_eh[_["eh_surp"]].apply(lambda x: f"{x*100:+.2f} %" if pd.notna(x) else "-")
                         
-                    st.dataframe(df_eh, use_container_width=True)
+                    st.table(df_eh)
                 else:
                     st.info(_["eh_na3"])
             except:
@@ -651,6 +651,7 @@ if final_tick:
                 bs_display.columns = [c.strftime("%Y-%m-%d") for c in bs_display.columns]
                 for col in bs_display.columns:
                     bs_display[col] = bs_display[col].apply(lambda x: format_val(x, display_currency, force_currency=True))
-                st.dataframe(bs_display, use_container_width=True)
+                
+                st.table(bs_display)
             else:
                 st.info(_["bal_na"])
