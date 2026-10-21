@@ -26,7 +26,7 @@ session.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Apple
 t = {
     "CZ": {
         "title": "🏛️ HLOUBKOVÝ ANALYTICKÝ TERMINÁL",
-        "desc": "INSTITUCIONÁLNÍ ČASOVÁ OSA VÝKAZŮ, VALUACE A KONSENZUÁLNÍ ODHADY.",
+        "desc": "INSTITUCIONÁLNÍ ČASOVÁ OSA VÝKAZŮ, VALUACE, KONSENZUS A EARNINGS.",
         "db_select": "DATABÁZE",
         "custom_tick": "VLASTNÍ TICKER",
         "periodicity": "PERIODICITA MATICE:",
@@ -37,6 +37,7 @@ t = {
         "tab_matrix": "📑 FINANČNÍ MATICE & VÝHLED",
         "tab_val": "📊 VALUACE & KPI",
         "tab_ana": "🎯 ANALYTICI & KONSENZUS",
+        "tab_earn": "📅 EARNINGS & HISTORIE",
         "tab_raw": "🗄️ STRUKTUROVANÁ ROZVAHA",
         "targets_h": "Wall Street Konsenzus & Cílové Ceny",
         "t_low": "Bear Target",
@@ -105,11 +106,24 @@ t = {
         "bal_h": "Rozvaha",
         "bal_na": "Rozvaha není k dispozici.",
         "est_q1": "Q+1 (Odhad)",
-        "est_q2": "Q+2 (Odhad)"
+        "est_q2": "Q+2 (Odhad)",
+        "earn_next_h": "Nadcházející kvartální report",
+        "earn_hist_h": "Historie překonání odhadů (Beat / Miss)",
+        "earn_date_lbl": "Termín příštích earnings",
+        "earn_eps_lbl": "Očekávaný EPS odhad",
+        "eh_date": "Kvartál",
+        "eh_act": "Skutečné EPS",
+        "eh_est": "Odhad EPS",
+        "eh_diff": "Rozdíl (Beat/Miss)",
+        "eh_surp": "Překvapení (%)",
+        "eh_na1": "Oficiální datum příštího reportu zatím nebylo stanoveno.",
+        "eh_na2": "Termín příštích earnings není momentálně k dispozici.",
+        "eh_na3": "Historie kvartálních překvapení není k dispozici.",
+        "eh_na4": "Historie kvartálních earnings není dostupná."
     },
     "EN": {
         "title": "🏛️ DEEP INSTITUTIONAL TERMINAL",
-        "desc": "INSTITUTIONAL FINANCIAL STATEMENTS TIMELINE, VALUATION & CONSENSUS.",
+        "desc": "INSTITUTIONAL FINANCIAL STATEMENTS TIMELINE, VALUATION, CONSENSUS & EARNINGS.",
         "db_select": "DATABASE",
         "custom_tick": "CUSTOM TICKER",
         "periodicity": "MATRIX PERIODICITY:",
@@ -120,6 +134,7 @@ t = {
         "tab_matrix": "📑 FINANCIAL MATRIX & OUTLOOK",
         "tab_val": "📊 VALUATION & KPIs",
         "tab_ana": "🎯 ANALYSTS & CONSENSUS",
+        "tab_earn": "📅 EARNINGS & TRACK RECORD",
         "tab_raw": "🗄️ STRUCTURED BALANCE SHEET",
         "targets_h": "Wall Street Consensus & Price Targets",
         "t_low": "Bear Target",
@@ -188,7 +203,20 @@ t = {
         "bal_h": "Balance Sheet",
         "bal_na": "Balance sheet is not available.",
         "est_q1": "Q+1 (Est)",
-        "est_q2": "Q+2 (Est)"
+        "est_q2": "Q+2 (Est)",
+        "earn_next_h": "Upcoming Earnings Report",
+        "earn_hist_h": "Earnings Surprise History (Beat / Miss)",
+        "earn_date_lbl": "Next Earnings Date",
+        "earn_eps_lbl": "Consensus EPS Estimate",
+        "eh_date": "Quarter",
+        "eh_act": "Actual EPS",
+        "eh_est": "Estimated EPS",
+        "eh_diff": "Difference",
+        "eh_surp": "Surprise (%)",
+        "eh_na1": "Official next earnings date not set yet.",
+        "eh_na2": "Next earnings date is currently unavailable.",
+        "eh_na3": "Earnings surprise history is not available.",
+        "eh_na4": "Earnings history is currently unavailable."
     }
 }
 _ = t.get(st.session_state.get("lang", "CZ"), t["CZ"])
@@ -370,7 +398,7 @@ if final_tick:
 
         st.markdown("---")
 
-        tab_matrix, tab_val, tab_ana, tab_raw = st.tabs([_["tab_matrix"], _["tab_val"], _["tab_ana"], _["tab_raw"]])
+        tab_matrix, tab_val, tab_ana, tab_earn, tab_raw = st.tabs([_["tab_matrix"], _["tab_val"], _["tab_ana"], _["tab_earn"], _["tab_raw"]])
 
         with tab_matrix:
             st.subheader(f"{_['matrix_h']} — {_['currency_lbl']} {display_currency}")
@@ -554,6 +582,63 @@ if final_tick:
             c3.metric(_["t_high"], f"{target_high:.2f} {trading_currency}", f"{(target_high - curr_price) / curr_price * 100:+.1f}%" if curr_price else "N/A")
             c4.metric(_["t_rec"], rec_mean)
             c5.metric(_["t_num"], num_analysts)
+
+        with tab_earn:
+            st.subheader(_["earn_next_h"])
+            try:
+                cal = tkr.calendar
+                next_date = None
+                if isinstance(cal, dict) and 'Earnings Date' in cal:
+                    dates = cal['Earnings Date']
+                    if len(dates) > 0:
+                        next_date = dates[0]
+                
+                if next_date:
+                    eps_est_val = None
+                    try:
+                        eps_est_val = tkr.earnings_estimate.loc["0q", "avg"]
+                    except:
+                        pass
+                        
+                    ec1, ec2 = st.columns(2)
+                    ec1.metric(_["earn_date_lbl"], next_date.strftime("%d. %m. %Y"))
+                    ec2.metric(_["earn_eps_lbl"], f"${eps_est_val:.2f}" if pd.notna(eps_est_val) else "N/A")
+                else:
+                    st.info(_["eh_na1"])
+            except:
+                st.info(_["eh_na2"])
+                
+            st.markdown("---")
+            st.subheader(_["earn_hist_h"])
+            try:
+                eh = tkr.earnings_history
+                if eh is not None and not eh.empty:
+                    df_eh = eh.copy()
+                    
+                    if isinstance(df_eh.index, pd.DatetimeIndex):
+                        df_eh.index = df_eh.index.strftime("%Y-%m-%d")
+                        df_eh.index.name = _["eh_date"]
+                    elif "quarter" in df_eh.columns:
+                        df_eh["quarter"] = pd.to_datetime(df_eh["quarter"]).dt.strftime("%Y-%m-%d")
+                    
+                    eh_map = {
+                        "epsActual": _["eh_act"],
+                        "epsEstimate": _["eh_est"],
+                        "epsDifference": _["eh_diff"],
+                        "surprisePercent": _["eh_surp"]
+                    }
+                    df_eh = df_eh.rename(columns=eh_map)
+                    
+                    if _["eh_diff"] in df_eh.columns:
+                        df_eh[_["eh_diff"]] = df_eh[_["eh_diff"]].apply(lambda x: f"{x:+.2f}" if pd.notna(x) else "-")
+                    if _["eh_surp"] in df_eh.columns:
+                        df_eh[_["eh_surp"]] = df_eh[_["eh_surp"]].apply(lambda x: f"{x*100:+.2f} %" if pd.notna(x) else "-")
+                        
+                    st.dataframe(df_eh, use_container_width=True)
+                else:
+                    st.info(_["eh_na3"])
+            except:
+                st.info(_["eh_na4"])
 
         with tab_raw:
             st.subheader(f"{_['bal_h']} — {final_tick}")
