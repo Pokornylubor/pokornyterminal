@@ -4,7 +4,7 @@ import yfinance as yf
 import json
 import os
 import sys
-import plotly.graph_objects as go
+import requests
 
 # --- INITIAL SETUP ---
 st.set_page_config(page_title="POKORNY TERMINAL | VALUATION", layout="wide", initial_sidebar_state="collapsed")
@@ -18,6 +18,10 @@ WATCHLIST_FILE = os.path.join(hlavni_slozka, "watchlist.json")
 import menu
 menu.vykresli_menu()
 
+# --- BYPASS YAHOO BLOCKING (SESSION USER-AGENT) ---
+session = requests.Session()
+session.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+
 # --- DICTIONARY ---
 t = {
     "CZ": {
@@ -29,7 +33,7 @@ t = {
         "annual": "Roční (Annual)",
         "quarterly": "Kvartální (Quarterly)",
         "loading": "STAHOVÁNÍ VÝKAZŮ...",
-        "err_data": "DATA PRO TENTO TICKER NEJSOU DOSTUPNÁ.",
+        "err_data": "DATA PRO TENTO TICKER NEJSOU DOSTUPNÁ (Yahoo Finance dočasně omezil přístup, zkuste to za chvíli).",
         "tab_matrix": "📑 FINANČNÍ MATICE & VÝHLED",
         "tab_val": "📊 VALUACE & KPI",
         "tab_ana": "🎯 ANALYTICI & KONSENZUS",
@@ -81,7 +85,7 @@ t = {
         "annual": "Annual",
         "quarterly": "Quarterly",
         "loading": "LOADING STATEMENTS...",
-        "err_data": "DATA FOR THIS TICKER NOT AVAILABLE.",
+        "err_data": "DATA FOR THIS TICKER NOT AVAILABLE (Yahoo Finance rate limit, try again later).",
         "tab_matrix": "📑 FINANCIAL MATRIX & OUTLOOK",
         "tab_val": "📊 VALUATION & KPIs",
         "tab_ana": "🎯 ANALYSTS & CONSENSUS",
@@ -170,7 +174,7 @@ def format_val(val, currency_code, is_pct=False, is_eps=False, force_currency=Fa
 
 if final_tick:
     with st.spinner(f"{_['loading']} {final_tick}..."):
-        tkr = yf.Ticker(final_tick)
+        tkr = yf.Ticker(final_tick, session=session)
         info = tkr.info
         
         if not info or ("currentPrice" not in info and "regularMarketPrice" not in info and "longName" not in info):
@@ -194,7 +198,7 @@ if final_tick:
             if convert_to_usd:
                 display_currency = "USD"
                 try:
-                    fx_tkr = yf.Ticker(f"{currency_code}USD=X")
+                    fx_tkr = yf.Ticker(f"{currency_code}USD=X", session=session)
                     fx_hist = fx_tkr.history(period="10y")
                     if not fx_hist.empty:
                         latest_fx = float(fx_hist['Close'].iloc[-1])
@@ -338,6 +342,34 @@ if final_tick:
                 matrix_dict[ltm_col][_["r_ni"]] = (net_income_ltm * rate) if pd.notna(net_income_ltm) else None
                 matrix_dict[ltm_col][_["r_eps"]] = (eps_ltm * rate) if pd.notna(eps_ltm) else None
                 matrix_dict[ltm_col][_["r_fcf"]] = (fcf * rate) if pd.notna(fcf) else None
+
+            try:
+                rev_est = tkr.revenue_estimate
+                eps_est = tkr.earnings_estimate
+                
+                if is_quarterly:
+                    est_keys = [("0q", "Q+1 (Est)"), ("+1q", "Q+2 (Est)")]
+                else:
+                    est_keys = [("0y", f"{last_hist_year + 1}E"), ("+1y", f"{last_hist_year + 2}E")]
+                    
+                for k, label in est_keys:
+                    col_name = label
+                    rate = latest_fx if convert_to_usd else 1.0
+                    matrix_dict[col_name] = {}
+                    
+                    e_val = eps_est.loc[k, "avg"] if (eps_est is not None and not eps_est.empty and k in eps_est.index and "avg" in eps_est.columns) else None
+                    matrix_dict[col_name][_["r_eps"]] = (e_val * rate) if pd.notna(e_val) else None
+                    
+                    r_val = rev_est.loc[k, "avg"] if (rev_est is not None and not rev_est.empty and k in rev_est.index and "avg" in rev_est.columns) else None
+                    matrix_dict[col_name][_["r_rev"]] = (r_val * rate) if pd.notna(r_val) else None
+                    matrix_dict[col_name][_["r_gp"]] = None
+                    matrix_dict[col_name][_["r_ebit"]] = None
+                    
+                    shares = info.get("sharesOutstanding")
+                    matrix_dict[col_name][_["r_ni"]] = (e_val * rate * shares) if (pd.notna(e_val) and shares) else None
+                    matrix_dict[col_name][_["r_fcf"]] = None
+            except:
+                pass
 
             df_matrix = pd.DataFrame(matrix_dict)
             
