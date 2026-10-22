@@ -27,7 +27,7 @@ t = {
         "title": "🌍 MAKROEKONOMICKÝ PANEL & RIZIKA",
         "desc": "SLEDOVÁNÍ VÝNOSOVÉ KŘIVKY, INDEXŮ, VOLATILITY, INFLAČNÍCH TLAKŮ A LIKVIDITY.",
         "tab_dash": "🧭 MAKRO DASHBOARD",
-        "tab_analysis": "📈 HLOUBKOVÁ ANALÝZA",
+        "tab_analysis": "📈 HLOUBKOVÁ ANALÝZA & SROVNÁNÍ",
         "tab_fed": "🏦 FEDWATCH TOOL",
         "h_eval": "Automatické vyhodnocení tržního prostředí",
         "eval_yc": "Zploštění / Inverze výnosové křivky",
@@ -58,7 +58,7 @@ t = {
         "m_brent": "Ropa Brent",
         "m_gold": "Zlato",
         "m_btc": "Bitcoin",
-        "perf_sel": "Vyberte instrument pro detailní analýzu:",
+        "perf_sel": "Vyberte instrument pro detailní profil:",
         "perf_mat": "Výkonnostní matice",
         "p_1w": "1 Týden",
         "p_1m": "1 Měsíc",
@@ -66,9 +66,13 @@ t = {
         "p_1y": "1 Rok",
         "p_3y": "3 Roky",
         "p_5y": "5 Let",
+        "comp_sel": "Srovnání relativní procentuální výkonnosti (vyberte max 5 aktiv):",
+        "comp_period": "Časový horizont pro srovnání:",
         "loading": "Načítání a agregace dekády makroekonomických dat...",
         "fed_title": "Pravděpodobnost cílové sazby (CME FedWatch Model)",
-        "fed_y": "Pravděpodobnost",
+        "fed_next": "Nejbližší zasedání FOMC:",
+        "fed_days": "Zbývá dní:",
+        "fed_y": "Pravděpodobnost (%)",
         "fed_x": "Cílová sazba (v bps)",
         "f_tgt": "CÍLOVÁ SAZBA (BPS)",
         "f_now": "NYNÍ",
@@ -77,30 +81,30 @@ t = {
         "f_1m": "1 MĚSÍC",
         "chart_yc": "Spread výnosové křivky (10Y minus 3M)",
         "chart_vix": "Historie indexu strachu (VIX)",
-        "sys_risk": "Systémová rizika",
+        "sys_risk": "Systémová rizika trhu",
         "help_title": "📖 JAK ČÍST TENTO RADAR (NÁPOVĚDA)",
         "help_text": """
 **1. Výnosová křivka (Spread 10Y - 3M)**
-Základní ukazatel zdraví ekonomiky. Pokud je výnos krátkodobých 3M dluhopisů vyšší než 10Y (spread je záporný), trh je v tzv. inverzi. To historicky předpovídá recesi, protože investoři očekávají, že centrální banka bude muset v budoucnu prudce snižovat sazby kvůli ekonomickým problémům.
+Základní ukazatel zdraví ekonomiky. Pokud je výnos krátkodobých 3M dluhopisů vyšší než 10Y (spread je záporný), trh je v tzv. inverzi. To historicky předpovídá recesi.
 
 **2. Očekávání sazeb FEDu**
-Aplikace analyzuje cenu futures kontraktů na úrokové sazby (ZQ=F). Neukazuje oficiální sazbu, ale to, **co si myslí trh**, že FED udělá. Pokud aktuální sazba klesá oproti stavu před měsícem, trh začíná naceňovat snižování sazeb (Dovish pivot).
+Aplikace analyzuje cenu futures kontraktů na úrokové sazby (ZQ=F). Neukazuje oficiální sazbu, ale to, **co si myslí trh**, že FED udělá.
 
 **3. VIX (Index strachu)**
-Měří očekávanou volatilitu opcí na S&P 500. Hodnoty pod 15 znamenají absolutní klid (Risk-On). Hodnoty nad 25 signalizují paniku a krev na trzích – to jsou historicky nejlepší momenty pro dlouhodobé nákupy (Risk-Off).
+Měří očekávanou volatilitu. Hodnoty pod 15 znamenají absolutní klid (Risk-On). Hodnoty nad 25 signalizují paniku (Risk-Off).
 
 **4. DXY (Dolarový index)**
-Ukazuje sílu USD proti koši světových měn. Silný dolar (nad 105) zdražuje americké zboží ve světě a sráží ceny komodit. Slabý dolar pomáhá akciím a zlatu.
+Ukazuje sílu USD proti koši světových měn. Silný dolar (nad 105) zdražuje americké zboží a sráží ceny komodit.
 
 **5. S&P 500 vs. RSP (Equal Weight)**
-Klasický S&P 500 je tažen několika giganty (Apple, Microsoft, Nvidia). Index RSP dává každé z 500 firem stejnou váhu (0.2 %). Pokud S&P 500 roste, ale RSP klesá, trh je nezdravý a drží ho nad vodou jen pár technologických firem.
+Pokud S&P 500 roste, ale RSP klesá, trh je nezdravý a drží ho nad vodou jen pár technologických gigantů.
         """
     },
     "EN": {
         "title": "🌍 MACROECONOMIC DASHBOARD & RISK",
         "desc": "TRACKING YIELD CURVE, INDICES, VOLATILITY, INFLATION, AND LIQUIDITY.",
         "tab_dash": "🧭 MACRO DASHBOARD",
-        "tab_analysis": "📈 DEEP ANALYSIS",
+        "tab_analysis": "📈 DEEP ANALYSIS & COMPARISON",
         "tab_fed": "🏦 FEDWATCH TOOL",
         "h_eval": "Automated Market Environment Evaluation",
         "eval_yc": "Yield Curve Steepness / Inversion",
@@ -110,7 +114,7 @@ Klasický S&P 500 je tažen několika giganty (Apple, Microsoft, Nvidia). Index 
         "eval_vix_low": "Low volatility. Market is calm, potentially complacent (Greed).",
         "eval_vix_mid": "Normal market volatility. Environment without extreme swings.",
         "eval_vix_high": "Elevated nervousness and fear. Investors buying protection.",
-        "eval_vix_panic": "Extreme PANIC. Market selling off sharply (often indicates buying opportunities for long-term capital).",
+        "eval_vix_panic": "Extreme PANIC. Market selling off sharply.",
         "eval_dxy": "US Dollar Strength (DXY)",
         "eval_dxy_high": "Strong dollar. Acts as a headwind for US multinational corporations and pressures commodity prices.",
         "eval_dxy_low": "Weaker dollar. Supports commodity prices and US multinational earnings.",
@@ -131,7 +135,7 @@ Klasický S&P 500 je tažen několika giganty (Apple, Microsoft, Nvidia). Index 
         "m_brent": "Brent Crude",
         "m_gold": "Gold",
         "m_btc": "Bitcoin",
-        "perf_sel": "Select instrument for detailed analysis:",
+        "perf_sel": "Select instrument for detailed profile:",
         "perf_mat": "Performance Matrix",
         "p_1w": "1 Week",
         "p_1m": "1 Month",
@@ -139,9 +143,13 @@ Klasický S&P 500 je tažen několika giganty (Apple, Microsoft, Nvidia). Index 
         "p_1y": "1 Year",
         "p_3y": "3 Years",
         "p_5y": "5 Years",
+        "comp_sel": "Relative percentage performance comparison (max 5 assets):",
+        "comp_period": "Comparison time horizon:",
         "loading": "Loading and aggregating a decade of macroeconomic data...",
         "fed_title": "Target Rate Probabilities (CME FedWatch Model)",
-        "fed_y": "Probability",
+        "fed_next": "Next FOMC Meeting:",
+        "fed_days": "Days remaining:",
+        "fed_y": "Probability (%)",
         "fed_x": "Target Rate (in bps)",
         "f_tgt": "TARGET RATE (BPS)",
         "f_now": "NOW",
@@ -150,23 +158,23 @@ Klasický S&P 500 je tažen několika giganty (Apple, Microsoft, Nvidia). Index 
         "f_1m": "1 MONTH",
         "chart_yc": "Yield Curve Spread (10Y minus 3M)",
         "chart_vix": "VIX History",
-        "sys_risk": "Systemic Risks",
+        "sys_risk": "Systemic Market Risks",
         "help_title": "📖 HOW TO READ THIS RADAR (GUIDE)",
         "help_text": """
 **1. Yield Curve (10Y - 3M Spread)**
-A primary indicator of economic health. If 3M yields exceed 10Y (negative spread), the curve is inverted. Historically, this predicts recession as markets expect the central bank to slash rates.
+A primary indicator of economic health. If 3M yields exceed 10Y (negative spread), the curve is inverted.
 
 **2. FED Rate Expectations**
-The app analyzes FED Funds Futures (ZQ=F). It shows **what the market expects** the FED to do. If the implied rate is falling compared to a month ago, the market is pricing in rate cuts (Dovish pivot).
+The app analyzes FED Funds Futures (ZQ=F). It shows **what the market expects** the FED to do.
 
 **3. VIX (Fear Index)**
-Measures expected volatility on S&P 500 options. Under 15 means calm (Risk-On). Over 25 signals panic and hedging—often the best times for long-term accumulation (Risk-Off).
+Measures expected volatility. Under 15 means calm (Risk-On). Over 25 signals panic (Risk-Off).
 
 **4. DXY (Dollar Index)**
-Measures USD strength against a global basket. A strong dollar (>105) hurts US exports and pressures commodities. A weak dollar supports global equities.
+Measures USD strength against a global basket. A strong dollar (>105) hurts US exports and pressures commodities.
 
 **5. S&P 500 vs. RSP (Equal Weight)**
-The standard S&P 500 is heavily skewed by mega-caps. RSP gives every company an equal 0.2% weight. If S&P 500 is rising while RSP is falling, the rally lacks breadth.
+If S&P 500 is rising while RSP is falling, the rally lacks breadth.
         """
     }
 }
@@ -198,6 +206,15 @@ MACRO_TICKERS = {
 }
 
 RATES_AND_VOL = ["10Y", "30Y", "3M", "FED", "VIX"]
+
+# CME FOMC Schedule pro 2026/2027
+FOMC_DATES = [
+    datetime(2026, 10, 28), datetime(2026, 12, 9),
+    datetime(2027, 1, 27), datetime(2027, 3, 17),
+    datetime(2027, 4, 28), datetime(2027, 6, 9),
+    datetime(2027, 7, 28), datetime(2027, 9, 15),
+    datetime(2027, 10, 27), datetime(2027, 12, 8)
+]
 
 def safe_iloc(df, steps_back):
     if len(df) > steps_back:
@@ -395,6 +412,7 @@ if macro_data:
                     st.success(f"🕊️ {_['eval_dxy_low']} (DXY: {dxy:.2f})")
 
     with tab_analysis:
+        # 1. HLOUBKOVÝ PROFIL AKTIVA
         st.subheader(_["perf_sel"])
         asset_options = {name: key for key, (ticker, name) in MACRO_TICKERS.items() if key in macro_data}
         
@@ -408,7 +426,6 @@ if macro_data:
             sel_hist = macro_history[sel_key].dropna(subset=['Close'])
             sel_perf = macro_data[sel_key]["performance"]
             
-            st.markdown(f"### {_['perf_mat']} — {selected_asset_name}")
             df_perf = pd.DataFrame([sel_perf])
             st.table(df_perf)
             
@@ -437,12 +454,49 @@ if macro_data:
                 )
             )
             
-            fig_perf.update_layout(template="plotly_dark", height=500, margin=dict(l=0, r=0, t=30, b=0), hovermode='x unified')
+            fig_perf.update_layout(template="plotly_dark", height=400, margin=dict(l=0, r=0, t=10, b=0), hovermode='x unified')
             st.plotly_chart(fig_perf, use_container_width=True, config={'displayModeBar': False})
 
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.subheader(_["sys_risk"])
+        st.markdown("---")
         
+        # 2. RELATIVNÍ SROVNÁNÍ VÍCE AKTIV
+        st.subheader(_["comp_sel"])
+        default_selections = [_["m_sp500"], _["m_nasdaq"], _["m_btc"]]
+        valid_defaults = [a for a in default_selections if a in asset_options]
+        
+        selected_compare = st.multiselect("", list(asset_options.keys()), default=valid_defaults, max_selections=5, label_visibility="collapsed")
+        period = st.radio(_["comp_period"], ["1M", "6M", "YTD", "1Y", "3Y", "5Y"], horizontal=True, index=3)
+        
+        if selected_compare:
+            fig_comp = go.Figure()
+            period_map = {"1M": 21, "6M": 126, "1Y": 252, "3Y": 252*3, "5Y": 252*5}
+            
+            for asset_name in selected_compare:
+                c_key = asset_options[asset_name]
+                df_hist = macro_history[c_key].dropna(subset=['Close']).copy()
+                
+                if period == "YTD":
+                    df_hist = df_hist[df_hist.index.year == datetime.now().year]
+                else:
+                    days = period_map.get(period, 252)
+                    df_hist = df_hist.tail(days)
+                    
+                if not df_hist.empty:
+                    first_val = df_hist['Close'].iloc[0]
+                    if first_val != 0:
+                        pct_series = ((df_hist['Close'] / first_val) - 1) * 100
+                    else:
+                        pct_series = df_hist['Close'] * 0
+                        
+                    fig_comp.add_trace(go.Scatter(x=df_hist.index, y=pct_series, mode='lines', name=asset_name, line=dict(width=2)))
+            
+            fig_comp.update_layout(template="plotly_dark", height=400, margin=dict(l=0, r=0, t=10, b=0), hovermode='x unified', yaxis_ticksuffix="%")
+            st.plotly_chart(fig_comp, use_container_width=True, config={'displayModeBar': False})
+
+        st.markdown("---")
+        
+        # 3. SYSTÉMOVÁ RIZIKA
+        st.subheader(_["sys_risk"])
         if "10Y" in macro_history and "3M" in macro_history:
             df_10y = macro_history["10Y"][['Close']].rename(columns={"Close": "10Y"})
             df_3m = macro_history["3M"][['Close']].rename(columns={"Close": "3M"})
@@ -453,7 +507,7 @@ if macro_data:
             fig_spread = go.Figure()
             fig_spread.add_trace(go.Scatter(x=df_spread.index, y=df_spread["Spread"], mode='lines', name='10Y - 3M Spread', line=dict(color='#E91E63', width=2)))
             fig_spread.add_hline(y=0, line_dash="dash", line_color="red", annotation_text="Hranice inverze (0%)", annotation_position="bottom right")
-            fig_spread.update_layout(title=_["chart_yc"], template="plotly_dark", height=350, margin=dict(l=0, r=0, t=40, b=0), hovermode='x unified')
+            fig_spread.update_layout(title=_["chart_yc"], template="plotly_dark", height=300, margin=dict(l=0, r=0, t=40, b=0), hovermode='x unified')
             st.plotly_chart(fig_spread, use_container_width=True, config={'displayModeBar': False})
             
         if "VIX" in macro_history:
@@ -461,11 +515,25 @@ if macro_data:
             fig_vix = go.Figure()
             fig_vix.add_trace(go.Scatter(x=df_vix.index, y=df_vix["Close"], mode='lines', name='VIX', line=dict(color='#FFA726', width=2)))
             fig_vix.add_hline(y=25, line_dash="dash", line_color="red", annotation_text="Hranice strachu (25)", annotation_position="top right")
-            fig_vix.update_layout(title=_["chart_vix"], template="plotly_dark", height=350, margin=dict(l=0, r=0, t=40, b=0), hovermode='x unified')
+            fig_vix.update_layout(title=_["chart_vix"], template="plotly_dark", height=300, margin=dict(l=0, r=0, t=40, b=0), hovermode='x unified')
             st.plotly_chart(fig_vix, use_container_width=True, config={'displayModeBar': False})
 
     with tab_fed:
         st.subheader(_["fed_title"])
+        
+        # Info o dalsim zasedani FOMC
+        today = datetime.now()
+        next_meeting = next((d for d in FOMC_DATES if d >= today), None)
+        
+        if next_meeting:
+            days_left = (next_meeting - today).days
+            mtg_str = next_meeting.strftime("%d. %m. %Y")
+            
+            mc1, mc2 = st.columns(2)
+            mc1.info(f"🏛️ **{_['fed_next']}** {mtg_str}")
+            mc2.warning(f"⏳ **{_['fed_days']}** {days_left}")
+            st.markdown("<br>", unsafe_allow_html=True)
+            
         if "FED_hist" in macro_data:
             f_hist = macro_data["FED_hist"]
             
@@ -485,10 +553,10 @@ if macro_data:
 
             fig_fed.update_layout(
                 template="plotly_dark", 
-                height=450,
+                height=400,
                 yaxis=dict(title=_["fed_y"], range=[0, 105], ticksuffix="%"),
                 xaxis=dict(title=_["fed_x"]),
-                margin=dict(l=0, r=0, t=30, b=0)
+                margin=dict(l=0, r=0, t=10, b=0)
             )
             st.plotly_chart(fig_fed, use_container_width=True, config={'displayModeBar': False})
 
