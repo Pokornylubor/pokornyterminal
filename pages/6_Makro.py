@@ -27,9 +27,8 @@ t = {
         "title": "🌍 MAKROEKONOMICKÝ PANEL & RIZIKA",
         "desc": "SLEDOVÁNÍ VÝNOSOVÉ KŘIVKY, INDEXŮ, VOLATILITY, INFLAČNÍCH TLAKŮ A LIKVIDITY.",
         "tab_dash": "🧭 MAKRO DASHBOARD",
-        "tab_perf": "📈 DETAILNÍ VÝKONNOST",
+        "tab_analysis": "📈 HLOUBKOVÁ ANALÝZA",
         "tab_fed": "🏦 FEDWATCH TOOL",
-        "tab_charts": "📊 GRAFY & KŘIVKY",
         "h_eval": "Automatické vyhodnocení tržního prostředí",
         "eval_yc": "Zploštění / Inverze výnosové křivky",
         "eval_yc_inv": "Křivka je v INVERZI (10Y < 3M). Historicky silný signál blížící se ekonomické recese. Úvěrový trh je pod tlakem.",
@@ -68,23 +67,41 @@ t = {
         "p_3y": "3 Roky",
         "p_5y": "5 Let",
         "loading": "Načítání a agregace dekády makroekonomických dat...",
-        "fed_title": "Target Rate Probabilities (CME FedWatch Model)",
+        "fed_title": "Pravděpodobnost cílové sazby (CME FedWatch Model)",
         "fed_y": "Pravděpodobnost",
         "fed_x": "Cílová sazba (v bps)",
+        "f_tgt": "CÍLOVÁ SAZBA (BPS)",
+        "f_now": "NYNÍ",
+        "f_1d": "1 DEN",
+        "f_1w": "1 TÝDEN",
+        "f_1m": "1 MĚSÍC",
         "chart_yc": "Spread výnosové křivky (10Y minus 3M)",
-        "chart_vix": "Historie VIX",
-        "chart_wti": "Ropa WTI (CL=F) s SMA",
-        "chart_brent": "Ropa Brent (BZ=F) s SMA",
-        "chart_gold": "Zlato (GC=F) s SMA",
-        "chart_btc": "Bitcoin (BTC-USD) s SMA"
+        "chart_vix": "Historie indexu strachu (VIX)",
+        "sys_risk": "Systémová rizika",
+        "help_title": "📖 JAK ČÍST TENTO RADAR (NÁPOVĚDA)",
+        "help_text": """
+**1. Výnosová křivka (Spread 10Y - 3M)**
+Základní ukazatel zdraví ekonomiky. Pokud je výnos krátkodobých 3M dluhopisů vyšší než 10Y (spread je záporný), trh je v tzv. inverzi. To historicky předpovídá recesi, protože investoři očekávají, že centrální banka bude muset v budoucnu prudce snižovat sazby kvůli ekonomickým problémům.
+
+**2. Očekávání sazeb FEDu**
+Aplikace analyzuje cenu futures kontraktů na úrokové sazby (ZQ=F). Neukazuje oficiální sazbu, ale to, **co si myslí trh**, že FED udělá. Pokud aktuální sazba klesá oproti stavu před měsícem, trh začíná naceňovat snižování sazeb (Dovish pivot).
+
+**3. VIX (Index strachu)**
+Měří očekávanou volatilitu opcí na S&P 500. Hodnoty pod 15 znamenají absolutní klid (Risk-On). Hodnoty nad 25 signalizují paniku a krev na trzích – to jsou historicky nejlepší momenty pro dlouhodobé nákupy (Risk-Off).
+
+**4. DXY (Dolarový index)**
+Ukazuje sílu USD proti koši světových měn. Silný dolar (nad 105) zdražuje americké zboží ve světě a sráží ceny komodit. Slabý dolar pomáhá akciím a zlatu.
+
+**5. S&P 500 vs. RSP (Equal Weight)**
+Klasický S&P 500 je tažen několika giganty (Apple, Microsoft, Nvidia). Index RSP dává každé z 500 firem stejnou váhu (0.2 %). Pokud S&P 500 roste, ale RSP klesá, trh je nezdravý a drží ho nad vodou jen pár technologických firem.
+        """
     },
     "EN": {
         "title": "🌍 MACROECONOMIC DASHBOARD & RISK",
         "desc": "TRACKING YIELD CURVE, INDICES, VOLATILITY, INFLATION, AND LIQUIDITY.",
         "tab_dash": "🧭 MACRO DASHBOARD",
-        "tab_perf": "📈 DETAILED PERFORMANCE",
+        "tab_analysis": "📈 DEEP ANALYSIS",
         "tab_fed": "🏦 FEDWATCH TOOL",
-        "tab_charts": "📊 CHARTS & CURVES",
         "h_eval": "Automated Market Environment Evaluation",
         "eval_yc": "Yield Curve Steepness / Inversion",
         "eval_yc_inv": "Curve is INVERTED (10Y < 3M). Historically strong signal of approaching economic recession. Credit market under pressure.",
@@ -126,18 +143,41 @@ t = {
         "fed_title": "Target Rate Probabilities (CME FedWatch Model)",
         "fed_y": "Probability",
         "fed_x": "Target Rate (in bps)",
+        "f_tgt": "TARGET RATE (BPS)",
+        "f_now": "NOW",
+        "f_1d": "1 DAY",
+        "f_1w": "1 WEEK",
+        "f_1m": "1 MONTH",
         "chart_yc": "Yield Curve Spread (10Y minus 3M)",
         "chart_vix": "VIX History",
-        "chart_wti": "WTI Crude Oil (CL=F) with SMAs",
-        "chart_brent": "Brent Crude (BZ=F) with SMAs",
-        "chart_gold": "Gold (GC=F) with SMAs",
-        "chart_btc": "Bitcoin (BTC-USD) with SMAs"
+        "sys_risk": "Systemic Risks",
+        "help_title": "📖 HOW TO READ THIS RADAR (GUIDE)",
+        "help_text": """
+**1. Yield Curve (10Y - 3M Spread)**
+A primary indicator of economic health. If 3M yields exceed 10Y (negative spread), the curve is inverted. Historically, this predicts recession as markets expect the central bank to slash rates.
+
+**2. FED Rate Expectations**
+The app analyzes FED Funds Futures (ZQ=F). It shows **what the market expects** the FED to do. If the implied rate is falling compared to a month ago, the market is pricing in rate cuts (Dovish pivot).
+
+**3. VIX (Fear Index)**
+Measures expected volatility on S&P 500 options. Under 15 means calm (Risk-On). Over 25 signals panic and hedging—often the best times for long-term accumulation (Risk-Off).
+
+**4. DXY (Dollar Index)**
+Measures USD strength against a global basket. A strong dollar (>105) hurts US exports and pressures commodities. A weak dollar supports global equities.
+
+**5. S&P 500 vs. RSP (Equal Weight)**
+The standard S&P 500 is heavily skewed by mega-caps. RSP gives every company an equal 0.2% weight. If S&P 500 is rising while RSP is falling, the rally lacks breadth.
+        """
     }
 }
 _ = t.get(st.session_state.get("lang", "CZ"), t["CZ"])
 
 st.title(_["title"])
 st.caption(_["desc"])
+
+with st.expander(_["help_title"]):
+    st.markdown(_["help_text"])
+
 st.markdown("---")
 
 MACRO_TICKERS = {
@@ -258,7 +298,7 @@ with st.spinner(_["loading"]):
     macro_data, macro_history = fetch_macro_data()
 
 if macro_data:
-    tab_dash, tab_perf, tab_fed, tab_charts = st.tabs([_["tab_dash"], _["tab_perf"], _["tab_fed"], _["tab_charts"]])
+    tab_dash, tab_analysis, tab_fed = st.tabs([_["tab_dash"], _["tab_analysis"], _["tab_fed"]])
 
     with tab_dash:
         def render_metric(col, key, is_curr=False, is_crypto=False):
@@ -354,7 +394,7 @@ if macro_data:
                 else:
                     st.success(f"🕊️ {_['eval_dxy_low']} (DXY: {dxy:.2f})")
 
-    with tab_perf:
+    with tab_analysis:
         st.subheader(_["perf_sel"])
         asset_options = {name: key for key, (ticker, name) in MACRO_TICKERS.items() if key in macro_data}
         
@@ -400,6 +440,30 @@ if macro_data:
             fig_perf.update_layout(template="plotly_dark", height=500, margin=dict(l=0, r=0, t=30, b=0), hovermode='x unified')
             st.plotly_chart(fig_perf, use_container_width=True, config={'displayModeBar': False})
 
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.subheader(_["sys_risk"])
+        
+        if "10Y" in macro_history and "3M" in macro_history:
+            df_10y = macro_history["10Y"][['Close']].rename(columns={"Close": "10Y"})
+            df_3m = macro_history["3M"][['Close']].rename(columns={"Close": "3M"})
+            df_spread = df_10y.join(df_3m).dropna()
+            df_spread["Spread"] = df_spread["10Y"] - df_spread["3M"]
+            df_spread = df_spread.tail(252*5)
+            
+            fig_spread = go.Figure()
+            fig_spread.add_trace(go.Scatter(x=df_spread.index, y=df_spread["Spread"], mode='lines', name='10Y - 3M Spread', line=dict(color='#E91E63', width=2)))
+            fig_spread.add_hline(y=0, line_dash="dash", line_color="red", annotation_text="Hranice inverze (0%)", annotation_position="bottom right")
+            fig_spread.update_layout(title=_["chart_yc"], template="plotly_dark", height=350, margin=dict(l=0, r=0, t=40, b=0), hovermode='x unified')
+            st.plotly_chart(fig_spread, use_container_width=True, config={'displayModeBar': False})
+            
+        if "VIX" in macro_history:
+            df_vix = macro_history["VIX"].tail(252*5)
+            fig_vix = go.Figure()
+            fig_vix.add_trace(go.Scatter(x=df_vix.index, y=df_vix["Close"], mode='lines', name='VIX', line=dict(color='#FFA726', width=2)))
+            fig_vix.add_hline(y=25, line_dash="dash", line_color="red", annotation_text="Hranice strachu (25)", annotation_position="top right")
+            fig_vix.update_layout(title=_["chart_vix"], template="plotly_dark", height=350, margin=dict(l=0, r=0, t=40, b=0), hovermode='x unified')
+            st.plotly_chart(fig_vix, use_container_width=True, config={'displayModeBar': False})
+
     with tab_fed:
         st.subheader(_["fed_title"])
         if "FED_hist" in macro_data:
@@ -428,56 +492,11 @@ if macro_data:
             )
             st.plotly_chart(fig_fed, use_container_width=True, config={'displayModeBar': False})
 
-            # Tabulka CME historie
             df_fed_prob = pd.DataFrame({
-                "TARGET RATE (BPS)": [probs_now["current_target"], probs_now["next_target"]],
-                "NOW": [f"{probs_now['prob_stay']:.1f}%", f"{probs_now['prob_move']:.1f}%"],
-                "1 DAY": [f"{probs_1d['prob_stay']:.1f}%", f"{probs_1d['prob_move']:.1f}%"],
-                "1 WEEK": [f"{probs_1w['prob_stay']:.1f}%", f"{probs_1w['prob_move']:.1f}%"],
-                "1 MONTH": [f"{probs_1m['prob_stay']:.1f}%", f"{probs_1m['prob_move']:.1f}%"]
+                _["f_tgt"]: [probs_now["current_target"], probs_now["next_target"]],
+                _["f_now"]: [f"{probs_now['prob_stay']:.1f}%", f"{probs_now['prob_move']:.1f}%"],
+                _["f_1d"]: [f"{probs_1d['prob_stay']:.1f}%", f"{probs_1d['prob_move']:.1f}%"],
+                _["f_1w"]: [f"{probs_1w['prob_stay']:.1f}%", f"{probs_1w['prob_move']:.1f}%"],
+                _["f_1m"]: [f"{probs_1m['prob_stay']:.1f}%", f"{probs_1m['prob_move']:.1f}%"]
             })
-            st.table(df_fed_prob.set_index("TARGET RATE (BPS)"))
-
-    with tab_charts:
-        st.subheader(_["chart_yc"])
-        if "10Y" in macro_history and "3M" in macro_history:
-            df_10y = macro_history["10Y"][['Close']].rename(columns={"Close": "10Y"})
-            df_3m = macro_history["3M"][['Close']].rename(columns={"Close": "3M"})
-            df_spread = df_10y.join(df_3m).dropna()
-            df_spread["Spread"] = df_spread["10Y"] - df_spread["3M"]
-            df_spread = df_spread.tail(252*5)
-            
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(x=df_spread.index, y=df_spread["Spread"], mode='lines', name='10Y - 3M Spread', line=dict(color='#2962FF', width=2)))
-            fig.add_hline(y=0, line_dash="dash", line_color="red", annotation_text="Hranice inverze (0%)", annotation_position="bottom right")
-            fig.update_layout(template="plotly_dark", height=350, margin=dict(l=0, r=0, t=30, b=0), hovermode='x unified')
-            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-            
-        st.subheader(_["chart_vix"])
-        if "VIX" in macro_history:
-            df_vix = macro_history["VIX"].tail(252*5)
-            fig2 = go.Figure()
-            fig2.add_trace(go.Scatter(x=df_vix.index, y=df_vix["Close"], mode='lines', name='VIX', line=dict(color='#FFA726', width=2)))
-            fig2.add_hline(y=25, line_dash="dash", line_color="red", annotation_text="Hranice strachu (25)", annotation_position="top right")
-            fig2.update_layout(template="plotly_dark", height=350, margin=dict(l=0, r=0, t=30, b=0), hovermode='x unified')
-            st.plotly_chart(fig2, use_container_width=True, config={'displayModeBar': False})
-
-        def draw_technical_chart(title, df, line_color):
-            st.subheader(title)
-            df_cut = df.tail(252*3)
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(x=df_cut.index, y=df_cut["Close"], mode='lines', name='Cena (Close)', line=dict(color=line_color, width=2)))
-            if "SMA50" in df_cut.columns:
-                fig.add_trace(go.Scatter(x=df_cut.index, y=df_cut["SMA50"], mode='lines', name='SMA 50', line=dict(color='#00E676', width=1, dash='dash')))
-            if "SMA200" in df_cut.columns:
-                fig.add_trace(go.Scatter(x=df_cut.index, y=df_cut["SMA200"], mode='lines', name='SMA 200', line=dict(color='#E91E63', width=1.5, dash='dashdot')))
-            fig.update_layout(template="plotly_dark", height=350, margin=dict(l=0, r=0, t=30, b=0), hovermode='x unified')
-            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-
-        c_col1, c_col2 = st.columns(2)
-        with c_col1:
-            if "WTI" in macro_history: draw_technical_chart(_["chart_wti"], macro_history["WTI"], '#EF5350')
-            if "GOLD" in macro_history: draw_technical_chart(_["chart_gold"], macro_history["GOLD"], '#FFD54F')
-        with c_col2:
-            if "BRENT" in macro_history: draw_technical_chart(_["chart_brent"], macro_history["BRENT"], '#BA68C8')
-            if "BTC" in macro_history: draw_technical_chart(_["chart_btc"], macro_history["BTC"], '#FF9800')
+            st.table(df_fed_prob.set_index(_["f_tgt"]))
