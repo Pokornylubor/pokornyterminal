@@ -201,7 +201,7 @@ MACRO_TICKERS = {
     "BTC": ("BTC-USD", _["m_btc"])
 }
 
-RATES_AND_VOL = ["10Y", "30Y", "3M", "FED", "VIX"]
+RATES = ["10Y", "30Y", "3M", "FED"]
 
 FOMC_DATES = [
     datetime(2026, 10, 28), datetime(2026, 12, 9),
@@ -268,7 +268,7 @@ def fetch_macro_data():
                     prev_price = 100 - prev_price
                 
                 abs_chg = current_price - prev_price
-                pct_chg = ((current_price / prev_price) - 1) * 100 if prev_price and key not in RATES_AND_VOL else None
+                pct_chg = ((current_price / prev_price) - 1) * 100 if prev_price and key not in RATES else None
                 
                 data[key] = {
                     "price": current_price,
@@ -298,8 +298,8 @@ def fetch_macro_data():
                 calculated_perf = {}
                 for p_key, p_val in perf.items():
                     if p_val is not None:
-                        if key in RATES_AND_VOL:
-                            calculated_perf[p_key] = f"{(current_price - p_val) * 100:+.0f} bps" if key != "VIX" else f"{current_price - p_val:+.2f} pts"
+                        if key in RATES:
+                            calculated_perf[p_key] = f"{(current_price - p_val) * 100:+.0f} bps"
                         else:
                             calculated_perf[p_key] = f"{((current_price / p_val) - 1) * 100:+.2f} %"
                     else:
@@ -334,14 +334,14 @@ if macro_data:
             
             if is_curr: val_str = f"${val:,.2f}"
             elif is_crypto: val_str = f"${val:,.0f}"
-            elif key in RATES_AND_VOL and key != "VIX": val_str = f"{val:.2f} %"
+            elif key in RATES: val_str = f"{val:.2f} %"
             else: val_str = f"{val:,.2f}"
             
             sign = "-" if abs_chg < 0 else "+"
             val_abs = abs(abs_chg)
             
-            if key in RATES_AND_VOL:
-                delta_str = f"{sign}{val_abs * 100:.1f} bps" if key != "VIX" else f"{sign}{val_abs:.2f} pts"
+            if key in RATES:
+                delta_str = f"{sign}{val_abs * 100:.1f} bps"
             else:
                 if is_curr or is_crypto:
                     delta_str = f"{sign}${val_abs:,.2f} ({pct_chg:+.2f}%)" if pct_chg else f"{sign}${val_abs:,.2f}"
@@ -393,9 +393,16 @@ if macro_data:
         with ec2:
             st.markdown(f"**{_['eval_fng']}**")
             if fng_score is not None:
+                if fng_score < 25: state_text = "Extrémní strach" if st.session_state.lang == "CZ" else "Extreme Fear"
+                elif fng_score < 45: state_text = "Strach" if st.session_state.lang == "CZ" else "Fear"
+                elif fng_score <= 55: state_text = "Neutrální" if st.session_state.lang == "CZ" else "Neutral"
+                elif fng_score <= 75: state_text = "Chamtivost" if st.session_state.lang == "CZ" else "Greed"
+                else: state_text = "Extrémní chamtivost" if st.session_state.lang == "CZ" else "Extreme Greed"
+                
                 fig_gauge = go.Figure(go.Indicator(
                     mode="gauge+number",
                     value=fng_score,
+                    title={'text': f"<b>{state_text}</b>", 'font': {'size': 18, 'color': 'white'}},
                     gauge={
                         'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "white"},
                         'bar': {'color': "white", 'thickness': 0.15},
@@ -408,7 +415,7 @@ if macro_data:
                         ]
                     }
                 ))
-                fig_gauge.update_layout(template="plotly_dark", height=150, margin=dict(l=10, r=10, t=10, b=10))
+                fig_gauge.update_layout(template="plotly_dark", height=180, margin=dict(l=10, r=10, t=30, b=10))
                 st.plotly_chart(fig_gauge, use_container_width=True, config={'displayModeBar': False})
             else:
                 st.info("Data nedostupná.")
@@ -435,6 +442,7 @@ if macro_data:
             sel_hist = macro_history[sel_key].dropna(subset=['Close'])
             sel_perf = macro_data[sel_key]["performance"]
             
+            st.markdown(f"### {_['perf_mat']} — {selected_asset_name}")
             df_perf = pd.DataFrame([sel_perf])
             st.table(df_perf)
             
@@ -469,10 +477,7 @@ if macro_data:
         st.markdown("---")
         
         st.markdown(f"#### {_['comp_header']}")
-        default_selections = [_["m_sp500"], _["m_nasdaq"], _["m_btc"]]
-        valid_defaults = [a for a in default_selections if a in asset_options]
-        
-        selected_compare = st.multiselect("", list(asset_options.keys()), default=valid_defaults, max_selections=5, placeholder=_["comp_sel"], label_visibility="collapsed")
+        selected_compare = st.multiselect("", list(asset_options.keys()), default=[], max_selections=5, placeholder=_["comp_sel"], label_visibility="collapsed")
         period = st.radio(_["comp_period"], ["1M", "6M", "YTD", "1Y", "3Y", "5Y"], horizontal=True, index=3)
         
         if selected_compare:
