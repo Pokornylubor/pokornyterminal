@@ -33,11 +33,7 @@ t = {
         "eval_yc": "Výnosová křivka",
         "eval_yc_inv": "INVERZE (10Y < 3M). Úvěrový trh pod tlakem. Historický signál recese.",
         "eval_yc_norm": "NORMÁLNÍ (10Y > 3M). Trh oceňuje budoucí růst.",
-        "eval_vix": "Volatilita (VIX)",
-        "eval_vix_low": "Nízká volatilita. Tržní klid (Risk-On).",
-        "eval_vix_mid": "Standardní volatilita. Prostředí bez extrémních výkyvů.",
-        "eval_vix_high": "Zvýšená nervozita. Zajišťování pozic.",
-        "eval_vix_panic": "Extrémní panika. Prudké výprodeje (Risk-Off).",
+        "eval_fng": "Market Sentiment (Fear & Greed)",
         "eval_dxy": "Síla USD (DXY)",
         "eval_dxy_high": "Silný dolar. Protivítr pro nadnárodní zisky a komodity.",
         "eval_dxy_low": "Slabší dolar. Podporuje ceny komodit a zámořské zisky.",
@@ -58,6 +54,7 @@ t = {
         "m_brent": "Ropa Brent",
         "m_gold": "Zlato",
         "m_btc": "Bitcoin",
+        "perf_header": "DETAILNÍ PROFIL AKTIVA",
         "perf_sel": "Vyberte instrument...",
         "perf_mat": "Výkonnostní matice",
         "p_1w": "1 Týden",
@@ -66,7 +63,8 @@ t = {
         "p_1y": "1 Rok",
         "p_3y": "3 Roky",
         "p_5y": "5 Let",
-        "comp_sel": "Relativní procentuální srovnání (vyberte max 5 aktiv):",
+        "comp_header": "RELATIVNÍ SROVNÁNÍ",
+        "comp_sel": "Vyberte aktiva k porovnání:",
         "comp_period": "Časový horizont:",
         "loading": "Načítání makroekonomických dat...",
         "fed_title": "Pravděpodobnost cílové sazby (CME FedWatch Model)",
@@ -90,8 +88,8 @@ Základní ukazatel zdraví ekonomiky. Výnos krátkodobých dluhopisů vyšší
 **2. Očekávání sazeb FEDu**
 Pravděpodobnosti implikované z futures kontraktů (ZQ=F). Neukazuje oficiální sazbu, ale tržní očekávání.
 
-**3. VIX (Index strachu)**
-Očekávaná volatilita. <15: Risk-On. >25: Risk-Off (panika).
+**3. Fear & Greed Index**
+Agregovaný sentiment trhu. <25: Extreme Fear (příležitost k akumulaci). >75: Extreme Greed (zvýšené riziko korekce).
 
 **4. DXY (Dolarový index)**
 Síla USD. Silný dolar (>105) sráží komodity.
@@ -110,11 +108,7 @@ Pokud S&P roste a RSP klesá, trh je tažen úzkou skupinou firem.
         "eval_yc": "Yield Curve",
         "eval_yc_inv": "INVERTED (10Y < 3M). Credit market under pressure. Recession signal.",
         "eval_yc_norm": "NORMAL (10Y > 3M). Market pricing in future growth.",
-        "eval_vix": "Volatility (VIX)",
-        "eval_vix_low": "Low volatility. Market calm (Risk-On).",
-        "eval_vix_mid": "Standard volatility.",
-        "eval_vix_high": "Elevated fear. Hedging environment.",
-        "eval_vix_panic": "Extreme panic. Sharp sell-offs (Risk-Off).",
+        "eval_fng": "Market Sentiment (Fear & Greed)",
         "eval_dxy": "USD Strength (DXY)",
         "eval_dxy_high": "Strong dollar. Headwind for multinationals and commodities.",
         "eval_dxy_low": "Weaker dollar. Supports commodities and overseas earnings.",
@@ -135,6 +129,7 @@ Pokud S&P roste a RSP klesá, trh je tažen úzkou skupinou firem.
         "m_brent": "Brent Crude",
         "m_gold": "Gold",
         "m_btc": "Bitcoin",
+        "perf_header": "ASSET PROFILE",
         "perf_sel": "Select instrument...",
         "perf_mat": "Performance Matrix",
         "p_1w": "1 Week",
@@ -143,7 +138,8 @@ Pokud S&P roste a RSP klesá, trh je tažen úzkou skupinou firem.
         "p_1y": "1 Year",
         "p_3y": "3 Years",
         "p_5y": "5 Years",
-        "comp_sel": "Relative percentage comparison (max 5 assets):",
+        "comp_header": "RELATIVE COMPARISON",
+        "comp_sel": "Select assets to compare:",
         "comp_period": "Time horizon:",
         "loading": "Loading macroeconomic data...",
         "fed_title": "Target Rate Probabilities (CME FedWatch Model)",
@@ -167,8 +163,8 @@ Primary economic health indicator. 3M > 10Y implies inversion.
 **2. FED Rate Expectations**
 Implied probabilities from futures (ZQ=F). Market expectations, not official rates.
 
-**3. VIX (Fear Index)**
-Expected volatility. <15: Risk-On. >25: Risk-Off (panic).
+**3. Fear & Greed Index**
+Aggregated market sentiment. <25: Extreme Fear. >75: Extreme Greed.
 
 **4. DXY (Dollar Index)**
 USD strength. Strong dollar (>105) pressures commodities.
@@ -244,6 +240,15 @@ def calc_fed_probs(implied_rate):
         }
 
 @st.cache_data(ttl=3600)
+def fetch_fng():
+    try:
+        r = requests.get('https://production.dataviz.cnn.io/index/fearandgreed/graphdata', headers=session.headers, timeout=5)
+        data = r.json()
+        return data['fear_and_greed']['score'], data['fear_and_greed']['rating']
+    except:
+        return None, None
+
+@st.cache_data(ttl=3600)
 def fetch_macro_data():
     data = {}
     history = {}
@@ -311,6 +316,7 @@ def fetch_macro_data():
 
 with st.spinner(_["loading"]):
     macro_data, macro_history = fetch_macro_data()
+    fng_score, fng_rating = fetch_fng()
 
 if macro_data:
     tab_dash, tab_analysis, tab_fed = st.tabs([_["tab_dash"], _["tab_analysis"], _["tab_fed"]])
@@ -370,10 +376,9 @@ if macro_data:
         st.markdown("---")
         st.subheader(_["h_eval"])
         
-        ec1, ec2 = st.columns(2)
+        ec1, ec2, ec3 = st.columns(3)
         y10 = macro_data.get("10Y", {}).get("price")
         y3m = macro_data.get("3M", {}).get("price")
-        vix = macro_data.get("VIX", {}).get("price")
         dxy = macro_data.get("DXY", {}).get("price")
 
         with ec1:
@@ -385,19 +390,30 @@ if macro_data:
                 else:
                     st.success(f"{_['eval_yc_norm']} (Spread: +{spread:.2f} %)")
 
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown(f"**{_['eval_vix']}**")
-            if vix is not None:
-                if vix < 15:
-                    st.success(f"{_['eval_vix_low']} (VIX: {vix:.2f})")
-                elif 15 <= vix < 25:
-                    st.info(f"{_['eval_vix_mid']} (VIX: {vix:.2f})")
-                elif 25 <= vix < 35:
-                    st.warning(f"{_['eval_vix_high']} (VIX: {vix:.2f})")
-                else:
-                    st.error(f"{_['eval_vix_panic']} (VIX: {vix:.2f})")
-
         with ec2:
+            st.markdown(f"**{_['eval_fng']}**")
+            if fng_score is not None:
+                fig_gauge = go.Figure(go.Indicator(
+                    mode="gauge+number",
+                    value=fng_score,
+                    gauge={
+                        'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "white"},
+                        'bar': {'color': "white", 'thickness': 0.15},
+                        'steps': [
+                            {'range': [0, 25], 'color': "#EF5350"},
+                            {'range': [25, 45], 'color': "#FFA726"},
+                            {'range': [45, 55], 'color': "#9E9E9E"},
+                            {'range': [55, 75], 'color': "#66BB6A"},
+                            {'range': [75, 100], 'color': "#2E7D32"}
+                        ]
+                    }
+                ))
+                fig_gauge.update_layout(template="plotly_dark", height=150, margin=dict(l=10, r=10, t=10, b=10))
+                st.plotly_chart(fig_gauge, use_container_width=True, config={'displayModeBar': False})
+            else:
+                st.info("Data nedostupná.")
+
+        with ec3:
             st.markdown(f"**{_['eval_dxy']}**")
             if dxy is not None:
                 if dxy > 105:
@@ -408,6 +424,7 @@ if macro_data:
     with tab_analysis:
         asset_options = {name: key for key, (ticker, name) in MACRO_TICKERS.items() if key in macro_data}
         
+        st.markdown(f"#### {_['perf_header']}")
         col_sel, col_s1, col_s2 = st.columns([2, 1, 1])
         selected_asset_name = col_sel.selectbox("", list(asset_options.keys()), index=None, placeholder=_["perf_sel"], label_visibility="collapsed")
         show_sma50 = col_s1.checkbox("Zobrazit SMA 50", value=True)
@@ -418,7 +435,6 @@ if macro_data:
             sel_hist = macro_history[sel_key].dropna(subset=['Close'])
             sel_perf = macro_data[sel_key]["performance"]
             
-            st.markdown(f"### {_['perf_mat']} — {selected_asset_name}")
             df_perf = pd.DataFrame([sel_perf])
             st.table(df_perf)
             
@@ -452,11 +468,11 @@ if macro_data:
 
         st.markdown("---")
         
-        st.subheader(_["comp_sel"])
+        st.markdown(f"#### {_['comp_header']}")
         default_selections = [_["m_sp500"], _["m_nasdaq"], _["m_btc"]]
         valid_defaults = [a for a in default_selections if a in asset_options]
         
-        selected_compare = st.multiselect("", list(asset_options.keys()), default=valid_defaults, max_selections=5, label_visibility="collapsed")
+        selected_compare = st.multiselect("", list(asset_options.keys()), default=valid_defaults, max_selections=5, placeholder=_["comp_sel"], label_visibility="collapsed")
         period = st.radio(_["comp_period"], ["1M", "6M", "YTD", "1Y", "3Y", "5Y"], horizontal=True, index=3)
         
         if selected_compare:
