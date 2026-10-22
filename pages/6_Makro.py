@@ -382,7 +382,7 @@ if macro_data:
         dxy = macro_data.get("DXY", {}).get("price")
 
         with ec1:
-            st.markdown(f"**{_['eval_yc']}**")
+            st.markdown(f"**{_['eval_yc']}:**")
             if y10 is not None and y3m is not None:
                 spread = y10 - y3m
                 if spread < 0:
@@ -391,7 +391,6 @@ if macro_data:
                     st.success(f"{_['eval_yc_norm']} (Spread: +{spread:.2f} %)")
 
         with ec2:
-            st.markdown(f"**{_['eval_fng']}**")
             if fng_score is not None:
                 if fng_score < 25: state_text = "Extrémní strach" if st.session_state.lang == "CZ" else "Extreme Fear"
                 elif fng_score < 45: state_text = "Strach" if st.session_state.lang == "CZ" else "Fear"
@@ -399,10 +398,11 @@ if macro_data:
                 elif fng_score <= 75: state_text = "Chamtivost" if st.session_state.lang == "CZ" else "Greed"
                 else: state_text = "Extrémní chamtivost" if st.session_state.lang == "CZ" else "Extreme Greed"
                 
+                st.markdown(f"**{_['eval_fng']}:** `{state_text}`")
+                
                 fig_gauge = go.Figure(go.Indicator(
                     mode="gauge+number",
                     value=fng_score,
-                    title={'text': f"<b>{state_text}</b>", 'font': {'size': 16, 'color': 'white'}},
                     gauge={
                         'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "white"},
                         'bar': {'color': "white", 'thickness': 0.15},
@@ -415,13 +415,14 @@ if macro_data:
                         ]
                     }
                 ))
-                fig_gauge.update_layout(template="plotly_dark", height=200, margin=dict(l=10, r=10, t=60, b=10))
+                fig_gauge.update_layout(template="plotly_dark", height=160, margin=dict(l=10, r=10, t=10, b=10))
                 st.plotly_chart(fig_gauge, use_container_width=True, config={'displayModeBar': False})
             else:
+                st.markdown(f"**{_['eval_fng']}:**")
                 st.info("Data nedostupná.")
 
         with ec3:
-            st.markdown(f"**{_['eval_dxy']}**")
+            st.markdown(f"**{_['eval_dxy']}:**")
             if dxy is not None:
                 if dxy > 105:
                     st.warning(f"{_['eval_dxy_high']} (DXY: {dxy:.2f})")
@@ -432,10 +433,12 @@ if macro_data:
         asset_options = {name: key for key, (ticker, name) in MACRO_TICKERS.items() if key in macro_data}
         
         st.markdown(f"#### {_['perf_header']}")
-        col_sel, col_s1, col_s2 = st.columns([2, 1, 1])
+        col_sel, col_chk = st.columns([3, 2])
         selected_asset_name = col_sel.selectbox("", list(asset_options.keys()), index=None, placeholder=_["perf_sel"], label_visibility="collapsed")
-        show_sma50 = col_s1.checkbox("Zobrazit SMA 50", value=True)
-        show_sma200 = col_s2.checkbox("Zobrazit SMA 200", value=True)
+        
+        s_col1, s_col2 = col_chk.columns(2)
+        show_sma50 = s_col1.checkbox("Zobrazit SMA 50", value=True)
+        show_sma200 = s_col2.checkbox("Zobrazit SMA 200", value=True)
         
         if selected_asset_name:
             sel_key = asset_options[selected_asset_name]
