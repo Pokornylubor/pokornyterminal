@@ -27,6 +27,7 @@ t = {
         "title": "🌍 MAKROEKONOMICKÝ PANEL & RIZIKA",
         "desc": "SLEDOVÁNÍ VÝNOSOVÉ KŘIVKY, INDEXŮ, VOLATILITY, INFLAČNÍCH TLAKŮ A LIKVIDITY.",
         "tab_dash": "🧭 MAKRO DASHBOARD",
+        "tab_perf": "📈 DETAILNÍ VÝKONNOST",
         "tab_curve": "📉 DLUHOPISY & FED",
         "tab_com": "🛢️ KOMODITY & KRYPTO",
         "h_eval": "Automatické vyhodnocení tržního prostředí",
@@ -60,17 +61,27 @@ t = {
         "m_gold": "Zlato",
         "m_btc": "Bitcoin (Risk-On proxy)",
         "chart_yc": "Spread výnosové křivky (10Y minus 3M) - Riziko recese",
-        "chart_vix": "Historie VIX (Poslední rok)",
+        "chart_vix": "Historie VIX",
         "chart_wti": "Ropa WTI (CL=F) s SMA",
         "chart_brent": "Ropa Brent (BZ=F) s SMA",
         "chart_gold": "Zlato (GC=F) s SMA",
         "chart_btc": "Bitcoin (BTC-USD) s SMA",
-        "loading": "Načítání a agregace makroekonomických dat..."
+        "perf_sel": "Vyberte makro aktivum k analýze:",
+        "perf_mat": "Výkonnostní matice",
+        "p_1w": "1 Týden",
+        "p_1m": "1 Měsíc",
+        "p_ytd": "YTD",
+        "p_1y": "1 Rok",
+        "p_3y": "3 Roky",
+        "p_5y": "5 Let",
+        "p_10y": "10 Let",
+        "loading": "Načítání a agregace dekády makroekonomických dat..."
     },
     "EN": {
         "title": "🌍 MACROECONOMIC DASHBOARD & RISK",
         "desc": "TRACKING YIELD CURVE, INDICES, VOLATILITY, INFLATION, AND LIQUIDITY.",
         "tab_dash": "🧭 MACRO DASHBOARD",
+        "tab_perf": "📈 DETAILED PERFORMANCE",
         "tab_curve": "📉 BONDS & FED",
         "tab_com": "🛢️ COMMODITIES & CRYPTO",
         "h_eval": "Automated Market Environment Evaluation",
@@ -104,12 +115,21 @@ t = {
         "m_gold": "Gold",
         "m_btc": "Bitcoin (Risk-On proxy)",
         "chart_yc": "Yield Curve Spread (10Y minus 3M) - Recession Risk",
-        "chart_vix": "VIX History (Last Year)",
+        "chart_vix": "VIX History",
         "chart_wti": "WTI Crude Oil (CL=F) with SMAs",
         "chart_brent": "Brent Crude (BZ=F) with SMAs",
         "chart_gold": "Gold (GC=F) with SMAs",
         "chart_btc": "Bitcoin (BTC-USD) with SMAs",
-        "loading": "Loading and aggregating macroeconomic data..."
+        "perf_sel": "Select macro asset to analyze:",
+        "perf_mat": "Performance Matrix",
+        "p_1w": "1 Week",
+        "p_1m": "1 Month",
+        "p_ytd": "YTD",
+        "p_1y": "1 Year",
+        "p_3y": "3 Years",
+        "p_5y": "5 Years",
+        "p_10y": "10 Years",
+        "loading": "Loading and aggregating a decade of macroeconomic data..."
     }
 }
 _ = t.get(st.session_state.get("lang", "CZ"), t["CZ"])
@@ -118,111 +138,160 @@ st.title(_["title"])
 st.caption(_["desc"])
 st.markdown("---")
 
-# Agregace tickerů
 MACRO_TICKERS = {
-    "10Y": "^TNX",
-    "30Y": "^TYX",
-    "3M": "^IRX",
-    "FED": "ZQ=F",
-    "SP500": "^GSPC",
-    "NASDAQ": "^IXIC",
-    "RSP": "RSP",
-    "RUT": "^RUT",
-    "VIX": "^VIX",
-    "DXY": "DX-Y.NYB",
-    "WTI": "CL=F",
-    "BRENT": "BZ=F",
-    "GOLD": "GC=F",
-    "BTC": "BTC-USD"
+    "10Y": ("^TNX", _["m_10y"]),
+    "30Y": ("^TYX", _["m_30y"]),
+    "3M": ("^IRX", _["m_3m"]),
+    "FED": ("ZQ=F", _["m_fed"]),
+    "SP500": ("^GSPC", _["m_sp500"]),
+    "NASDAQ": ("^IXIC", _["m_nasdaq"]),
+    "RSP": ("RSP", _["m_rsp"]),
+    "RUT": ("^RUT", _["m_rut"]),
+    "VIX": ("^VIX", _["m_vix"]),
+    "DXY": ("DX-Y.NYB", _["m_dxy"]),
+    "WTI": ("CL=F", _["m_wti"]),
+    "BRENT": ("BZ=F", _["m_brent"]),
+    "GOLD": ("GC=F", _["m_gold"]),
+    "BTC": ("BTC-USD", _["m_btc"])
 }
+
+RATES_AND_VOL = ["10Y", "30Y", "3M", "FED", "VIX"]
+
+def safe_iloc(df, steps_back):
+    if len(df) > steps_back:
+        return df['Close'].iloc[-(steps_back+1)]
+    return None
 
 @st.cache_data(ttl=3600)
 def fetch_macro_data():
     data = {}
     history = {}
-    for key, ticker in MACRO_TICKERS.items():
+    
+    current_year = datetime.now().year
+    
+    for key, (ticker, name) in MACRO_TICKERS.items():
         try:
-            # Stahujeme 2 roky dat pro vypocet SMA 200
             tkr = yf.Ticker(ticker, session=session)
-            hist = tkr.history(period="2y")
+            hist = tkr.history(period="10y")
             if not hist.empty:
                 current_price = hist['Close'].iloc[-1]
                 prev_price = hist['Close'].iloc[-2] if len(hist) > 1 else current_price
                 
                 # Zpracování specifik (FED sazba)
                 if key == "FED":
-                    data[key] = 100 - current_price
-                    data[f"{key}_change"] = (100 - current_price) - (100 - prev_price)
-                else:
-                    data[key] = current_price
-                    data[f"{key}_change"] = current_price - prev_price
-                    
-                # Výpočet SMA a ořez pro grafy na poslední rok (cca 252 obchodních dnů)
+                    hist['Close'] = 100 - hist['Close']
+                    current_price = 100 - current_price
+                    prev_price = 100 - prev_price
+                
+                data[key] = {
+                    "price": current_price,
+                    "abs_chg": current_price - prev_price,
+                    "pct_chg": ((current_price / prev_price) - 1) * 100 if prev_price and key not in RATES_AND_VOL else None
+                }
+                
+                # Výkonnostní metriky (1W=5, 1M=21, 1Y=252)
+                perf = {}
+                perf[_["p_1w"]] = safe_iloc(hist, 5)
+                perf[_["p_1m"]] = safe_iloc(hist, 21)
+                
+                ytd_df = hist[hist.index.year == current_year]
+                perf[_["p_ytd"]] = ytd_df['Close'].iloc[0] if not ytd_df.empty else None
+                
+                perf[_["p_1y"]] = safe_iloc(hist, 252)
+                perf[_["p_3y"]] = safe_iloc(hist, 252*3)
+                perf[_["p_5y"]] = safe_iloc(hist, 252*5)
+                perf[_["p_10y"]] = safe_iloc(hist, 252*10)
+                
+                # Spočítání % nebo bps změn
+                calculated_perf = {}
+                for p_key, p_val in perf.items():
+                    if p_val is not None:
+                        if key in RATES_AND_VOL:
+                            calculated_perf[p_key] = f"{(current_price - p_val) * 100:+.0f} bps" if key != "VIX" else f"{current_price - p_val:+.2f} pts"
+                        else:
+                            calculated_perf[p_key] = f"{((current_price / p_val) - 1) * 100:+.2f} %"
+                    else:
+                        calculated_perf[p_key] = "-"
+                        
+                data[key]["performance"] = calculated_perf
+
                 hist['SMA50'] = hist['Close'].rolling(window=50).mean()
                 hist['SMA200'] = hist['Close'].rolling(window=200).mean()
-                
-                if key == "BTC":
-                    history[key] = hist[['Close', 'SMA50', 'SMA200']].tail(365)
-                else:
-                    history[key] = hist[['Close', 'SMA50', 'SMA200']].tail(252)
+                history[key] = hist[['Close', 'SMA50', 'SMA200']]
         except:
-            data[key] = None
-            data[f"{key}_change"] = None
+            pass
     return data, history
 
 with st.spinner(_["loading"]):
     macro_data, macro_history = fetch_macro_data()
 
 if macro_data:
-    tab_dash, tab_curve, tab_com = st.tabs([_["tab_dash"], _["tab_curve"], _["tab_com"]])
+    tab_dash, tab_perf, tab_curve, tab_com = st.tabs([_["tab_dash"], _["tab_perf"], _["tab_curve"], _["tab_com"]])
 
     with tab_dash:
-        def fmt(val, is_pct=False, is_curr=False, is_crypto=False):
-            if val is None or pd.isna(val): return "N/A"
-            if is_pct: return f"{val:.2f} %"
-            if is_curr: return f"${val:,.2f}"
-            if is_crypto: return f"${val:,.0f}"
-            return f"{val:,.2f}"
+        def render_metric(col, key, is_curr=False, is_crypto=False):
+            if key not in macro_data:
+                col.metric(MACRO_TICKERS[key][1], "N/A")
+                return
+            
+            d = macro_data[key]
+            val = d["price"]
+            abs_chg = d["abs_chg"]
+            pct_chg = d["pct_chg"]
+            
+            # Format Value
+            if is_curr: val_str = f"${val:,.2f}"
+            elif is_crypto: val_str = f"${val:,.0f}"
+            elif key in RATES_AND_VOL and key != "VIX": val_str = f"{val:.2f} %"
+            else: val_str = f"{val:,.2f}"
+            
+            # Format Delta
+            if key in RATES_AND_VOL:
+                delta_str = f"{abs_chg * 100:+.1f} bps" if key != "VIX" else f"{abs_chg:+.2f} pts"
+            else:
+                if is_curr or is_crypto:
+                    delta_str = f"${abs_chg:+.2f} ({pct_chg:+.2f}%)" if pct_chg else f"${abs_chg:+.2f}"
+                else:
+                    delta_str = f"{abs_chg:+.2f} ({pct_chg:+.2f}%)" if pct_chg else f"{abs_chg:+.2f}"
+                    
+            col.metric(MACRO_TICKERS[key][1], val_str, delta_str)
 
-        # Řada 1: Dluhopisy a FED
         st.subheader(_["metrics_h1"])
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric(_["m_3m"], fmt(macro_data.get("3M"), is_pct=True), f"{macro_data.get('3M_change', 0):+.2f} bp" if macro_data.get("3M") else None)
-        c2.metric(_["m_10y"], fmt(macro_data.get("10Y"), is_pct=True), f"{macro_data.get('10Y_change', 0):+.2f} bp" if macro_data.get("10Y") else None)
-        c3.metric(_["m_30y"], fmt(macro_data.get("30Y"), is_pct=True), f"{macro_data.get('30Y_change', 0):+.2f} bp" if macro_data.get("30Y") else None)
-        c4.metric(_["m_fed"], fmt(macro_data.get("FED"), is_pct=True), f"{macro_data.get('FED_change', 0):+.2f} %" if macro_data.get("FED") else None)
+        render_metric(c1, "3M")
+        render_metric(c2, "10Y")
+        render_metric(c3, "30Y")
+        render_metric(c4, "FED")
         
         st.markdown("<br>", unsafe_allow_html=True)
         
-        # Řada 2: Indexy
         st.subheader(_["metrics_h2"])
         i1, i2, i3, i4 = st.columns(4)
-        i1.metric(_["m_sp500"], fmt(macro_data.get("SP500")), f"{macro_data.get('SP500_change', 0):+.2f}" if macro_data.get("SP500") else None)
-        i2.metric(_["m_nasdaq"], fmt(macro_data.get("NASDAQ")), f"{macro_data.get('NASDAQ_change', 0):+.2f}" if macro_data.get("NASDAQ") else None)
-        i3.metric(_["m_rsp"], fmt(macro_data.get("RSP")), f"{macro_data.get('RSP_change', 0):+.2f}" if macro_data.get("RSP") else None)
-        i4.metric(_["m_rut"], fmt(macro_data.get("RUT")), f"{macro_data.get('RUT_change', 0):+.2f}" if macro_data.get("RUT") else None)
+        render_metric(i1, "SP500")
+        render_metric(i2, "NASDAQ")
+        render_metric(i3, "RSP")
+        render_metric(i4, "RUT")
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # Řada 3: Riziko a Komodity
         st.subheader(_["metrics_h3"])
         r1, r2, r3, r4, r5, r6 = st.columns(6)
-        r1.metric(_["m_vix"], fmt(macro_data.get("VIX")), f"{macro_data.get('VIX_change', 0):+.2f}" if macro_data.get("VIX") else None)
-        r2.metric(_["m_dxy"], fmt(macro_data.get("DXY")), f"{macro_data.get('DXY_change', 0):+.2f}" if macro_data.get("DXY") else None)
-        r3.metric(_["m_btc"], fmt(macro_data.get("BTC"), is_crypto=True), f"{macro_data.get('BTC_change', 0):+.0f}" if macro_data.get("BTC") else None)
-        r4.metric(_["m_gold"], fmt(macro_data.get("GOLD"), is_curr=True), f"{macro_data.get('GOLD_change', 0):+.2f}" if macro_data.get("GOLD") else None)
-        r5.metric(_["m_wti"], fmt(macro_data.get("WTI"), is_curr=True), f"{macro_data.get('WTI_change', 0):+.2f}" if macro_data.get("WTI") else None)
-        r6.metric(_["m_brent"], fmt(macro_data.get("BRENT"), is_curr=True), f"{macro_data.get('BRENT_change', 0):+.2f}" if macro_data.get("BRENT") else None)
+        render_metric(r1, "VIX")
+        render_metric(r2, "DXY")
+        render_metric(r3, "BTC", is_crypto=True)
+        render_metric(r4, "GOLD", is_curr=True)
+        render_metric(r5, "WTI", is_curr=True)
+        render_metric(r6, "BRENT", is_curr=True)
 
         st.markdown("---")
         st.subheader(_["h_eval"])
         
         ec1, ec2 = st.columns(2)
-        y10 = macro_data.get("10Y")
-        y3m = macro_data.get("3M")
-        vix = macro_data.get("VIX")
-        dxy = macro_data.get("DXY")
-        fed = macro_data.get("FED")
+        y10 = macro_data.get("10Y", {}).get("price")
+        y3m = macro_data.get("3M", {}).get("price")
+        vix = macro_data.get("VIX", {}).get("price")
+        dxy = macro_data.get("DXY", {}).get("price")
+        fed = macro_data.get("FED", {}).get("price")
 
         with ec1:
             st.markdown(f"**{_['eval_yc']}**")
@@ -232,8 +301,6 @@ if macro_data:
                     st.error(f"⚠️ {_['eval_yc_inv']} (Spread: {spread:.2f} %)")
                 else:
                     st.success(f"✅ {_['eval_yc_norm']} (Spread: +{spread:.2f} %)")
-            else:
-                st.info("Data pro výnosovou křivku nejsou k dispozici.")
 
             st.markdown("<br>", unsafe_allow_html=True)
             st.markdown(f"**{_['eval_vix']}**")
@@ -260,14 +327,52 @@ if macro_data:
             if fed is not None:
                 st.info(f"🏛️ Aktuální naceněná implikovaná sazba FEDu: **{fed:.2f} %**")
 
+    with tab_perf:
+        st.subheader(_["perf_sel"])
+        asset_options = {name: key for key, (ticker, name) in MACRO_TICKERS.items() if key in macro_data}
+        selected_asset_name = st.selectbox("", list(asset_options.keys()), label_visibility="collapsed")
+        
+        if selected_asset_name:
+            sel_key = asset_options[selected_asset_name]
+            sel_hist = macro_history[sel_key]
+            sel_perf = macro_data[sel_key]["performance"]
+            
+            st.markdown(f"### {_['perf_mat']} — {selected_asset_name}")
+            df_perf = pd.DataFrame([sel_perf])
+            st.table(df_perf)
+            
+            # Interactive Institutional Chart
+            fig_perf = go.Figure()
+            fig_perf.add_trace(go.Scatter(x=sel_hist.index, y=sel_hist["Close"], mode='lines', name=selected_asset_name, line=dict(color='#2962FF', width=2)))
+            
+            # Interactive Rangeselector (Bloomberg style)
+            fig_perf.update_xaxes(
+                rangeselector=dict(
+                    buttons=list([
+                        dict(count=1, label="1M", step="month", stepmode="backward"),
+                        dict(count=6, label="6M", step="month", stepmode="backward"),
+                        dict(count=1, label="YTD", step="year", stepmode="todate"),
+                        dict(count=1, label="1Y", step="year", stepmode="backward"),
+                        dict(count=5, label="5Y", step="year", stepmode="backward"),
+                        dict(step="all", label="MAX")
+                    ]),
+                    bgcolor="#1E1E1E", activecolor="#4CAF50", font=dict(color="white")
+                )
+            )
+            
+            fig_perf.update_layout(template="plotly_dark", height=500, margin=dict(l=0, r=0, t=30, b=0), hovermode='x unified')
+            st.plotly_chart(fig_perf, use_container_width=True, config={'displayModeBar': False})
+
     with tab_curve:
         st.subheader(_["chart_yc"])
         if "10Y" in macro_history and "3M" in macro_history:
-            # Izolace čistých cen (Close) z tabulky před spojením
             df_10y = macro_history["10Y"][['Close']].rename(columns={"Close": "10Y"})
             df_3m = macro_history["3M"][['Close']].rename(columns={"Close": "3M"})
             df_spread = df_10y.join(df_3m).dropna()
             df_spread["Spread"] = df_spread["10Y"] - df_spread["3M"]
+            
+            # Zobrazujeme jen posledních 5 let pro spread
+            df_spread = df_spread.tail(252*5)
             
             fig = go.Figure()
             fig.add_trace(go.Scatter(x=df_spread.index, y=df_spread["Spread"], mode='lines', name='10Y - 3M Spread', line=dict(color='#2962FF', width=2)))
@@ -277,7 +382,7 @@ if macro_data:
             st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
             
             st.subheader(_["chart_vix"])
-            df_vix = macro_history["VIX"]
+            df_vix = macro_history["VIX"].tail(252*5)
             fig2 = go.Figure()
             fig2.add_trace(go.Scatter(x=df_vix.index, y=df_vix["Close"], mode='lines', name='VIX', line=dict(color='#FFA726', width=2)))
             fig2.add_hline(y=25, line_dash="dash", line_color="red", annotation_text="Hranice strachu (25)", annotation_position="top right")
@@ -286,12 +391,14 @@ if macro_data:
 
     def draw_technical_chart(title, df, line_color):
         st.subheader(title)
+        # Zobrazujeme poslední 3 roky pro technický graf s SMA
+        df_cut = df.tail(252*3)
         fig = go.Figure()
-        fig.add_trace(go.Scatter(x=df.index, y=df["Close"], mode='lines', name='Cena (Close)', line=dict(color=line_color, width=2)))
-        if "SMA50" in df.columns:
-            fig.add_trace(go.Scatter(x=df.index, y=df["SMA50"], mode='lines', name='SMA 50', line=dict(color='#00E676', width=1, dash='dash')))
-        if "SMA200" in df.columns:
-            fig.add_trace(go.Scatter(x=df.index, y=df["SMA200"], mode='lines', name='SMA 200', line=dict(color='#E91E63', width=1.5, dash='dashdot')))
+        fig.add_trace(go.Scatter(x=df_cut.index, y=df_cut["Close"], mode='lines', name='Cena (Close)', line=dict(color=line_color, width=2)))
+        if "SMA50" in df_cut.columns:
+            fig.add_trace(go.Scatter(x=df_cut.index, y=df_cut["SMA50"], mode='lines', name='SMA 50', line=dict(color='#00E676', width=1, dash='dash')))
+        if "SMA200" in df_cut.columns:
+            fig.add_trace(go.Scatter(x=df_cut.index, y=df_cut["SMA200"], mode='lines', name='SMA 200', line=dict(color='#E91E63', width=1.5, dash='dashdot')))
         fig.update_layout(template="plotly_dark", height=350, margin=dict(l=0, r=0, t=30, b=0), hovermode='x unified')
         st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
