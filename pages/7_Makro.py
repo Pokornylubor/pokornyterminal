@@ -263,8 +263,9 @@ if macro_data:
     with tab_curve:
         st.subheader(_["chart_yc"])
         if "10Y" in macro_history and "3M" in macro_history:
-            df_10y = macro_history["10Y"].rename(columns={"Close": "10Y"})
-            df_3m = macro_history["3M"].rename(columns={"Close": "3M"})
+            # Izolace čistých cen (Close) z tabulky před spojením
+            df_10y = macro_history["10Y"][['Close']].rename(columns={"Close": "10Y"})
+            df_3m = macro_history["3M"][['Close']].rename(columns={"Close": "3M"})
             df_spread = df_10y.join(df_3m).dropna()
             df_spread["Spread"] = df_spread["10Y"] - df_spread["3M"]
             
