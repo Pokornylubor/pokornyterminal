@@ -55,7 +55,7 @@ t = {
         "m_gold": "Zlato",
         "m_btc": "Bitcoin",
         "perf_header": "DETAILNÍ PROFIL AKTIVA",
-        "perf_sel": "Vyberte instrument...",
+        "perf_sel": "Vyberte instrument",
         "perf_mat": "Výkonnostní matice",
         "p_1w": "1 Týden",
         "p_1m": "1 Měsíc",
@@ -130,7 +130,7 @@ Pokud S&P roste a RSP klesá, trh je tažen úzkou skupinou firem.
         "m_gold": "Gold",
         "m_btc": "Bitcoin",
         "perf_header": "ASSET PROFILE",
-        "perf_sel": "Select instrument...",
+        "perf_sel": "Select instrument",
         "perf_mat": "Performance Matrix",
         "p_1w": "1 Week",
         "p_1m": "1 Month",
@@ -402,7 +402,7 @@ if macro_data:
                 fig_gauge = go.Figure(go.Indicator(
                     mode="gauge+number",
                     value=fng_score,
-                    title={'text': f"<b>{state_text}</b>", 'font': {'size': 18, 'color': 'white'}},
+                    title={'text': f"<b>{state_text}</b>", 'font': {'size': 16, 'color': 'white'}},
                     gauge={
                         'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "white"},
                         'bar': {'color': "white", 'thickness': 0.15},
@@ -415,7 +415,7 @@ if macro_data:
                         ]
                     }
                 ))
-                fig_gauge.update_layout(template="plotly_dark", height=180, margin=dict(l=10, r=10, t=30, b=10))
+                fig_gauge.update_layout(template="plotly_dark", height=200, margin=dict(l=10, r=10, t=60, b=10))
                 st.plotly_chart(fig_gauge, use_container_width=True, config={'displayModeBar': False})
             else:
                 st.info("Data nedostupná.")
