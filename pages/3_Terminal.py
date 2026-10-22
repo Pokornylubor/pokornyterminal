@@ -5,6 +5,7 @@ import json
 import os
 import sys
 import requests
+from datetime import datetime
 
 # --- INITIAL SETUP ---
 st.set_page_config(page_title="POKORNY TERMINAL | VALUATION", layout="wide", initial_sidebar_state="collapsed")
@@ -25,23 +26,24 @@ session.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Apple
 # --- DICTIONARY ---
 t = {
     "CZ": {
-        "title": "🏛️ TERMINÁL",
-        "desc": "FINANČNÍ VÝKAZY, VALUACE, KONSENZUS A EARNINGS.",
+        "title": "🏛️ HLOUBKOVÝ ANALYTICKÝ TERMINÁL",
+        "desc": "INSTITUCIONÁLNÍ ČASOVÁ OSA VÝKAZŮ, VALUACE, KONSENZUS A ZPRÁVY.",
         "db_select": "DATABÁZE",
         "custom_tick": "VLASTNÍ TICKER",
-        "periodicity": "PERIODICITA:",
+        "periodicity": "PERIODICITA MATICE:",
         "annual": "Roční (Annual)",
         "quarterly": "Kvartální (Quarterly)",
         "loading": "STAHOVÁNÍ VÝKAZŮ...",
         "err_data": "DATA PRO TENTO TICKER NEJSOU DOSTUPNÁ.",
-        "tab_matrix": "📑 FINANČNÍ VÝKAZY & VÝHLED",
+        "tab_matrix": "📑 FINANČNÍ MATICE & VÝHLED",
         "tab_val": "📊 VALUACE & KPI",
         "tab_ana": "🎯 ANALYTICI & KONSENZUS",
         "tab_earn": "📅 EARNINGS & HISTORIE",
+        "tab_news": "📰 NOVINKY & ČLÁNKY",
         "tab_raw": "🗄️ STRUKTUROVANÁ ROZVAHA",
         "targets_h": "Wall Street Konsenzus & Cílové Ceny",
         "t_low": "Bear Target",
-        "t_mean": "Base",
+        "t_mean": "Konsenzus (Mean)",
         "t_high": "Bull Target",
         "t_rec": "Doporučení",
         "t_num": "Počet analytiků",
@@ -120,26 +122,31 @@ t = {
         "eh_na1": "Oficiální datum příštího reportu zatím nebylo stanoveno.",
         "eh_na2": "Termín příštích earnings není momentálně k dispozici.",
         "eh_na3": "Historie kvartálních překonání není k dispozici.",
-        "eh_na4": "Historie kvartálních earnings není dostupná."
+        "eh_na4": "Historie kvartálních earnings není dostupná.",
+        "news_h": "Zpravodajský feed —",
+        "news_pub": "Vydavatel",
+        "news_date": "Vydáno",
+        "news_na": "Aktuálně nejsou dostupné žádné zprávy."
     },
     "EN": {
-        "title": "🏛️ TERMINAL",
-        "desc": "FINANCIAL STATEMENTS, VALUATION, CONSENSUS & EARNINGS.",
+        "title": "🏛️ DEEP INSTITUTIONAL TERMINAL",
+        "desc": "INSTITUTIONAL FINANCIAL STATEMENTS TIMELINE, VALUATION, CONSENSUS & NEWS.",
         "db_select": "DATABASE",
         "custom_tick": "CUSTOM TICKER",
-        "periodicity": "PERIODICITY:",
+        "periodicity": "MATRIX PERIODICITY:",
         "annual": "Annual",
         "quarterly": "Quarterly",
         "loading": "LOADING STATEMENTS...",
         "err_data": "DATA FOR THIS TICKER NOT AVAILABLE.",
-        "tab_matrix": "📑 FINANCIAL STATEMENTS & OUTLOOK",
+        "tab_matrix": "📑 FINANCIAL MATRIX & OUTLOOK",
         "tab_val": "📊 VALUATION & KPIs",
         "tab_ana": "🎯 ANALYSTS & CONSENSUS",
         "tab_earn": "📅 EARNINGS & TRACK RECORD",
+        "tab_news": "📰 NEWS & ARTICLES",
         "tab_raw": "🗄️ STRUCTURED BALANCE SHEET",
         "targets_h": "Wall Street Consensus & Price Targets",
         "t_low": "Bear Target",
-        "t_mean": "Base",
+        "t_mean": "Consensus (Mean)",
         "t_high": "Bull Target",
         "t_rec": "Recommendation",
         "t_num": "Analyst Coverage",
@@ -218,7 +225,11 @@ t = {
         "eh_na1": "Official next earnings date not set yet.",
         "eh_na2": "Next earnings date is currently unavailable.",
         "eh_na3": "Earnings surprise history is not available.",
-        "eh_na4": "Earnings history is currently unavailable."
+        "eh_na4": "Earnings history is currently unavailable.",
+        "news_h": "News Feed —",
+        "news_pub": "Publisher",
+        "news_date": "Published",
+        "news_na": "No news currently available."
     }
 }
 _ = t.get(st.session_state.get("lang", "CZ"), t["CZ"])
@@ -400,7 +411,7 @@ if final_tick:
 
         st.markdown("---")
 
-        tab_matrix, tab_val, tab_ana, tab_earn, tab_raw = st.tabs([_["tab_matrix"], _["tab_val"], _["tab_ana"], _["tab_earn"], _["tab_raw"]])
+        tab_matrix, tab_val, tab_ana, tab_earn, tab_news, tab_raw = st.tabs([_["tab_matrix"], _["tab_val"], _["tab_ana"], _["tab_earn"], _["tab_news"], _["tab_raw"]])
 
         with tab_matrix:
             st.subheader(f"{_['matrix_h']} — {_['currency_lbl']} {display_currency}")
@@ -651,6 +662,30 @@ if final_tick:
                     st.info(_["eh_na3"])
             except:
                 st.info(_["eh_na4"])
+
+        with tab_news:
+            st.subheader(f"{_['news_h']} {short_name} ({final_tick})")
+            try:
+                news_list = tkr.news
+                if news_list and len(news_list) > 0:
+                    for article in news_list[:12]:
+                        title = article.get("title", "")
+                        publisher = article.get("publisher", "N/A")
+                        link = article.get("link", "#")
+                        pub_time = article.get("providerPublishTime")
+                        
+                        if pub_time:
+                            dt = pd.to_datetime(pub_time, unit='s').strftime("%d. %m. %Y %H:%M")
+                        else:
+                            dt = "N/A"
+                            
+                        st.markdown(f"### [{title}]({link})")
+                        st.caption(f"🏢 {_['news_pub']}: **{publisher}** | 🕒 {_['news_date']}: **{dt}**")
+                        st.markdown("---")
+                else:
+                    st.info(_["news_na"])
+            except:
+                st.info(_["news_na"])
 
         with tab_raw:
             st.subheader(f"{_['bal_h']} — {final_tick}")
