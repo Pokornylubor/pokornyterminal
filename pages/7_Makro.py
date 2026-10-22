@@ -27,32 +27,33 @@ t = {
         "title": "🌍 MAKROEKONOMICKÝ PANEL & RIZIKA",
         "desc": "SLEDOVÁNÍ VÝNOSOVÉ KŘIVKY, INDEXŮ, VOLATILITY, INFLAČNÍCH TLAKŮ A LIKVIDITY.",
         "tab_dash": "🧭 MAKRO DASHBOARD",
-        "tab_perf": "📈 DETAILNÍ VÝKONNOST",
-        "tab_curve": "📉 DLUHOPISY & FED",
-        "tab_com": "🛢️ KOMODITY & KRYPTO",
+        "tab_analysis": "📈 ANALÝZA & GRAFY",
         "h_eval": "Automatické vyhodnocení tržního prostředí",
         "eval_yc": "Zploštění / Inverze výnosové křivky",
-        "eval_yc_inv": "Křivka je v INVERZI (10Y < 3M). Historicky silný signál blížící se ekonomické recese. Úvěrový trh je pod tlakem.",
-        "eval_yc_norm": "Křivka je NORMÁLNÍ (10Y > 3M). Zdravé ekonomické prostředí, trh oceňuje budoucí růst.",
+        "eval_yc_inv": "Křivka je v INVERZI (10Y < 3M). Historicky silný signál blížící se recese.",
+        "eval_yc_norm": "Křivka je NORMÁLNÍ (10Y > 3M). Zdravé ekonomické prostředí.",
         "eval_vix": "Index strachu (VIX)",
-        "eval_vix_low": "Nízká volatilita. Na trhu vládne klid a možná až přílišná sebejistota (Greed).",
-        "eval_vix_mid": "Normální tržní volatilita. Prostředí bez extrémních výkyvů.",
-        "eval_vix_high": "Zvýšená nervozita a strach. Investoři kupují zajištění.",
-        "eval_vix_panic": "Extrémní PANIKA. Trh prudce vyprodává (často ukazuje na nákupní příležitosti pro dlouhodobý kapitál).",
+        "eval_vix_low": "Nízká volatilita. Na trhu vládne klid (Greed).",
+        "eval_vix_mid": "Normální tržní volatilita.",
+        "eval_vix_high": "Zvýšená nervozita a strach. Trh se zajišťuje.",
+        "eval_vix_panic": "Extrémní PANIKA. Prudké výprodeje.",
         "eval_dxy": "Síla amerického dolaru (DXY)",
-        "eval_dxy_high": "Silný dolar. Působí jako protivítr pro americké nadnárodní korporace a tlačí dolů ceny komodit.",
-        "eval_dxy_low": "Slabší dolar. Podporuje ceny komodit a zisky nadnárodních společností v USA.",
-        "eval_fed": "Tržní očekávání sazeb FEDu (Z Q-Futures)",
+        "eval_dxy_high": "Silný dolar. Protivítr pro nadnárodní zisky a komodity.",
+        "eval_dxy_low": "Slabší dolar. Podporuje ceny komodit a zámořské zisky.",
+        "eval_fed": "Tržní očekávání úrokových sazeb (FED Funds Futures)",
+        "fed_now": "Aktuálně naceňovaná sazba:",
+        "fed_1w": "Očekávání před týdnem:",
+        "fed_1m": "Očekávání před měsícem:",
         "metrics_h1": "Dluhopisový trh & FED",
         "metrics_h2": "Akciové indexy",
         "metrics_h3": "Riziko, Komodity & Likvidita",
         "m_10y": "10Y Treasury Yield",
         "m_30y": "30Y Treasury Yield",
-        "m_3m": "3M T-Bill Yield",
+        "m_3m": "3M T-Bill",
         "m_fed": "Implikovaná sazba FEDu",
         "m_sp500": "S&P 500",
         "m_nasdaq": "NASDAQ",
-        "m_rsp": "S&P 500 Equal Weight (RSP)",
+        "m_rsp": "S&P 500 (Equal Weight)",
         "m_rut": "Russell 2000",
         "m_vix": "VIX (Volatilita)",
         "m_dxy": "DXY (Dolar Index)",
@@ -60,13 +61,7 @@ t = {
         "m_brent": "Ropa Brent",
         "m_gold": "Zlato",
         "m_btc": "Bitcoin (Risk-On proxy)",
-        "chart_yc": "Spread výnosové křivky (10Y minus 3M) - Riziko recese",
-        "chart_vix": "Historie VIX",
-        "chart_wti": "Ropa WTI (CL=F) s SMA",
-        "chart_brent": "Ropa Brent (BZ=F) s SMA",
-        "chart_gold": "Zlato (GC=F) s SMA",
-        "chart_btc": "Bitcoin (BTC-USD) s SMA",
-        "perf_sel": "Vyberte makro aktivum k analýze:",
+        "perf_sel": "Vyberte instrument pro detailní analýzu:",
         "perf_mat": "Výkonnostní matice",
         "p_1w": "1 Týden",
         "p_1m": "1 Měsíc",
@@ -74,39 +69,56 @@ t = {
         "p_1y": "1 Rok",
         "p_3y": "3 Roky",
         "p_5y": "5 Let",
-        "p_10y": "10 Let",
-        "loading": "Načítání a agregace dekády makroekonomických dat..."
+        "loading": "Načítání makroekonomických dat...",
+        "help_title": "📖 JAK ČÍST TENTO RADAR (NÁPOVĚDA)",
+        "help_text": """
+**1. Výnosová křivka (Spread 10Y - 3M)**
+Základní ukazatel zdraví ekonomiky. Pokud je výnos krátkodobých 3M dluhopisů vyšší než 10Y (spread je záporný), trh je v tzv. inverzi. To historicky předpovídá recesi, protože investoři očekávají, že centrální banka bude muset v budoucnu prudce snižovat sazby kvůli ekonomickým problémům.
+
+**2. Očekávání sazeb FEDu**
+Aplikace analyzuje cenu futures kontraktů na úrokové sazby (ZQ=F). Neukazuje oficiální sazbu, ale to, **co si myslí trh**, že FED udělá. Pokud aktuální sazba klesá oproti stavu před měsícem, trh začíná naceňovat snižování sazeb (Dovish pivot).
+
+**3. VIX (Index strachu)**
+Měří očekávanou volatilitu opcí na S&P 500. Hodnoty pod 15 znamenají absolutní klid (Risk-On). Hodnoty nad 25 signalizují paniku a krev na trzích – to jsou historicky nejlepší momenty pro dlouhodobé nákupy (Risk-Off).
+
+**4. DXY (Dolarový index)**
+Ukazuje sílu USD proti koši světových měn. Silný dolar (nad 105) zdražuje americké zboží ve světě a sráží ceny komodit. Slabý dolar pomáhá akciím a zlatu.
+
+**5. S&P 500 vs. RSP (Equal Weight)**
+Klasický S&P 500 je tažen několika giganty (Apple, Microsoft, Nvidia). Index RSP dává každé z 500 firem stejnou váhu (0.2 %). Pokud S&P 500 roste, ale RSP klesá, trh je nezdravý a drží ho nad vodou jen pár technologických firem.
+        """
     },
     "EN": {
         "title": "🌍 MACROECONOMIC DASHBOARD & RISK",
         "desc": "TRACKING YIELD CURVE, INDICES, VOLATILITY, INFLATION, AND LIQUIDITY.",
         "tab_dash": "🧭 MACRO DASHBOARD",
-        "tab_perf": "📈 DETAILED PERFORMANCE",
-        "tab_curve": "📉 BONDS & FED",
-        "tab_com": "🛢️ COMMODITIES & CRYPTO",
+        "tab_analysis": "📈 ANALYSIS & CHARTS",
         "h_eval": "Automated Market Environment Evaluation",
         "eval_yc": "Yield Curve Steepness / Inversion",
-        "eval_yc_inv": "Curve is INVERTED (10Y < 3M). Historically strong signal of approaching economic recession. Credit market under pressure.",
-        "eval_yc_norm": "Curve is NORMAL (10Y > 3M). Healthy economic environment, market pricing in future growth.",
+        "eval_yc_inv": "Curve is INVERTED (10Y < 3M). Historically strong signal of approaching recession.",
+        "eval_yc_norm": "Curve is NORMAL (10Y > 3M). Healthy economic environment.",
         "eval_vix": "Fear Index (VIX)",
-        "eval_vix_low": "Low volatility. Market is calm, potentially complacent (Greed).",
-        "eval_vix_mid": "Normal market volatility. Environment without extreme swings.",
-        "eval_vix_high": "Elevated nervousness and fear. Investors buying protection.",
-        "eval_vix_panic": "Extreme PANIC. Market selling off sharply (often indicates buying opportunities for long-term capital).",
+        "eval_vix_low": "Low volatility. Market is calm (Greed).",
+        "eval_vix_mid": "Normal market volatility.",
+        "eval_vix_high": "Elevated nervousness and fear. Market is hedging.",
+        "eval_vix_panic": "Extreme PANIC. Sharp sell-offs.",
         "eval_dxy": "US Dollar Strength (DXY)",
-        "eval_dxy_high": "Strong dollar. Acts as a headwind for US multinational corporations and pressures commodity prices.",
-        "eval_dxy_low": "Weaker dollar. Supports commodity prices and US multinational earnings.",
-        "eval_fed": "Market FED Rate Expectations (From Q-Futures)",
+        "eval_dxy_high": "Strong dollar. Headwind for multinationals and commodities.",
+        "eval_dxy_low": "Weaker dollar. Supports commodities and overseas earnings.",
+        "eval_fed": "Market FED Rate Expectations (FED Funds Futures)",
+        "fed_now": "Currently implied rate:",
+        "fed_1w": "Expectations 1 week ago:",
+        "fed_1m": "Expectations 1 month ago:",
         "metrics_h1": "Bond Market & FED",
         "metrics_h2": "Equity Indices",
         "metrics_h3": "Risk, Commodities & Liquidity",
         "m_10y": "10Y Treasury Yield",
         "m_30y": "30Y Treasury Yield",
-        "m_3m": "3M T-Bill Yield",
+        "m_3m": "3M T-Bill",
         "m_fed": "Implied FED Rate",
         "m_sp500": "S&P 500",
         "m_nasdaq": "NASDAQ",
-        "m_rsp": "S&P 500 Equal Weight (RSP)",
+        "m_rsp": "S&P 500 (Equal Weight)",
         "m_rut": "Russell 2000",
         "m_vix": "VIX (Volatility)",
         "m_dxy": "DXY (US Dollar Index)",
@@ -114,13 +126,7 @@ t = {
         "m_brent": "Brent Crude Oil",
         "m_gold": "Gold",
         "m_btc": "Bitcoin (Risk-On proxy)",
-        "chart_yc": "Yield Curve Spread (10Y minus 3M) - Recession Risk",
-        "chart_vix": "VIX History",
-        "chart_wti": "WTI Crude Oil (CL=F) with SMAs",
-        "chart_brent": "Brent Crude (BZ=F) with SMAs",
-        "chart_gold": "Gold (GC=F) with SMAs",
-        "chart_btc": "Bitcoin (BTC-USD) with SMAs",
-        "perf_sel": "Select macro asset to analyze:",
+        "perf_sel": "Select instrument for detailed analysis:",
         "perf_mat": "Performance Matrix",
         "p_1w": "1 Week",
         "p_1m": "1 Month",
@@ -128,14 +134,34 @@ t = {
         "p_1y": "1 Year",
         "p_3y": "3 Years",
         "p_5y": "5 Years",
-        "p_10y": "10 Years",
-        "loading": "Loading and aggregating a decade of macroeconomic data..."
+        "loading": "Loading macroeconomic data...",
+        "help_title": "📖 HOW TO READ THIS RADAR (GUIDE)",
+        "help_text": """
+**1. Yield Curve (10Y - 3M Spread)**
+A primary indicator of economic health. If 3M yields exceed 10Y (negative spread), the curve is inverted. Historically, this predicts recession as markets expect the central bank to slash rates.
+
+**2. FED Rate Expectations**
+The app analyzes FED Funds Futures (ZQ=F). It shows **what the market expects** the FED to do. If the implied rate is falling compared to a month ago, the market is pricing in rate cuts (Dovish pivot).
+
+**3. VIX (Fear Index)**
+Measures expected volatility on S&P 500 options. Under 15 means calm (Risk-On). Over 25 signals panic and hedging—often the best times for long-term accumulation (Risk-Off).
+
+**4. DXY (Dollar Index)**
+Measures USD strength against a global basket. A strong dollar (>105) hurts US exports and pressures commodities. A weak dollar supports global equities.
+
+**5. S&P 500 vs. RSP (Equal Weight)**
+The standard S&P 500 is heavily skewed by mega-caps. RSP gives every company an equal 0.2% weight. If S&P 500 is rising while RSP is falling, the rally lacks breadth.
+        """
     }
 }
 _ = t.get(st.session_state.get("lang", "CZ"), t["CZ"])
 
 st.title(_["title"])
 st.caption(_["desc"])
+
+with st.expander(_["help_title"]):
+    st.markdown(_["help_text"])
+
 st.markdown("---")
 
 MACRO_TICKERS = {
@@ -172,24 +198,25 @@ def fetch_macro_data():
     for key, (ticker, name) in MACRO_TICKERS.items():
         try:
             tkr = yf.Ticker(ticker, session=session)
-            hist = tkr.history(period="10y")
+            hist = tkr.history(period="6y")
             if not hist.empty:
-                current_price = hist['Close'].iloc[-1]
-                prev_price = hist['Close'].iloc[-2] if len(hist) > 1 else current_price
+                current_price = float(hist['Close'].iloc[-1])
+                prev_price = float(hist['Close'].iloc[-2]) if len(hist) > 1 else current_price
                 
-                # Zpracování specifik (FED sazba)
                 if key == "FED":
                     hist['Close'] = 100 - hist['Close']
                     current_price = 100 - current_price
                     prev_price = 100 - prev_price
                 
+                abs_chg = current_price - prev_price
+                pct_chg = ((current_price / prev_price) - 1) * 100 if prev_price and key not in RATES_AND_VOL else None
+                
                 data[key] = {
                     "price": current_price,
-                    "abs_chg": current_price - prev_price,
-                    "pct_chg": ((current_price / prev_price) - 1) * 100 if prev_price and key not in RATES_AND_VOL else None
+                    "abs_chg": abs_chg,
+                    "pct_chg": pct_chg
                 }
                 
-                # Výkonnostní metriky (1W=5, 1M=21, 1Y=252)
                 perf = {}
                 perf[_["p_1w"]] = safe_iloc(hist, 5)
                 perf[_["p_1m"]] = safe_iloc(hist, 21)
@@ -200,9 +227,14 @@ def fetch_macro_data():
                 perf[_["p_1y"]] = safe_iloc(hist, 252)
                 perf[_["p_3y"]] = safe_iloc(hist, 252*3)
                 perf[_["p_5y"]] = safe_iloc(hist, 252*5)
-                perf[_["p_10y"]] = safe_iloc(hist, 252*10)
                 
-                # Spočítání % nebo bps změn
+                # Dodatecna historie pro modul sazeb FEDu
+                if key == "FED":
+                    data["FED_hist"] = {
+                        "1w": perf[_["p_1w"]],
+                        "1m": perf[_["p_1m"]]
+                    }
+                
                 calculated_perf = {}
                 for p_key, p_val in perf.items():
                     if p_val is not None:
@@ -226,7 +258,7 @@ with st.spinner(_["loading"]):
     macro_data, macro_history = fetch_macro_data()
 
 if macro_data:
-    tab_dash, tab_perf, tab_curve, tab_com = st.tabs([_["tab_dash"], _["tab_perf"], _["tab_curve"], _["tab_com"]])
+    tab_dash, tab_analysis = st.tabs([_["tab_dash"], _["tab_analysis"]])
 
     with tab_dash:
         def render_metric(col, key, is_curr=False, is_crypto=False):
@@ -239,20 +271,22 @@ if macro_data:
             abs_chg = d["abs_chg"]
             pct_chg = d["pct_chg"]
             
-            # Format Value
             if is_curr: val_str = f"${val:,.2f}"
             elif is_crypto: val_str = f"${val:,.0f}"
             elif key in RATES_AND_VOL and key != "VIX": val_str = f"{val:.2f} %"
             else: val_str = f"{val:,.2f}"
             
-            # Format Delta
+            # Bezpecne zformatovani delty s fixaci minusu jako prvniho znaku (pro Streamlit barvy)
+            sign = "-" if abs_chg < 0 else "+"
+            val_abs = abs(abs_chg)
+            
             if key in RATES_AND_VOL:
-                delta_str = f"{abs_chg * 100:+.1f} bps" if key != "VIX" else f"{abs_chg:+.2f} pts"
+                delta_str = f"{sign}{val_abs * 100:.1f} bps" if key != "VIX" else f"{sign}{val_abs:.2f} pts"
             else:
                 if is_curr or is_crypto:
-                    delta_str = f"${abs_chg:+.2f} ({pct_chg:+.2f}%)" if pct_chg else f"${abs_chg:+.2f}"
+                    delta_str = f"{sign}${val_abs:,.2f} ({pct_chg:+.2f}%)" if pct_chg else f"{sign}${val_abs:,.2f}"
                 else:
-                    delta_str = f"{abs_chg:+.2f} ({pct_chg:+.2f}%)" if pct_chg else f"{abs_chg:+.2f}"
+                    delta_str = f"{sign}{val_abs:,.2f} ({pct_chg:+.2f}%)" if pct_chg else f"{sign}{val_abs:,.2f}"
                     
             col.metric(MACRO_TICKERS[key][1], val_str, delta_str)
 
@@ -325,27 +359,41 @@ if macro_data:
             st.markdown("<br>", unsafe_allow_html=True)
             st.markdown(f"**{_['eval_fed']}**")
             if fed is not None:
-                st.info(f"🏛️ Aktuální naceněná implikovaná sazba FEDu: **{fed:.2f} %**")
+                f_hist = macro_data.get("FED_hist", {})
+                st.info(f"""
+                🏦 **{_['fed_now']} {fed:.2f} %**
+                - {_['fed_1w']} {f_hist.get('1w', 'N/A'):.2f} %
+                - {_['fed_1m']} {f_hist.get('1m', 'N/A'):.2f} %
+                """)
 
-    with tab_perf:
+    with tab_analysis:
         st.subheader(_["perf_sel"])
         asset_options = {name: key for key, (ticker, name) in MACRO_TICKERS.items() if key in macro_data}
-        selected_asset_name = st.selectbox("", list(asset_options.keys()), label_visibility="collapsed")
+        
+        col_sel, col_s1, col_s2 = st.columns([2, 1, 1])
+        selected_asset_name = col_sel.selectbox("", list(asset_options.keys()), label_visibility="collapsed")
+        show_sma50 = col_s1.checkbox("Zobrazit SMA 50", value=True)
+        show_sma200 = col_s2.checkbox("Zobrazit SMA 200", value=True)
         
         if selected_asset_name:
             sel_key = asset_options[selected_asset_name]
-            sel_hist = macro_history[sel_key]
+            sel_hist = macro_history[sel_key].dropna(subset=['Close'])
             sel_perf = macro_data[sel_key]["performance"]
             
-            st.markdown(f"### {_['perf_mat']} — {selected_asset_name}")
             df_perf = pd.DataFrame([sel_perf])
             st.table(df_perf)
             
-            # Interactive Institutional Chart
             fig_perf = go.Figure()
-            fig_perf.add_trace(go.Scatter(x=sel_hist.index, y=sel_hist["Close"], mode='lines', name=selected_asset_name, line=dict(color='#2962FF', width=2)))
+            fig_perf.add_trace(go.Scatter(x=sel_hist.index, y=sel_hist["Close"], mode='lines', name='Cena (Close)', line=dict(color='#2962FF', width=2)))
             
-            # Interactive Rangeselector (Bloomberg style)
+            if show_sma50 and "SMA50" in sel_hist.columns:
+                fig_perf.add_trace(go.Scatter(x=sel_hist.index, y=sel_hist["SMA50"], mode='lines', name='SMA 50', line=dict(color='#00E676', width=1, dash='dash')))
+            if show_sma200 and "SMA200" in sel_hist.columns:
+                fig_perf.add_trace(go.Scatter(x=sel_hist.index, y=sel_hist["SMA200"], mode='lines', name='SMA 200', line=dict(color='#E91E63', width=1.5, dash='dashdot')))
+            
+            if sel_key == "FED":
+                fig_perf.update_yaxes(autorange="reversed")
+            
             fig_perf.update_xaxes(
                 rangeselector=dict(
                     buttons=list([
@@ -362,48 +410,3 @@ if macro_data:
             
             fig_perf.update_layout(template="plotly_dark", height=500, margin=dict(l=0, r=0, t=30, b=0), hovermode='x unified')
             st.plotly_chart(fig_perf, use_container_width=True, config={'displayModeBar': False})
-
-    with tab_curve:
-        st.subheader(_["chart_yc"])
-        if "10Y" in macro_history and "3M" in macro_history:
-            df_10y = macro_history["10Y"][['Close']].rename(columns={"Close": "10Y"})
-            df_3m = macro_history["3M"][['Close']].rename(columns={"Close": "3M"})
-            df_spread = df_10y.join(df_3m).dropna()
-            df_spread["Spread"] = df_spread["10Y"] - df_spread["3M"]
-            
-            # Zobrazujeme jen posledních 5 let pro spread
-            df_spread = df_spread.tail(252*5)
-            
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(x=df_spread.index, y=df_spread["Spread"], mode='lines', name='10Y - 3M Spread', line=dict(color='#2962FF', width=2)))
-            fig.add_hline(y=0, line_dash="dash", line_color="red", annotation_text="Hranice inverze (0%)", annotation_position="bottom right")
-            
-            fig.update_layout(template="plotly_dark", height=400, margin=dict(l=0, r=0, t=30, b=0), hovermode='x unified')
-            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-            
-            st.subheader(_["chart_vix"])
-            df_vix = macro_history["VIX"].tail(252*5)
-            fig2 = go.Figure()
-            fig2.add_trace(go.Scatter(x=df_vix.index, y=df_vix["Close"], mode='lines', name='VIX', line=dict(color='#FFA726', width=2)))
-            fig2.add_hline(y=25, line_dash="dash", line_color="red", annotation_text="Hranice strachu (25)", annotation_position="top right")
-            fig2.update_layout(template="plotly_dark", height=400, margin=dict(l=0, r=0, t=30, b=0), hovermode='x unified')
-            st.plotly_chart(fig2, use_container_width=True, config={'displayModeBar': False})
-
-    def draw_technical_chart(title, df, line_color):
-        st.subheader(title)
-        # Zobrazujeme poslední 3 roky pro technický graf s SMA
-        df_cut = df.tail(252*3)
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=df_cut.index, y=df_cut["Close"], mode='lines', name='Cena (Close)', line=dict(color=line_color, width=2)))
-        if "SMA50" in df_cut.columns:
-            fig.add_trace(go.Scatter(x=df_cut.index, y=df_cut["SMA50"], mode='lines', name='SMA 50', line=dict(color='#00E676', width=1, dash='dash')))
-        if "SMA200" in df_cut.columns:
-            fig.add_trace(go.Scatter(x=df_cut.index, y=df_cut["SMA200"], mode='lines', name='SMA 200', line=dict(color='#E91E63', width=1.5, dash='dashdot')))
-        fig.update_layout(template="plotly_dark", height=350, margin=dict(l=0, r=0, t=30, b=0), hovermode='x unified')
-        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-
-    with tab_com:
-        if "WTI" in macro_history: draw_technical_chart(_["chart_wti"], macro_history["WTI"], '#EF5350')
-        if "BRENT" in macro_history: draw_technical_chart(_["chart_brent"], macro_history["BRENT"], '#BA68C8')
-        if "GOLD" in macro_history: draw_technical_chart(_["chart_gold"], macro_history["GOLD"], '#FFD54F')
-        if "BTC" in macro_history: draw_technical_chart(_["chart_btc"], macro_history["BTC"], '#FF9800')
