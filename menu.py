@@ -1,17 +1,16 @@
 import streamlit as st
+import os
 
 def check_password():
-    # Pokud je uživatel už ověřený, pustíme ho dál
     if st.session_state.get("password_correct", False):
         return True
 
     st.markdown("### 🔒 POKORNY TERMINAL - UZAMČENO")
     
     def overeni():
-        # Porovná zadané heslo s heslem uloženým v tajných proměnných
         if st.session_state["zadane_heslo"] == st.secrets["APP_PASSWORD"]:
             st.session_state["password_correct"] = True
-            del st.session_state["zadane_heslo"] # Smaže heslo z paměti po přihlášení
+            del st.session_state["zadane_heslo"]
         else:
             st.session_state["password_correct"] = False
 
@@ -23,7 +22,6 @@ def check_password():
     return False
 
 def vykresli_menu():
-    # Pokud heslo nesedí, skript se zde zastaví a zbytek aplikace se nenačte
     if not check_password():
         st.stop()
 
@@ -45,25 +43,22 @@ def vykresli_menu():
 
         st.markdown("---")
 
-        if st.session_state.lang == "CZ":
-            st.page_link("Dashboard.py", label="🏠 Hlavní Dashboard")
-            st.page_link("pages/1_Insider_4F.py", label="🧛 Insider Tracker (4F)")
-            st.page_link("pages/2_SEC_13F_Radar.py", label="🏛️ SEC 13F Radar")
-            st.page_link("pages/3_Terminal.py", label="📊 Terminal")
-            st.page_link("pages/4_Opcni_Radar.py", label="🎲 Opční Radar")
-            st.page_link("pages/5_COT_Reporty.py", label="🏛️ COT Reporty")
-            st.page_link("pages/6_Makro.py", label="🌍 Makro & Rizika")
-            
-            # Odkomentuj řádek níže (smaž #), pokud máš soubor 7_Aktualizace.py
-            # st.page_link("pages/7_Aktualizace.py", label="🗄️ Aktualizace Dat")
-        else:
-            st.page_link("Dashboard.py", label="🏠 Main Dashboard")
-            st.page_link("pages/1_Insider_4F.py", label="🧛 Insider Tracker (4F)")
-            st.page_link("pages/2_SEC_13F_Radar.py", label="🏛️ SEC 13F Radar")
-            st.page_link("pages/3_Terminal.py", label="📊 Terminal")
-            st.page_link("pages/4_Opcni_Radar.py", label="🎲 Options Radar")
-            st.page_link("pages/5_COT_Reporty.py", label="🏛️ COT Reports")
-            st.page_link("pages/6_Makro.py", label="🌍 Macro & Risks")
-            
-            # Odkomentuj řádek níže (smaž #), pokud máš soubor 7_Aktualizace.py
-            # st.page_link("pages/7_Aktualizace.py", label="🗄️ Data Update")
+        # Neprůstřelné vykreslování odkazů (vykreslí jen to, co fyzicky existuje)
+        def bezpecny_odkaz(cesta, label_cz, label_en):
+            if os.path.exists(cesta):
+                lbl = label_cz if st.session_state.lang == "CZ" else label_en
+                st.page_link(cesta, label=lbl)
+
+        # Volání jednotlivých stránek (aplikace nespadne, i když nějaká chybí)
+        bezpecny_odkaz("Dashboard.py", "🏠 Hlavní Dashboard", "🏠 Main Dashboard")
+        bezpecny_odkaz("pages/1_Insider_4F.py", "🧛 Insider Tracker (4F)", "🧛 Insider Tracker (4F)")
+        bezpecny_odkaz("pages/2_SEC_13F_Radar.py", "🏛️ SEC 13F Radar", "🏛️ SEC 13F Radar")
+        bezpecny_odkaz("pages/3_Terminal.py", "📊 Terminal", "📊 Terminal")
+        bezpecny_odkaz("pages/4_Opcni_Radar.py", "🎲 Opční Radar", "🎲 Options Radar")
+        bezpecny_odkaz("pages/5_COT_Reporty.py", "🏛️ COT Reporty", "🏛️ COT Reports")
+        
+        # Pokrývá variantu 6 i 7, ať už máš soubor pojmenovaný jakkoliv
+        bezpecny_odkaz("pages/6_Makro.py", "🌍 Makro & Rizika", "🌍 Macro & Risks")
+        bezpecny_odkaz("pages/7_Makro.py", "🌍 Makro & Rizika", "🌍 Macro & Risks")
+        bezpecny_odkaz("pages/6_Aktualizace.py", "🗄️ Aktualizace Dat", "🗄️ Data Update")
+        bezpecny_odkaz("pages/7_Aktualizace.py", "🗄️ Aktualizace Dat", "🗄️ Data Update")
