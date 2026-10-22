@@ -5,7 +5,7 @@ import json
 import os
 import sys
 import requests
-from datetime import datetime
+import xml.etree.ElementTree as ET
 
 # --- INITIAL SETUP ---
 st.set_page_config(page_title="POKORNY TERMINAL | VALUATION", layout="wide", initial_sidebar_state="collapsed")
@@ -124,7 +124,7 @@ t = {
         "eh_na3": "Historie kvartálních překonání není k dispozici.",
         "eh_na4": "Historie kvartálních earnings není dostupná.",
         "news_h": "Zpravodajský feed —",
-        "news_pub": "Vydavatel",
+        "news_pub": "Zdroj",
         "news_date": "Vydáno",
         "news_na": "Aktuálně nejsou dostupné žádné zprávy."
     },
@@ -227,7 +227,7 @@ t = {
         "eh_na3": "Earnings surprise history is not available.",
         "eh_na4": "Earnings history is currently unavailable.",
         "news_h": "News Feed —",
-        "news_pub": "Publisher",
+        "news_pub": "Source",
         "news_date": "Published",
         "news_na": "No news currently available."
     }
@@ -666,21 +666,25 @@ if final_tick:
         with tab_news:
             st.subheader(f"{_['news_h']} {short_name} ({final_tick})")
             try:
-                news_list = tkr.news
-                if news_list and len(news_list) > 0:
-                    for article in news_list[:12]:
-                        title = article.get("title", "")
-                        publisher = article.get("publisher", "N/A")
-                        link = article.get("link", "#")
-                        pub_time = article.get("providerPublishTime")
+                rss_url = f"https://feeds.finance.yahoo.com/rss/2.0/headline?s={final_tick}&region=US&lang=en-US"
+                rss_resp = session.get(rss_url, timeout=5)
+                root = ET.fromstring(rss_resp.content)
+                
+                items = root.findall('.//item')
+                if items:
+                    for item in items[:12]:
+                        title = item.find('title').text if item.find('title') is not None else "N/A"
+                        link = item.find('link').text if item.find('link') is not None else "#"
+                        pubDate = item.find('pubDate').text if item.find('pubDate') is not None else "N/A"
                         
-                        if pub_time:
-                            dt = pd.to_datetime(pub_time, unit='s').strftime("%d. %m. %Y %H:%M")
-                        else:
-                            dt = "N/A"
+                        try:
+                            dt_obj = pd.to_datetime(pubDate)
+                            dt_str = dt_obj.strftime("%d. %m. %Y %H:%M")
+                        except:
+                            dt_str = pubDate
                             
                         st.markdown(f"### [{title}]({link})")
-                        st.caption(f"🏢 {_['news_pub']}: **{publisher}** | 🕒 {_['news_date']}: **{dt}**")
+                        st.caption(f"🕒 {_['news_date']}: **{dt_str}** | 🏢 {_['news_pub']}: **Yahoo Finance**")
                         st.markdown("---")
                 else:
                     st.info(_["news_na"])
