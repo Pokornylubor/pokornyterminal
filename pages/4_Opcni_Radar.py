@@ -21,7 +21,12 @@ menu.vykresli_menu()
 
 # --- BYPASS YAHOO BLOCKING ---
 session = requests.Session()
-session.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+session.headers.update({
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+    'Accept': '*/*',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Connection': 'keep-alive'
+})
 
 # --- DICTIONARY ---
 t = {
@@ -38,16 +43,13 @@ t = {
         "neut": "⚪ NEUTRÁLNÍ",
         "tab_dash": "📊 RADAR DASHBOARD",
         "tab_raw": "🗄️ SUROVÝ OPČNÍ ŘETĚZEC (CHAIN)",
-        "pcr": "Put/Call Ratio (OI)",
-        "oi_call": "Otevřené Call (OI)",
-        "oi_put": "Otevřené Put (OI)",
         "wall_call": "📈 Call Wall (Rezistence)",
         "wall_put": "📉 Put Wall (Support)",
-        "chart_h": "DISTRIBUCE OPEN INTEREST (Opční Zdi)",
+        "chart_h": "DISTRIBUCE KONTRAKTŮ (Opční Zdi)",
         "leg_call": "Calls (Rezistence)",
         "leg_put": "Puts (Support)",
         "axis_x": "Strike Cena (USD)",
-        "axis_y": "Open Interest (Objem kontraktů)",
+        "axis_y": "Objem kontraktů",
         "raw_call": "CALL OPCE (Právo nakoupit)",
         "raw_put": "PUT OPCE (Právo prodat)",
         "err_load": "Chyba při načítání opčního řetězce:"
@@ -65,16 +67,13 @@ t = {
         "neut": "⚪ NEUTRAL",
         "tab_dash": "📊 RADAR DASHBOARD",
         "tab_raw": "🗄️ RAW OPTION CHAIN",
-        "pcr": "Put/Call Ratio (OI)",
-        "oi_call": "Open Calls (OI)",
-        "oi_put": "Open Puts (OI)",
         "wall_call": "📈 Call Wall (Resistance)",
         "wall_put": "📉 Put Wall (Support)",
-        "chart_h": "OPEN INTEREST DISTRIBUTION (Option Walls)",
+        "chart_h": "CONTRACT DISTRIBUTION (Option Walls)",
         "leg_call": "Calls (Resistance)",
         "leg_put": "Puts (Support)",
         "axis_x": "Strike Price (USD)",
-        "axis_y": "Open Interest (Contract Volume)",
+        "axis_y": "Contract Volume",
         "raw_call": "CALL OPTIONS (Right to Buy)",
         "raw_put": "PUT OPTIONS (Right to Sell)",
         "err_load": "Error loading option chain:"
@@ -106,13 +105,19 @@ custom_tick = c2.text_input(_["custom_tick"], value="")
 final_tick = custom_tick.upper().strip() if custom_tick.strip() else sel_tick
 
 if final_tick:
-    # Aplikace session pro obejití blokace Yahoo Finance
     tkr_obj = yf.Ticker(final_tick, session=session)
     
     try:
         expirations = tkr_obj.options
     except Exception:
         expirations = []
+        
+    if not expirations:
+        tkr_obj = yf.Ticker(final_tick)
+        try:
+            expirations = tkr_obj.options
+        except:
+            expirations = []
     
     if not expirations:
         st.error(_["err_data"])
@@ -122,21 +127,42 @@ if final_tick:
         with st.spinner(f"{_['loading']} {selected_exp}"):
             try:
                 chain = tkr_obj.option_chain(selected_exp)
+                
+                if chain.calls.empty and chain.puts.empty:
+                    tkr_fallback = yf.Ticker(final_tick)
+                    chain = tkr_fallback.option_chain(selected_exp)
+
                 calls = chain.calls.copy()
                 puts = chain.puts.copy()
                 
-                calls['openInterest'] = calls['openInterest'].fillna(0)
-                puts['openInterest'] = puts['openInterest'].fillna(0)
+                if 'openInterest' in calls.columns: calls['openInterest'] = calls['openInterest'].fillna(0)
+                else: calls['openInterest'] = 0
+                if 'openInterest' in puts.columns: puts['openInterest'] = puts['openInterest'].fillna(0)
+                else: puts['openInterest'] = 0
+                    
+                if 'volume' in calls.columns: calls['volume'] = calls['volume'].fillna(0)
+                else: calls['volume'] = 0
+                if 'volume' in puts.columns: puts['volume'] = puts['volume'].fillna(0)
+                else: puts['volume'] = 0
                 
                 total_call_oi = calls['openInterest'].sum()
                 total_put_oi = puts['openInterest'].sum()
-                pcr_oi = total_put_oi / total_call_oi if total_call_oi > 0 else 0
                 
-                call_wall_strike = calls.loc[calls['openInterest'].idxmax()]['strike'] if not calls.empty and total_call_oi > 0 else None
-                put_wall_strike = puts.loc[puts['openInterest'].idxmax()]['strike'] if not puts.empty and total_put_oi > 0 else None
+                # INTELIGENTNÍ FALLBACK: Pokud Yahoo vrátí OI 0, přepneme motor radaru na Volume
+                use_volume = (total_call_oi == 0 and total_put_oi == 0)
+                metric_col = 'volume' if use_volume else 'openInterest'
+                lbl_suffix = "(Volume)" if use_volume else "(OI)"
                 
-                if pcr_oi > 1.2: sentiment = _["bear"]
-                elif pcr_oi < 0.8: sentiment = _["bull"]
+                total_call_metric = calls[metric_col].sum()
+                total_put_metric = puts[metric_col].sum()
+                
+                pcr_val = total_put_metric / total_call_metric if total_call_metric > 0 else 0
+                
+                call_wall_strike = calls.loc[calls[metric_col].idxmax()]['strike'] if not calls.empty and total_call_metric > 0 else None
+                put_wall_strike = puts.loc[puts[metric_col].idxmax()]['strike'] if not puts.empty and total_put_metric > 0 else None
+                
+                if pcr_val > 1.2: sentiment = _["bear"]
+                elif pcr_val < 0.8: sentiment = _["bull"]
                 else: sentiment = _["neut"]
 
                 tab_dash, tab_raw = st.tabs([_["tab_dash"], _["tab_raw"]])
@@ -145,9 +171,9 @@ if final_tick:
                     st.subheader(f"{_['exp_lbl']} {selected_exp}")
                     
                     col1, col2, col3, col4, col5 = st.columns(5)
-                    col1.metric(_["pcr"], f"{pcr_oi:.2f}", sentiment, delta_color="off")
-                    col2.metric(_["oi_call"], f"{int(total_call_oi):,}")
-                    col3.metric(_["oi_put"], f"{int(total_put_oi):,}")
+                    col1.metric(f"Put/Call Ratio {lbl_suffix}", f"{pcr_val:.2f}", sentiment, delta_color="off")
+                    col2.metric(f"Call {lbl_suffix}", f"{int(total_call_metric):,}")
+                    col3.metric(f"Put {lbl_suffix}", f"{int(total_put_metric):,}")
                     col4.metric(_["wall_call"], f"${call_wall_strike:,.2f}" if call_wall_strike else "N/A")
                     col5.metric(_["wall_put"], f"${put_wall_strike:,.2f}" if put_wall_strike else "N/A")
                     
@@ -156,15 +182,15 @@ if final_tick:
                     st.subheader(_["chart_h"])
                     fig = go.Figure()
                     
-                    if not calls.empty:
+                    if not calls.empty and total_call_metric > 0:
                         fig.add_trace(go.Bar(
-                            x=calls['strike'], y=calls['openInterest'], 
+                            x=calls['strike'], y=calls[metric_col], 
                             name=_["leg_call"], marker_color='#26A69A', opacity=0.8
                         ))
                     
-                    if not puts.empty:
+                    if not puts.empty and total_put_metric > 0:
                         fig.add_trace(go.Bar(
-                            x=puts['strike'], y=puts['openInterest'], 
+                            x=puts['strike'], y=puts[metric_col], 
                             name=_["leg_put"], marker_color='#EF5350', opacity=0.8
                         ))
                         
@@ -182,19 +208,21 @@ if final_tick:
                     st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
                     
                 with tab_raw:
-                    st.subheader(_["raw_call"])
-                    st.dataframe(
-                        calls[['strike', 'lastPrice', 'bid', 'ask', 'volume', 'openInterest', 'impliedVolatility']].style.format(
-                            {'strike': '${:.2f}', 'lastPrice': '${:.2f}', 'bid': '${:.2f}', 'ask': '${:.2f}', 'impliedVolatility': '{:.2%}'}
-                        ), use_container_width=True, hide_index=True
-                    )
+                    if not calls.empty:
+                        st.subheader(_["raw_call"])
+                        st.dataframe(
+                            calls[['strike', 'lastPrice', 'bid', 'ask', 'volume', 'openInterest', 'impliedVolatility']].style.format(
+                                {'strike': '${:.2f}', 'lastPrice': '${:.2f}', 'bid': '${:.2f}', 'ask': '${:.2f}', 'impliedVolatility': '{:.2%}'}
+                            ), use_container_width=True, hide_index=True
+                        )
                     
-                    st.subheader(_["raw_put"])
-                    st.dataframe(
-                        puts[['strike', 'lastPrice', 'bid', 'ask', 'volume', 'openInterest', 'impliedVolatility']].style.format(
-                            {'strike': '${:.2f}', 'lastPrice': '${:.2f}', 'bid': '${:.2f}', 'ask': '${:.2f}', 'impliedVolatility': '{:.2%}'}
-                        ), use_container_width=True, hide_index=True
-                    )
+                    if not puts.empty:
+                        st.subheader(_["raw_put"])
+                        st.dataframe(
+                            puts[['strike', 'lastPrice', 'bid', 'ask', 'volume', 'openInterest', 'impliedVolatility']].style.format(
+                                {'strike': '${:.2f}', 'lastPrice': '${:.2f}', 'bid': '${:.2f}', 'ask': '${:.2f}', 'impliedVolatility': '{:.2%}'}
+                            ), use_container_width=True, hide_index=True
+                        )
                     
             except Exception as e:
                 st.error(f"{_['err_load']} {str(e)}")
