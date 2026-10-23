@@ -4,6 +4,7 @@ import yfinance as yf
 import json
 import os
 import sys
+import requests
 import plotly.graph_objects as go
 
 # --- INITIAL SETUP ---
@@ -18,6 +19,10 @@ WATCHLIST_FILE = os.path.join(hlavni_slozka, "watchlist.json")
 import menu
 menu.vykresli_menu()
 
+# --- BYPASS YAHOO BLOCKING ---
+session = requests.Session()
+session.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+
 # --- DICTIONARY ---
 t = {
     "CZ": {
@@ -26,7 +31,7 @@ t = {
         "db_select": "DATABÁZE",
         "custom_tick": "VLASTNÍ TICKER",
         "loading": "STAHOVÁNÍ OPČNÍHO ŘETĚZCE...",
-        "err_data": "OPČNÍ DATA PRO TENTO TICKER NEJSOU DOSTUPNÁ.",
+        "err_data": "OPČNÍ DATA PRO TENTO TICKER NEJSOU DOSTUPNÁ NEBO JE YAHOO FINANCE BLOKUJE.",
         "exp_lbl": "EXPIRAČNÍ DATUM:",
         "bear": "🔴 BEARISH (Trh se jistí Puts)",
         "bull": "🟢 BULLISH (Trh sází na Calls)",
@@ -53,7 +58,7 @@ t = {
         "db_select": "DATABASE",
         "custom_tick": "CUSTOM TICKER",
         "loading": "LOADING OPTION CHAIN...",
-        "err_data": "OPTIONS DATA FOR THIS TICKER NOT AVAILABLE.",
+        "err_data": "OPTIONS DATA FOR THIS TICKER NOT AVAILABLE OR BLOCKED BY YAHOO FINANCE.",
         "exp_lbl": "EXPIRATION DATE:",
         "bear": "🔴 BEARISH (Market hedging with Puts)",
         "bull": "🟢 BULLISH (Market betting on Calls)",
@@ -101,8 +106,13 @@ custom_tick = c2.text_input(_["custom_tick"], value="")
 final_tick = custom_tick.upper().strip() if custom_tick.strip() else sel_tick
 
 if final_tick:
-    tkr_obj = yf.Ticker(final_tick)
-    expirations = tkr_obj.options
+    # Aplikace session pro obejití blokace Yahoo Finance
+    tkr_obj = yf.Ticker(final_tick, session=session)
+    
+    try:
+        expirations = tkr_obj.options
+    except Exception:
+        expirations = []
     
     if not expirations:
         st.error(_["err_data"])
