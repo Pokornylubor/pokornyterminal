@@ -73,47 +73,64 @@ else:
     final_tick = custom_tick.upper().strip() if custom_tick.strip() else sel_tick
 
     if final_tick:
-        df_filtered = df_all[df_all['Ticker'] == final_tick].copy()
+        # AUTOMATICKÁ STANDARDIZACE NÁZVŮ SLOUPCŮ (Ochrana proti pádu)
+        rename_map = {}
+        for col in df_all.columns:
+            c_low = col.lower()
+            if 'trade' in c_low or 'transaction' in c_low or 'type' == c_low: rename_map[col] = 'Trade Type'
+            elif 'value' in c_low: rename_map[col] = 'Value'
+            elif 'price' in c_low or 'cost' in c_low: rename_map[col] = 'Price'
+            elif 'qty' in c_low or 'shares' in c_low: rename_map[col] = 'Qty'
+        
+        df_all = df_all.rename(columns=rename_map)
+
+        # Bezpečná detekce sloupce s Tickerem
+        ticker_col = 'Ticker' if 'Ticker' in df_all.columns else df_all.columns[0]
+        df_filtered = df_all[df_all[ticker_col] == final_tick].copy()
         
         if df_filtered.empty:
             st.caption(_["no_data"])
         else:
-            # 1. Čištění a převod číselných dat
+            # Převod na čísla
             for col in ['Price', 'Qty', 'Value']:
                 if col in df_filtered.columns:
-                    df_filtered[col] = pd.to_numeric(df_filtered[col].astype(str).str.replace(r'[\$,+]', '', regex=True), errors='coerce')
+                    df_filtered[col] = pd.to_numeric(df_filtered[col].astype(str).str.replace(r'[^\d.-]', '', regex=True), errors='coerce')
             
-            # 2. Překlad typů transakcí
+            # Překlad typů transakcí
             def preloz_typ(val):
                 v = str(val).lower()
-                if "purchase" in v or "p - " in v: return _["buy"]
-                if "sale" in v or "s - " in v: return _["sell"]
+                if "purchase" in v or "buy" in v or "p - " in v: return _["buy"]
+                if "sale" in v or "sell" in v or "s - " in v: return _["sell"]
                 if "option" in v or "oe - " in v: return _["opt"]
-                return val.upper()
+                return str(val).upper()
             
             if 'Trade Type' in df_filtered.columns:
                 df_filtered['Trade Type'] = df_filtered['Trade Type'].apply(preloz_typ)
             
-            # 3. Analytické metriky (před aplikací UI filtru)
-            total_buy = df_filtered[df_filtered['Trade Type'] == _["buy"]]['Value'].sum()
-            total_sell = df_filtered[df_filtered['Trade Type'] == _["sell"]]['Value'].sum()
+            # Bezpečné sčítání (zabrání KeyError)
+            total_buy = 0
+            total_sell = 0
+            if 'Trade Type' in df_filtered.columns and 'Value' in df_filtered.columns:
+                total_buy = df_filtered.loc[df_filtered['Trade Type'] == _["buy"], 'Value'].sum()
+                total_sell = df_filtered.loc[df_filtered['Trade Type'] == _["sell"], 'Value'].sum()
             
             mc1, mc2, mc3 = st.columns([2, 2, 2])
             mc1.metric(_["tot_buy"], f"${total_buy:,.0f}")
             mc2.metric(_["tot_sell"], f"${total_sell:,.0f}")
             
+            # Dynamický filtr
             if 'Trade Type' in df_filtered.columns:
-                available_types = sorted(df_filtered['Trade Type'].dropna().unique().tolist())
+                available_types = sorted(df_filtered['Trade Type'].dropna().astype(str).unique().tolist())
                 selected_types = mc3.multiselect(_["filter_type"], available_types, default=available_types, label_visibility="collapsed", placeholder=_["filter_type"])
                 
                 if selected_types:
                     df_filtered = df_filtered[df_filtered['Trade Type'].isin(selected_types)]
                 else:
-                    df_filtered = df_filtered.iloc[0:0] # Prázdný df, pokud uživatel zruší všechny filtry
+                    df_filtered = df_filtered.iloc[0:0]
 
             st.markdown("<br>", unsafe_allow_html=True)
             
-            # 4. Formátování a vykreslení tabulky
+            # Vykreslení
             def style_trade(val):
                 if val in [_["buy"], "BUY", "NÁKUP"]: return 'color: #26A69A; font-weight: bold;'
                 if val in [_["sell"], "SELL", "PRODEJ"]: return 'color: #EF5350; font-weight: bold;'
