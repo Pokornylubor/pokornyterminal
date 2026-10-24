@@ -55,7 +55,7 @@ t = {
         "m_gold": "Zlato",
         "m_btc": "Bitcoin",
         "perf_header": "DETAILNÍ PROFIL AKTIVA",
-        "perf_sel": "Vyberte instrument:",
+        "perf_sel": "Vyberte instrument",
         "perf_mat": "Výkonnostní matice",
         "p_1w": "1 Týden",
         "p_1m": "1 Měsíc",
@@ -77,6 +77,8 @@ t = {
         "f_1d": "1 DEN",
         "f_1w": "1 TÝDEN",
         "f_1m": "1 MĚSÍC",
+        "fed_curr_lbl": "Aktuální cílová sazba je",
+        "fed_curr_tbl": " (Aktuální)",
         "chart_yc": "Spread výnosové křivky (10Y minus 3M)",
         "chart_vix": "Index strachu (VIX)",
         "sys_risk": "Systémová rizika",
@@ -130,7 +132,7 @@ Pokud S&P roste a RSP klesá, trh je tažen úzkou skupinou firem.
         "m_gold": "Gold",
         "m_btc": "Bitcoin",
         "perf_header": "ASSET PROFILE",
-        "perf_sel": "Select instrument:",
+        "perf_sel": "Select instrument",
         "perf_mat": "Performance Matrix",
         "p_1w": "1 Week",
         "p_1m": "1 Month",
@@ -152,6 +154,8 @@ Pokud S&P roste a RSP klesá, trh je tažen úzkou skupinou firem.
         "f_1d": "1 DAY",
         "f_1w": "1 WEEK",
         "f_1m": "1 MONTH",
+        "fed_curr_lbl": "Current target rate is",
+        "fed_curr_tbl": " (Current)",
         "chart_yc": "Yield Curve Spread (10Y minus 3M)",
         "chart_vix": "VIX History",
         "sys_risk": "Systemic Risks",
@@ -536,26 +540,25 @@ if macro_data:
     with tab_fed:
         st.subheader(_["fed_title"])
         
-        today = datetime.now()
-        next_meeting = next((d for d in FOMC_DATES if d >= today), None)
-        
-        if next_meeting:
-            days_left = (next_meeting - today).days
-            mtg_str = next_meeting.strftime("%d. %m. %Y")
-            
-            mc1, mc2 = st.columns(2)
-            mc1.info(f"**{_['fed_next']}** {mtg_str}")
-            mc2.warning(f"**{_['fed_days']}** {days_left}")
-            st.markdown("<br>", unsafe_allow_html=True)
-            
         if "FED_hist" in macro_data:
             f_hist = macro_data["FED_hist"]
-            
             probs_now = calc_fed_probs(f_hist["now"])
             probs_1d = calc_fed_probs(f_hist["1d"])
             probs_1w = calc_fed_probs(f_hist["1w"])
             probs_1m = calc_fed_probs(f_hist["1m"])
 
+            today = datetime.now()
+            next_meeting = next((d for d in FOMC_DATES if d >= today), None)
+            
+            mc1, mc2 = st.columns(2)
+            if next_meeting:
+                days_left = (next_meeting - today).days
+                mtg_str = next_meeting.strftime("%d. %m. %Y")
+                mc1.info(f"**{_['fed_next']}** {mtg_str}")
+                mc2.warning(f"**{_['fed_days']}** {days_left}")
+            
+            st.markdown(f"<div style='text-align: center; margin-top: 20px; margin-bottom: 5px; font-size: 16px; color: #ECEFF1;'>{_['fed_curr_lbl']} {probs_now['current_target']}</div>", unsafe_allow_html=True)
+            
             fig_fed = go.Figure()
             fig_fed.add_trace(go.Bar(
                 x=[probs_now["current_target"], probs_now["next_target"]],
@@ -567,7 +570,7 @@ if macro_data:
 
             fig_fed.update_layout(
                 template="plotly_dark", 
-                height=400,
+                height=350,
                 yaxis=dict(title=_["fed_y"], range=[0, 105], ticksuffix="%"),
                 xaxis=dict(title=_["fed_x"]),
                 margin=dict(l=0, r=0, t=10, b=0)
@@ -575,7 +578,7 @@ if macro_data:
             st.plotly_chart(fig_fed, use_container_width=True, config={'displayModeBar': False})
 
             df_fed_prob = pd.DataFrame({
-                _["f_tgt"]: [probs_now["current_target"], probs_now["next_target"]],
+                _["f_tgt"]: [f"{probs_now['current_target']}{_['fed_curr_tbl']}", probs_now["next_target"]],
                 _["f_now"]: [f"{probs_now['prob_stay']:.1f}%", f"{probs_now['prob_move']:.1f}%"],
                 _["f_1d"]: [f"{probs_1d['prob_stay']:.1f}%", f"{probs_1d['prob_move']:.1f}%"],
                 _["f_1w"]: [f"{probs_1w['prob_stay']:.1f}%", f"{probs_1w['prob_move']:.1f}%"],
