@@ -55,7 +55,7 @@ t = {
         "m_gold": "Zlato",
         "m_btc": "Bitcoin",
         "perf_header": "DETAILNÍ PROFIL AKTIVA",
-        "perf_sel": "Vyberte instrument",
+        "perf_sel": "Vyberte instrument:",
         "perf_mat": "Výkonnostní matice",
         "p_1w": "1 Týden",
         "p_1m": "1 Měsíc",
@@ -68,7 +68,8 @@ t = {
         "comp_period": "Časový horizont:",
         "loading": "Načítání makroekonomických dat...",
         "fed_title": "Pravděpodobnost cílové sazby (CME FedWatch Model)",
-        "fed_next": "Nejbližší FOMC:",
+        "fed_current_bracket": "Aktuální pásmo sazeb FEDu:",
+        "fed_next": "Nejbližší zasedání FOMC:",
         "fed_days": "Zbývá dní:",
         "fed_y": "Pravděpodobnost (%)",
         "fed_x": "Cílová sazba (v bps)",
@@ -132,7 +133,7 @@ Pokud S&P roste a RSP klesá, trh je tažen úzkou skupinou firem.
         "m_gold": "Gold",
         "m_btc": "Bitcoin",
         "perf_header": "ASSET PROFILE",
-        "perf_sel": "Select instrument",
+        "perf_sel": "Select instrument:",
         "perf_mat": "Performance Matrix",
         "p_1w": "1 Week",
         "p_1m": "1 Month",
@@ -145,6 +146,7 @@ Pokud S&P roste a RSP klesá, trh je tažen úzkou skupinou firem.
         "comp_period": "Time horizon:",
         "loading": "Loading macroeconomic data...",
         "fed_title": "Target Rate Probabilities (CME FedWatch Model)",
+        "fed_current_bracket": "Current FED Target Bracket:",
         "fed_next": "Next FOMC:",
         "fed_days": "Days remaining:",
         "fed_y": "Probability (%)",
@@ -396,13 +398,23 @@ if macro_data:
 
         with ec2:
             if fng_score is not None:
-                if fng_score < 25: state_text = "Extrémní strach" if st.session_state.lang == "CZ" else "Extreme Fear"
-                elif fng_score < 45: state_text = "Strach" if st.session_state.lang == "CZ" else "Fear"
-                elif fng_score <= 55: state_text = "Neutrální" if st.session_state.lang == "CZ" else "Neutral"
-                elif fng_score <= 75: state_text = "Chamtivost" if st.session_state.lang == "CZ" else "Greed"
-                else: state_text = "Extrémní chamtivost" if st.session_state.lang == "CZ" else "Extreme Greed"
+                if fng_score < 25: 
+                    state_text = "Extrémní strach" if st.session_state.lang == "CZ" else "Extreme Fear"
+                    color = "#EF5350"
+                elif fng_score < 45: 
+                    state_text = "Strach" if st.session_state.lang == "CZ" else "Fear"
+                    color = "#FFA726"
+                elif fng_score <= 55: 
+                    state_text = "Neutrální" if st.session_state.lang == "CZ" else "Neutral"
+                    color = "#9E9E9E"
+                elif fng_score <= 75: 
+                    state_text = "Chamtivost" if st.session_state.lang == "CZ" else "Greed"
+                    color = "#66BB6A"
+                else: 
+                    state_text = "Extrémní chamtivost" if st.session_state.lang == "CZ" else "Extreme Greed"
+                    color = "#2E7D32"
                 
-                st.markdown(f"**{_['eval_fng']}:** `{state_text}`")
+                st.markdown(f"**{_['eval_fng']}:** <span style='color:{color}; font-weight:bold;'>{state_text}</span>", unsafe_allow_html=True)
                 
                 fig_gauge = go.Figure(go.Indicator(
                     mode="gauge+number",
