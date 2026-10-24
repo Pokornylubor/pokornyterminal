@@ -27,7 +27,10 @@ t = {
         "no_data": "ŽÁDNÁ DATA.",
         "buy": "NÁKUP",
         "sell": "PRODEJ",
-        "opt": "OPCE"
+        "opt": "OPCE",
+        "filter_type": "FILTR TRANSAKCÍ",
+        "tot_buy": "CELKOVÉ NÁKUPY",
+        "tot_sell": "CELKOVÉ PRODEJE"
     },
     "EN": {
         "title": "INSIDER TRANSACTIONS (FORM 4)",
@@ -37,7 +40,10 @@ t = {
         "no_data": "NO DATA.",
         "buy": "BUY",
         "sell": "SELL",
-        "opt": "OPTION"
+        "opt": "OPTION",
+        "filter_type": "TRANSACTION FILTER",
+        "tot_buy": "TOTAL BUYS",
+        "tot_sell": "TOTAL SELLS"
     }
 }
 _ = t.get(st.session_state.get("lang", "CZ"), t["CZ"])
@@ -60,7 +66,7 @@ if not os.path.exists(FILE_PATH):
 else:
     df_all = pd.read_csv(FILE_PATH)
     
-    c1, c2, c3, c4 = st.columns([2, 2, 1, 1])
+    c1, c2, c3 = st.columns([2, 2, 2])
     sel_tick = c1.selectbox(_["db_select"], [""] + all_tickers)
     custom_tick = c2.text_input(_["custom_tick"], value="")
     
@@ -72,10 +78,12 @@ else:
         if df_filtered.empty:
             st.caption(_["no_data"])
         else:
+            # 1. Čištění a převod číselných dat
             for col in ['Price', 'Qty', 'Value']:
                 if col in df_filtered.columns:
                     df_filtered[col] = pd.to_numeric(df_filtered[col].astype(str).str.replace(r'[\$,+]', '', regex=True), errors='coerce')
             
+            # 2. Překlad typů transakcí
             def preloz_typ(val):
                 v = str(val).lower()
                 if "purchase" in v or "p - " in v: return _["buy"]
@@ -86,6 +94,26 @@ else:
             if 'Trade Type' in df_filtered.columns:
                 df_filtered['Trade Type'] = df_filtered['Trade Type'].apply(preloz_typ)
             
+            # 3. Analytické metriky (před aplikací UI filtru)
+            total_buy = df_filtered[df_filtered['Trade Type'] == _["buy"]]['Value'].sum()
+            total_sell = df_filtered[df_filtered['Trade Type'] == _["sell"]]['Value'].sum()
+            
+            mc1, mc2, mc3 = st.columns([2, 2, 2])
+            mc1.metric(_["tot_buy"], f"${total_buy:,.0f}")
+            mc2.metric(_["tot_sell"], f"${total_sell:,.0f}")
+            
+            if 'Trade Type' in df_filtered.columns:
+                available_types = sorted(df_filtered['Trade Type'].dropna().unique().tolist())
+                selected_types = mc3.multiselect(_["filter_type"], available_types, default=available_types, label_visibility="collapsed", placeholder=_["filter_type"])
+                
+                if selected_types:
+                    df_filtered = df_filtered[df_filtered['Trade Type'].isin(selected_types)]
+                else:
+                    df_filtered = df_filtered.iloc[0:0] # Prázdný df, pokud uživatel zruší všechny filtry
+
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            # 4. Formátování a vykreslení tabulky
             def style_trade(val):
                 if val in [_["buy"], "BUY", "NÁKUP"]: return 'color: #26A69A; font-weight: bold;'
                 if val in [_["sell"], "SELL", "PRODEJ"]: return 'color: #EF5350; font-weight: bold;'
