@@ -3,6 +3,7 @@ import pandas as pd
 import json
 import os
 import sys
+import plotly.express as px
 
 # --- INITIAL SETUP ---
 st.set_page_config(page_title="POKORNY TERMINAL | INSIDER", layout="wide", initial_sidebar_state="collapsed")
@@ -24,26 +25,32 @@ t = {
         "db_select": "DATABÁZE",
         "custom_tick": "VLASTNÍ TICKER",
         "no_db": "SYS ERR: DATABÁZE INSIDER_4F_DB.CSV NENALEZENA.",
-        "no_data": "ŽÁDNÁ DATA.",
+        "no_data": "ŽÁDNÁ DATA PRO TENTO TICKER.",
         "buy": "NÁKUP",
         "sell": "PRODEJ",
-        "opt": "OPCE",
+        "opt": "OPCE / JINÉ",
         "filter_type": "FILTR TRANSAKCÍ",
+        "filter_name": "FILTR INSIDERŮ (Jména)",
         "tot_buy": "CELKOVÉ NÁKUPY",
-        "tot_sell": "CELKOVÉ PRODEJE"
+        "tot_sell": "CELKOVÉ PRODEJE",
+        "net_flow": "NET FLOW (Tok peněz)",
+        "chart_title": "Historie toku peněz Insiderů (Smart Money)"
     },
     "EN": {
         "title": "INSIDER TRANSACTIONS (FORM 4)",
         "db_select": "DATABASE",
         "custom_tick": "CUSTOM TICKER",
         "no_db": "SYS ERR: DATABASE INSIDER_4F_DB.CSV NOT FOUND.",
-        "no_data": "NO DATA.",
+        "no_data": "NO DATA FOR THIS TICKER.",
         "buy": "BUY",
         "sell": "SELL",
-        "opt": "OPTION",
+        "opt": "OPTION / OTHER",
         "filter_type": "TRANSACTION FILTER",
+        "filter_name": "INSIDER FILTER (Names)",
         "tot_buy": "TOTAL BUYS",
-        "tot_sell": "TOTAL SELLS"
+        "tot_sell": "TOTAL SELLS",
+        "net_flow": "NET FLOW",
+        "chart_title": "Insider Money Flow History"
     }
 }
 _ = t.get(st.session_state.get("lang", "CZ"), t["CZ"])
@@ -66,10 +73,10 @@ if not os.path.exists(FILE_PATH):
 else:
     df_all = pd.read_csv(FILE_PATH)
     
-    # ODSTRANĚNÍ NEVIDITELNÝCH MEZER Z NÁZVŮ SLOUPCŮ (ZABRÁNÍ CHYBÁM)
+    # NEJDŮLEŽITĚJŠÍ OPRAVA: Tvrdé vymazání neviditelných mezer v názvech sloupců
     df_all.columns = df_all.columns.str.strip()
     
-    c1, c2, c3, c4 = st.columns([2, 2, 1, 1])
+    c1, c2, c3 = st.columns([2, 2, 2])
     sel_tick = c1.selectbox(_["db_select"], [""] + all_tickers)
     custom_tick = c2.text_input(_["custom_tick"], value="")
     
@@ -82,49 +89,74 @@ else:
         if df_filtered.empty:
             st.caption(_["no_data"])
         else:
-            # Převod částek na čistá čísla (odstraní vše kromě čísel a mínusu)
+            # 1. ČIŠTĚNÍ ČÍSELNÝCH HODNOT
             for col in ['Price', 'Qty', 'Value']:
                 if col in df_filtered.columns:
-                    df_filtered[col] = pd.to_numeric(df_filtered[col].astype(str).str.replace(r'[^\d.-]', '', regex=True), errors='coerce')
+                    df_filtered[col] = pd.to_numeric(df_filtered[col].astype(str).str.replace(r'[^\d.-]', '', regex=True), errors='coerce').fillna(0)
             
+            # 2. PŘEKLAD A SJEDNOCENÍ TYPŮ TRANSAKCÍ
             def preloz_typ(val):
-                v = str(val).lower()
-                if "purchase" in v or "buy" in v or "p - " in v: return _["buy"]
-                if "sale" in v or "sell" in v or "s - " in v: return _["sell"]
-                if "option" in v or "oe - " in v: return _["opt"]
-                return str(val).upper()
+                v = str(val).upper()
+                if "PURCHASE" in v or "BUY" in v or "P -" in v: return _["buy"]
+                if "SALE" in v or "SELL" in v or "S -" in v: return _["sell"]
+                return _["opt"]
             
-            trade_col = 'Trade Type' if 'Trade Type' in df_filtered.columns else None
+            if 'Trade Type' in df_filtered.columns:
+                df_filtered['Trade Type'] = df_filtered['Trade Type'].apply(preloz_typ)
             
-            if trade_col:
-                df_filtered[trade_col] = df_filtered[trade_col].apply(preloz_typ)
+            # 3. FILTRACE
+            f_col1, f_col2 = st.columns(2)
             
+            avail_types = sorted(df_filtered['Trade Type'].dropna().unique().tolist()) if 'Trade Type' in df_filtered.columns else []
+            sel_types = f_col1.multiselect(_["filter_type"], avail_types, default=avail_types)
+            
+            avail_names = sorted(df_filtered['Insider Name'].dropna().unique().tolist()) if 'Insider Name' in df_filtered.columns else []
+            sel_names = f_col2.multiselect(_["filter_name"], avail_names, default=avail_names)
+            
+            if 'Trade Type' in df_filtered.columns and sel_types is not None:
+                df_filtered = df_filtered[df_filtered['Trade Type'].isin(sel_types)]
+            
+            if 'Insider Name' in df_filtered.columns and sel_names is not None:
+                df_filtered = df_filtered[df_filtered['Insider Name'].isin(sel_names)]
+            
+            # 4. VÝPOČET METRIK
             total_buy = 0
             total_sell = 0
+            if 'Trade Type' in df_filtered.columns and 'Value' in df_filtered.columns:
+                total_buy = df_filtered[df_filtered['Trade Type'] == _["buy"]]['Value'].sum()
+                total_sell = df_filtered[df_filtered['Trade Type'] == _["sell"]]['Value'].sum()
             
-            if trade_col and 'Value' in df_filtered.columns:
-                total_buy = df_filtered[df_filtered[trade_col] == _["buy"]]['Value'].sum()
-                total_sell = df_filtered[df_filtered[trade_col] == _["sell"]]['Value'].sum()
+            net_flow = total_buy + total_sell # Prodeje bývají záporné, proto se rovnou sčítá
             
-            mc1, mc2, mc3 = st.columns([2, 2, 2])
-            mc1.metric(_["tot_buy"], f"${total_buy:,.0f}")
-            # Prodeje bývají v tabulce jako mínusové hodnoty, do metriky dáme absolutní číslo pro lepší design
-            mc2.metric(_["tot_sell"], f"${abs(total_sell):,.0f}")
+            m1, m2, m3 = st.columns(3)
+            m1.metric(_["tot_buy"], f"${total_buy:,.0f}")
+            m2.metric(_["tot_sell"], f"${abs(total_sell):,.0f}")
             
-            if trade_col:
-                available_types = sorted(df_filtered[trade_col].dropna().unique().tolist())
-                selected_types = mc3.multiselect(_["filter_type"], available_types, default=available_types, label_visibility="collapsed", placeholder=_["filter_type"])
+            if net_flow > 0:
+                m3.metric(_["net_flow"], f"${net_flow:,.0f}", "BULLISH (Kapitál přitéká)")
+            elif net_flow < 0:
+                m3.metric(_["net_flow"], f"${net_flow:,.0f}", "-BEARISH (Kapitál odtéká)")
+            else:
+                m3.metric(_["net_flow"], "$0", "NEUTRÁLNÍ", delta_color="off")
+            
+            st.markdown("---")
+            
+            # 5. VIZUALIZACE - GRAF TOKU PENĚZ
+            if 'Trade Date' in df_filtered.columns and 'Value' in df_filtered.columns and not df_filtered.empty:
+                df_chart = df_filtered.groupby(['Trade Date', 'Trade Type'])['Value'].sum().reset_index()
+                df_chart = df_chart.sort_values(by='Trade Date')
                 
-                if selected_types:
-                    df_filtered = df_filtered[df_filtered[trade_col].isin(selected_types)]
-                else:
-                    df_filtered = df_filtered.iloc[0:0]
-
-            st.markdown("<br>", unsafe_allow_html=True)
+                fig = px.bar(df_chart, x='Trade Date', y='Value', color='Trade Type',
+                             color_discrete_map={_["buy"]: '#26A69A', _["sell"]: '#EF5350', _["opt"]: '#9E9E9E'},
+                             title=_["chart_title"], template='plotly_dark')
+                
+                fig.update_layout(height=350, margin=dict(l=0, r=0, t=40, b=0), xaxis_title="", yaxis_title="Hodnota (USD)")
+                st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
             
+            # 6. VYKRESLENÍ TABULKY
             def style_trade(val):
-                if val in [_["buy"], "BUY", "NÁKUP"]: return 'color: #26A69A; font-weight: bold;'
-                if val in [_["sell"], "SELL", "PRODEJ"]: return 'color: #EF5350; font-weight: bold;'
+                if val == _["buy"]: return 'color: #26A69A; font-weight: bold;'
+                if val == _["sell"]: return 'color: #EF5350; font-weight: bold;'
                 return 'color: #787B86;'
             
             format_dict = {}
@@ -133,7 +165,7 @@ else:
             if 'Value' in df_filtered.columns: format_dict['Value'] = "${:,.0f}"
             
             st.dataframe(
-                df_filtered.style.format(format_dict, na_rep="-").map(style_trade, subset=[trade_col] if trade_col else []), 
+                df_filtered.style.format(format_dict, na_rep="-").map(style_trade, subset=['Trade Type'] if 'Trade Type' in df_filtered.columns else []), 
                 use_container_width=True, 
                 height=650,
                 hide_index=True
