@@ -96,9 +96,10 @@ else:
             if 'Qty' in df_filtered.columns: format_dict['Qty'] = "{:,.0f}"
             if 'Value' in df_filtered.columns: format_dict['Value'] = "${:,.0f}"
             
-            st.dataframe(
-                df_filtered.style.format(format_dict, na_rep="-").map(style_trade, subset=['Trade Type'] if 'Trade Type' in df_filtered.columns else []), 
-                use_container_width=True, 
-                height=650,
-                hide_index=True
-            )
+            # Formátování a skrytí indexu pro statickou tabulku
+            styled_df = df_filtered.style.format(format_dict, na_rep="-").map(
+                style_trade, subset=['Trade Type'] if 'Trade Type' in df_filtered.columns else []
+            ).hide(axis="index")
+            
+            # Vykreslení uzamčené (statické) tabulky
+            st.table(styled_df)
