@@ -66,6 +66,9 @@ if not os.path.exists(FILE_PATH):
 else:
     df_all = pd.read_csv(FILE_PATH)
     
+    # ODSTRANĚNÍ NEVIDITELNÝCH MEZER Z NÁZVŮ SLOUPCŮ (ZABRÁNÍ CHYBÁM)
+    df_all.columns = df_all.columns.str.strip()
+    
     c1, c2, c3, c4 = st.columns([2, 2, 1, 1])
     sel_tick = c1.selectbox(_["db_select"], [""] + all_tickers)
     custom_tick = c2.text_input(_["custom_tick"], value="")
@@ -73,43 +76,47 @@ else:
     final_tick = custom_tick.upper().strip() if custom_tick.strip() else sel_tick
 
     if final_tick:
-        df_filtered = df_all[df_all['Ticker'] == final_tick].copy()
+        ticker_col = 'Ticker' if 'Ticker' in df_all.columns else df_all.columns[0]
+        df_filtered = df_all[df_all[ticker_col] == final_tick].copy()
         
         if df_filtered.empty:
             st.caption(_["no_data"])
         else:
+            # Převod částek na čistá čísla (odstraní vše kromě čísel a mínusu)
             for col in ['Price', 'Qty', 'Value']:
                 if col in df_filtered.columns:
-                    df_filtered[col] = pd.to_numeric(df_filtered[col].astype(str).str.replace(r'[\$,+]', '', regex=True), errors='coerce')
+                    df_filtered[col] = pd.to_numeric(df_filtered[col].astype(str).str.replace(r'[^\d.-]', '', regex=True), errors='coerce')
             
             def preloz_typ(val):
                 v = str(val).lower()
-                if "purchase" in v or "p - " in v: return _["buy"]
-                if "sale" in v or "s - " in v: return _["sell"]
+                if "purchase" in v or "buy" in v or "p - " in v: return _["buy"]
+                if "sale" in v or "sell" in v or "s - " in v: return _["sell"]
                 if "option" in v or "oe - " in v: return _["opt"]
-                return val.upper()
+                return str(val).upper()
             
-            if 'Trade Type' in df_filtered.columns:
-                df_filtered['Trade Type'] = df_filtered['Trade Type'].apply(preloz_typ)
+            trade_col = 'Trade Type' if 'Trade Type' in df_filtered.columns else None
             
-            # PŘIDANÉ METRIKY A FILTRACE
+            if trade_col:
+                df_filtered[trade_col] = df_filtered[trade_col].apply(preloz_typ)
+            
             total_buy = 0
             total_sell = 0
             
-            if 'Trade Type' in df_filtered.columns and 'Value' in df_filtered.columns:
-                total_buy = df_filtered[df_filtered['Trade Type'] == _["buy"]]['Value'].sum()
-                total_sell = df_filtered[df_filtered['Trade Type'] == _["sell"]]['Value'].sum()
+            if trade_col and 'Value' in df_filtered.columns:
+                total_buy = df_filtered[df_filtered[trade_col] == _["buy"]]['Value'].sum()
+                total_sell = df_filtered[df_filtered[trade_col] == _["sell"]]['Value'].sum()
             
             mc1, mc2, mc3 = st.columns([2, 2, 2])
             mc1.metric(_["tot_buy"], f"${total_buy:,.0f}")
-            mc2.metric(_["tot_sell"], f"${total_sell:,.0f}")
+            # Prodeje bývají v tabulce jako mínusové hodnoty, do metriky dáme absolutní číslo pro lepší design
+            mc2.metric(_["tot_sell"], f"${abs(total_sell):,.0f}")
             
-            if 'Trade Type' in df_filtered.columns:
-                available_types = sorted(df_filtered['Trade Type'].dropna().unique().tolist())
+            if trade_col:
+                available_types = sorted(df_filtered[trade_col].dropna().unique().tolist())
                 selected_types = mc3.multiselect(_["filter_type"], available_types, default=available_types, label_visibility="collapsed", placeholder=_["filter_type"])
                 
                 if selected_types:
-                    df_filtered = df_filtered[df_filtered['Trade Type'].isin(selected_types)]
+                    df_filtered = df_filtered[df_filtered[trade_col].isin(selected_types)]
                 else:
                     df_filtered = df_filtered.iloc[0:0]
 
@@ -126,7 +133,7 @@ else:
             if 'Value' in df_filtered.columns: format_dict['Value'] = "${:,.0f}"
             
             st.dataframe(
-                df_filtered.style.format(format_dict, na_rep="-").map(style_trade, subset=['Trade Type'] if 'Trade Type' in df_filtered.columns else []), 
+                df_filtered.style.format(format_dict, na_rep="-").map(style_trade, subset=[trade_col] if trade_col else []), 
                 use_container_width=True, 
                 height=650,
                 hide_index=True
