@@ -20,17 +20,18 @@ menu.vykresli_menu()
 
 BASKETS_FILE = os.path.join(hlavni_slozka, "baskets.json")
 
-# --- DEFAULT BASKETS ---
+# --- MASIVNÍ DEFAULTNÍ KOŠE (180+ Akcií) ---
 DEFAULT_BASKETS = {
-    "Tržní Indexy": ["SPY", "QQQ", "IWM", "DIA"],
-    "AI & Polovodiče": ["NVDA", "AMD", "TSM", "ASML", "AVGO", "MU", "ARM"],
-    "Software & Cloud": ["MSFT", "CRM", "ADBE", "ORCL", "NOW", "PLTR"],
-    "Cybersecurity": ["CRWD", "PANW", "FTNT", "ZS", "CHKP"],
-    "Krypto & Těžaři": ["IBIT", "MSTR", "COIN", "MARA", "RIOT"],
-    "Zdravotnictví (Weight Loss)": ["LLY", "NVO", "VRTX", "UNH"],
-    "Zlato & Stříbro": ["GLD", "SLV", "NEM", "GOLD", "AEM"],
-    "Uran & Jádro": ["CCJ", "UEC", "NXE", "BWXT", "CEG", "URA"],
-    "Obranný průmysl": ["LMT", "RTX", "NOC", "GD", "BA"]
+    "Indexy & Sektorové ETFs": ["SPY", "QQQ", "IWM", "DIA", "XLK", "XLF", "XLV", "XLE", "XLI", "XLY", "XLP", "XLU", "XLB", "SMH", "ARKK"],
+    "AI, Polovodiče & Hardware": ["NVDA", "AMD", "TSM", "ASML", "AVGO", "MU", "ARM", "INTC", "QCOM", "TXN", "AMAT", "LRCX", "KLAC", "MRVL", "SNPS", "CDNS", "MPWR", "SWKS", "ANET", "SMCI", "VRT", "DELL", "HPE", "WDC", "STX"],
+    "Software, Cloud & Cyber": ["MSFT", "CRM", "ADBE", "ORCL", "NOW", "PLTR", "CRWD", "PANW", "FTNT", "ZS", "CHKP", "NET", "DDOG", "SNOW", "MDB", "TEAM", "WDAY", "INTU", "ROP", "TYL", "PTC", "OKTA", "PATH", "U"],
+    "Big Tech, Internet & Média": ["AAPL", "GOOGL", "META", "AMZN", "NFLX", "TSLA", "SPOT", "ROKU", "PINS", "SNAP", "TTD", "MTCH", "DIS", "WBD", "CMCSA", "UBER", "ABNB", "DASH"],
+    "Finance, Banky & FinTech": ["JPM", "BAC", "WFC", "C", "GS", "MS", "V", "MA", "AXP", "PYPL", "SQ", "SOFI", "AFRM", "HOOD", "COF", "DFS", "SCHW", "IBKR", "BLK", "BX", "KKR"],
+    "Zdravotnictví (Pharma & Biotech)": ["LLY", "NVO", "VRTX", "UNH", "JNJ", "MRK", "ABBV", "AMGN", "PFE", "GILD", "BIIB", "REGN", "ISRG", "SYK", "BSX", "MDT", "ZTS", "TMO", "DHR", "ILMN"],
+    "Krypto, Těžaři & Blockchain": ["IBIT", "MSTR", "COIN", "MARA", "RIOT", "CLSK", "HUT", "CIFR", "ARBK", "HIVE", "BITF", "WULF", "CORZ", "IREN"],
+    "Uran, Jádro & Zelená Energie": ["CCJ", "UEC", "NXE", "BWXT", "CEG", "URA", "URNM", "VST", "TLN", "ENPH", "FSLR", "SEDG", "RUN", "PLUG", "NEE", "BEP", "CWEN", "DNN", "UUUU", "URG"],
+    "Zlato, Stříbro & Komodity": ["GLD", "SLV", "NEM", "GOLD", "AEM", "KGC", "WPM", "FNV", "AGI", "PAAS", "CDE", "HL", "EXK", "SSRM", "AU", "GFI", "HMY", "COPX", "FCX", "SCCO"],
+    "Obrana, Letectví & Vesmír": ["LMT", "RTX", "NOC", "GD", "BA", "LHX", "HII", "TDY", "TXT", "SPR", "RKLB", "SPCE", "PL", "LDOS", "CACI"]
 }
 
 def load_baskets():
@@ -61,6 +62,7 @@ def fetch_basket_data(baskets_dict):
         return pd.DataFrame()
         
     try:
+        # Hromadné stažení dat pro všechny tickery (může zabrat 10-20 vteřin, poté se uloží do cache)
         df = yf.download(all_tickers, period="5y", progress=False)
         if isinstance(df.columns, pd.MultiIndex):
             if 'Close' in df.columns.levels[0]:
@@ -130,7 +132,7 @@ def calculate_metrics(df_close, baskets_dict):
         })
     return pd.DataFrame(results)
 
-with st.spinner("Stahování historie (5 let) a kalkulace metrik..."):
+with st.spinner("Stahování historie 180+ akcií a kalkulace metrik (může trvat 15-30 vteřin)..."):
     df_raw = fetch_basket_data(baskets)
 
 if not df_raw.empty:
@@ -140,7 +142,7 @@ if not df_raw.empty:
     col_chart_sel, col_chart_time = st.columns([3, 1])
     available_baskets = list(baskets.keys())
     
-    default_sel = [b for b in ["Tržní Indexy", "AI & Polovodiče"] if b in available_baskets]
+    default_sel = [b for b in ["Indexy & Sektorové ETFs", "AI, Polovodiče & Hardware"] if b in available_baskets]
     if not default_sel and available_baskets:
         default_sel = [available_baskets[0]]
         
