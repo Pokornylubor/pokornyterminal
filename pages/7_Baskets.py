@@ -18,6 +18,8 @@ sys.path.append(hlavni_slozka)
 import menu
 menu.vykresli_menu()
 
+current_lang = st.session_state.get("lang", "CZ")
+
 # --- DICTIONARY ---
 t = {
     "CZ": {
@@ -32,13 +34,13 @@ t = {
         "col_ud": "Růst / Pokles",
         "col_top": "Top Mover (1D)",
         "exp_h": "⚙️ Nastavení a editace košů (JSON)",
-        "exp_c": "Úpravy se uloží přímo do souboru watchlist.json v sekci 'baskets'. Zbytek dat zůstane nedotčen.",
+        "exp_c": "⚠️ Změny provedené zde na webu se nepropíší na GitHub. Pro trvalou úpravu upravte lokální soubor watchlist.json.",
         "json_lbl": "Konfigurace košů (sekce 'baskets'):",
-        "btn_save": "💾 Uložit změny",
-        "msg_save": "Úspěšně uloženo do watchlist.json! Aktualizuji terminál...",
+        "btn_save": "💾 Uložit pro tuto relaci",
+        "msg_save": "Úspěšně uloženo lokálně/dočasně! Aktualizuji terminál...",
         "msg_err": "Chyba formátu JSON:",
         "msg_nodata": "Nepodařilo se stáhnout data. Zkontrolujte připojení nebo ticker symboly.",
-        "msg_empty": "Nejsou definovány žádné koše. Přidejte je v nastavení přes JSON editor."
+        "msg_empty": "Nejsou definovány žádné koše. Přidejte je v souboru watchlist.json."
     },
     "EN": {
         "title": "BASKETS",
@@ -52,16 +54,35 @@ t = {
         "col_ud": "Up / Down",
         "col_top": "Top Mover (1D)",
         "exp_h": "⚙️ Baskets Setup & Editing (JSON)",
-        "exp_c": "Modifications will be saved to watchlist.json in the 'baskets' section. Other data remains intact.",
+        "exp_c": "⚠️ Changes made on the web will not sync to GitHub. For permanent changes, edit local watchlist.json.",
         "json_lbl": "Baskets configuration:",
-        "btn_save": "💾 Save Changes",
-        "msg_save": "Successfully saved to watchlist.json! Refreshing terminal...",
+        "btn_save": "💾 Save for this session",
+        "msg_save": "Successfully saved locally/temporarily! Refreshing terminal...",
         "msg_err": "JSON format error:",
         "msg_nodata": "Failed to download data. Check connection or ticker symbols.",
-        "msg_empty": "No baskets defined. Add them in the settings via the JSON editor."
+        "msg_empty": "No baskets defined. Add them in watchlist.json."
     }
 }
-_ = t.get(st.session_state.get("lang", "CZ"), t["CZ"])
+_ = t.get(current_lang, t["CZ"])
+
+# --- TRANSLATION MAP PRO KOŠE ---
+basket_translations = {
+    "Indexes & Sector ETFs": "Indexy & Sektorové ETFs",
+    "AI, Semiconductors & Hardware": "AI, Polovodiče & Hardware",
+    "Software, Cloud & Cyber": "Software, Cloud & Cyber",
+    "Big Tech, Internet & Media": "Big Tech, Internet & Média",
+    "Finance, Banks & FinTech": "Finance, Banky & FinTech",
+    "Healthcare (Pharma & Biotech)": "Zdravotnictví (Pharma & Biotech)",
+    "Crypto, Miners & Blockchain": "Krypto, Těžaři & Blockchain",
+    "Uranium, Nuclear & Green Energy": "Uran, Jádro & Zelená Energie",
+    "Gold, Silver & Commodities": "Zlato, Stříbro & Komodity",
+    "Defense & Aerospace": "Obrana, Letectví & Vesmír"
+}
+
+def tr_basket(name):
+    if current_lang == "CZ":
+        return basket_translations.get(name, name)
+    return name
 
 WATCHLIST_FILE = os.path.join(hlavni_slozka, "watchlist.json")
 
@@ -150,7 +171,7 @@ def calculate_metrics(df_close, baskets_dict):
         top_mover_str = f"{top_mover_ticker} ({top_mover_perf:+.2f}%)" if top_mover_ticker else "N/A"
         
         results.append({
-            _["col_theme"]: theme,
+            _["col_theme"]: tr_basket(theme),
             "1D": avg_perfs["1D"],
             "1W": avg_perfs["1W"],
             "1M": avg_perfs["1M"],
@@ -172,8 +193,14 @@ if not df_raw.empty and baskets:
     col_chart_sel, col_chart_time = st.columns([3, 1])
     available_baskets = list(baskets.keys())
     
-    # Výchozí stav grafu: prázdný seznam (nic není vybráno)
-    selected_baskets = col_chart_sel.multiselect(_["chart_sel"], available_baskets, default=[], label_visibility="collapsed", placeholder=_["chart_sel"])
+    selected_baskets = col_chart_sel.multiselect(
+        _["chart_sel"], 
+        options=available_baskets, 
+        default=[], 
+        format_func=tr_basket,
+        label_visibility="collapsed", 
+        placeholder=_["chart_sel"]
+    )
     period = col_chart_time.radio(_["chart_tf"], ["1M", "6M", "YTD", "1Y", "3Y", "MAX"], index=3, horizontal=True, label_visibility="collapsed")
     
     if selected_baskets:
@@ -197,7 +224,7 @@ if not df_raw.empty and baskets:
             pct_df = (df_theme / first_vals - 1) * 100
             basket_series = pct_df.mean(axis=1) 
             
-            fig.add_trace(go.Scatter(x=basket_series.index, y=basket_series, mode='lines', name=theme, line=dict(width=2)))
+            fig.add_trace(go.Scatter(x=basket_series.index, y=basket_series, mode='lines', name=tr_basket(theme), line=dict(width=2)))
             
         fig.update_layout(template="plotly_dark", height=400, margin=dict(l=0, r=0, t=10, b=0), hovermode='x unified', yaxis_ticksuffix="%")
         st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
@@ -242,10 +269,9 @@ if not df_raw.empty and baskets:
                 with open(WATCHLIST_FILE, "w", encoding="utf-8") as f:
                     json.dump(full_data, f, indent=4, ensure_ascii=False)
                 
-                # Záměrné vyčištění cache pro načtení čerstvých dat
                 st.cache_data.clear()
                 st.success(_["msg_save"])
-                st.rerun() # Okamžitý refresh stránky bez nutnosti F5
+                st.rerun() 
             except Exception as e:
                 st.error(f"{_['msg_err']} {e}")
 

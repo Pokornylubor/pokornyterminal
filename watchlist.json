@@ -14,30 +14,10 @@
         "Thiel Macro LLC": "0001562087"
     },
     "portfolio": [
-        "AMZN",
-        "GOOGL",
-        "MSFT",
-        "AMAT",
-        "ASML",
-        "NVDA",
-        "UBER",
-        "APP",
-        "SOFI",
-        "CRWV"
+        "AMZN", "GOOGL", "MSFT", "AMAT", "ASML", "NVDA", "UBER", "APP", "SOFI", "CRWV"
     ],
     "watchlist": [
-        "SPY",
-        "QQQ",
-        "NBIS",
-        "IREN",
-        "BE",
-        "MU",
-        "SNDK",
-        "FSLR",
-        "AMD",
-        "VST",
-        "TSM",
-        "NU"
+        "SPY", "QQQ", "NBIS", "IREN", "BE", "MU", "SNDK", "FSLR", "AMD", "VST", "TSM", "NU"
     ],
     "cot_watchlist": [
         "E-MINI S&P 500 - CHICAGO MERCANTILE EXCHANGE",
@@ -48,15 +28,15 @@
         "VIX FUTURES - CBOE FUTURES EXCHANGE"
     ],
     "baskets": {
-        "Indexy & Sektorové ETFs": ["SPY", "QQQ", "IWM", "DIA", "XLK", "XLF", "XLV", "XLE", "XLI", "XLY", "XLP", "XLU", "XLB", "SMH", "ARKK"],
-        "AI, Polovodiče & Hardware": ["NVDA", "AMD", "TSM", "ASML", "AVGO", "MU", "ARM", "INTC", "QCOM", "TXN", "AMAT", "LRCX", "KLAC", "MRVL", "SNPS", "CDNS", "MPWR", "SWKS", "ANET", "SMCI", "VRT", "DELL", "HPE", "WDC", "STX"],
+        "Indexes & Sector ETFs": ["SPY", "QQQ", "IWM", "DIA", "XLK", "XLF", "XLV", "XLE", "XLI", "XLY", "XLP", "XLU", "XLB", "SMH", "ARKK"],
+        "AI, Semiconductors & Hardware": ["NVDA", "AMD", "TSM", "ASML", "AVGO", "MU", "ARM", "INTC", "QCOM", "TXN", "AMAT", "LRCX", "KLAC", "MRVL", "SNPS", "CDNS", "MPWR", "SWKS", "ANET", "SMCI", "VRT", "DELL", "HPE", "WDC", "STX"],
         "Software, Cloud & Cyber": ["MSFT", "CRM", "ADBE", "ORCL", "NOW", "PLTR", "CRWD", "PANW", "FTNT", "ZS", "CHKP", "NET", "DDOG", "SNOW", "MDB", "TEAM", "WDAY", "INTU", "ROP", "TYL", "PTC", "OKTA", "PATH", "U"],
-        "Big Tech, Internet & Média": ["AAPL", "GOOGL", "META", "AMZN", "NFLX", "TSLA", "SPOT", "ROKU", "PINS", "SNAP", "TTD", "MTCH", "DIS", "WBD", "CMCSA", "UBER", "ABNB", "DASH"],
-        "Finance, Banky & FinTech": ["JPM", "BAC", "WFC", "C", "GS", "MS", "V", "MA", "AXP", "PYPL", "SQ", "SOFI", "AFRM", "HOOD", "COF", "DFS", "SCHW", "IBKR", "BLK", "BX", "KKR"],
-        "Zdravotnictví (Pharma & Biotech)": ["LLY", "NVO", "VRTX", "UNH", "JNJ", "MRK", "ABBV", "AMGN", "PFE", "GILD", "BIIB", "REGN", "ISRG", "SYK", "BSX", "MDT", "ZTS", "TMO", "DHR", "ILMN"],
-        "Krypto, Těžaři & Blockchain": ["IBIT", "MSTR", "COIN", "MARA", "RIOT", "CLSK", "HUT", "CIFR", "ARBK", "HIVE", "BITF", "WULF", "CORZ", "IREN"],
-        "Uran, Jádro & Zelená Energie": ["CCJ", "UEC", "NXE", "BWXT", "CEG", "URA", "URNM", "VST", "TLN", "ENPH", "FSLR", "SEDG", "RUN", "PLUG", "NEE", "BEP", "CWEN", "DNN", "UUUU", "URG"],
-        "Zlato, Stříbro & Komodity": ["GLD", "SLV", "NEM", "GOLD", "AEM", "KGC", "WPM", "FNV", "AGI", "PAAS", "CDE", "HL", "EXK", "SSRM", "AU", "GFI", "HMY", "COPX", "FCX", "SCCO"],
-        "Obrana, Letectví & Vesmír": ["LMT", "RTX", "NOC", "GD", "BA", "LHX", "HII", "TDY", "TXT", "SPR", "RKLB", "SPCE", "PL", "LDOS", "CACI"]
+        "Big Tech, Internet & Media": ["AAPL", "GOOGL", "META", "AMZN", "NFLX", "TSLA", "SPOT", "ROKU", "PINS", "SNAP", "TTD", "MTCH", "DIS", "WBD", "CMCSA", "UBER", "ABNB", "DASH"],
+        "Finance, Banks & FinTech": ["JPM", "BAC", "WFC", "C", "GS", "MS", "V", "MA", "AXP", "PYPL", "SQ", "SOFI", "AFRM", "HOOD", "COF", "DFS", "SCHW", "IBKR", "BLK", "BX", "KKR"],
+        "Healthcare (Pharma & Biotech)": ["LLY", "NVO", "VRTX", "UNH", "JNJ", "MRK", "ABBV", "AMGN", "PFE", "GILD", "BIIB", "REGN", "ISRG", "SYK", "BSX", "MDT", "ZTS", "TMO", "DHR", "ILMN"],
+        "Crypto, Miners & Blockchain": ["IBIT", "MSTR", "COIN", "MARA", "RIOT", "CLSK", "HUT", "CIFR", "ARBK", "HIVE", "BITF", "WULF", "CORZ", "IREN"],
+        "Uranium, Nuclear & Green Energy": ["CCJ", "UEC", "NXE", "BWXT", "CEG", "URA", "URNM", "VST", "TLN", "ENPH", "FSLR", "SEDG", "RUN", "PLUG", "NEE", "BEP", "CWEN", "DNN", "UUUU", "URG"],
+        "Gold, Silver & Commodities": ["GLD", "SLV", "NEM", "GOLD", "AEM", "KGC", "WPM", "FNV", "AGI", "PAAS", "CDE", "HL", "EXK", "SSRM", "AU", "GFI", "HMY", "COPX", "FCX", "SCCO"],
+        "Defense & Aerospace": ["LMT", "RTX", "NOC", "GD", "BA", "LHX", "HII", "TDY", "TXT", "SPR", "RKLB", "SPCE", "PL", "LDOS", "CACI"]
     }
 }
