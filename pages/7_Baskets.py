@@ -32,13 +32,11 @@ t = {
         "col_ud": "Růst / Pokles",
         "col_top": "Top Mover (1D)",
         "exp_h": "⚙️ Nastavení a editace košů (JSON)",
-        "exp_c": "Můžete editovat koše pro watchlist.json. Změní se pouze sekce 'baskets', zbytek dat zůstane nedotčen.",
+        "exp_c": "Úpravy se uloží přímo do souboru watchlist.json v sekci 'baskets'. Zbytek dat zůstane nedotčen.",
         "json_lbl": "Konfigurace košů (sekce 'baskets'):",
         "btn_save": "💾 Uložit změny",
-        "btn_reset": "🔄 Tovární nastavení košů (Reset)",
         "msg_save": "Uloženo do watchlist.json! Obnovte stránku (F5).",
         "msg_err": "Chyba formátu JSON:",
-        "msg_reset": "Tovární nastavení obnoveno! Obnovte stránku (F5).",
         "msg_nodata": "Nepodařilo se stáhnout data. Zkontrolujte připojení nebo ticker symboly."
     },
     "EN": {
@@ -53,13 +51,11 @@ t = {
         "col_ud": "Up / Down",
         "col_top": "Top Mover (1D)",
         "exp_h": "⚙️ Baskets Setup & Editing (JSON)",
-        "exp_c": "You can edit baskets for watchlist.json. Only the 'baskets' section will change.",
+        "exp_c": "Modifications will be saved to watchlist.json in the 'baskets' section. Other data remains intact.",
         "json_lbl": "Baskets configuration:",
         "btn_save": "💾 Save Changes",
-        "btn_reset": "🔄 Factory Reset Baskets",
         "msg_save": "Saved to watchlist.json! Refresh the page (F5).",
         "msg_err": "JSON format error:",
-        "msg_reset": "Factory settings restored! Refresh the page (F5).",
         "msg_nodata": "Failed to download data. Check connection or ticker symbols."
     }
 }
@@ -73,29 +69,11 @@ def get_full_watchlist():
             with open(WATCHLIST_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
         except: pass
-    return {"portfolio": [], "watchlist": []}
-
-def get_default_baskets():
-    return {
-        "Indexy & Sektorové ETFs": ["SPY", "QQQ", "IWM", "DIA", "XLK", "XLF", "XLV", "XLE", "XLI", "XLY", "XLP", "XLU", "XLB", "SMH", "ARKK"],
-        "AI, Polovodiče & Hardware": ["NVDA", "AMD", "TSM", "ASML", "AVGO", "MU", "ARM", "INTC", "QCOM", "TXN", "AMAT", "LRCX", "KLAC", "MRVL", "SNPS", "CDNS", "MPWR", "SWKS", "ANET", "SMCI", "VRT", "DELL", "HPE", "WDC", "STX"],
-        "Software, Cloud & Cyber": ["MSFT", "CRM", "ADBE", "ORCL", "NOW", "PLTR", "CRWD", "PANW", "FTNT", "ZS", "CHKP", "NET", "DDOG", "SNOW", "MDB", "TEAM", "WDAY", "INTU", "ROP", "TYL", "PTC", "OKTA", "PATH", "U"],
-        "Big Tech, Internet & Média": ["AAPL", "GOOGL", "META", "AMZN", "NFLX", "TSLA", "SPOT", "ROKU", "PINS", "SNAP", "TTD", "MTCH", "DIS", "WBD", "CMCSA", "UBER", "ABNB", "DASH"],
-        "Finance, Banky & FinTech": ["JPM", "BAC", "WFC", "C", "GS", "MS", "V", "MA", "AXP", "PYPL", "SQ", "SOFI", "AFRM", "HOOD", "COF", "DFS", "SCHW", "IBKR", "BLK", "BX", "KKR"],
-        "Zdravotnictví (Pharma & Biotech)": ["LLY", "NVO", "VRTX", "UNH", "JNJ", "MRK", "ABBV", "AMGN", "PFE", "GILD", "BIIB", "REGN", "ISRG", "SYK", "BSX", "MDT", "ZTS", "TMO", "DHR", "ILMN"],
-        "Krypto, Těžaři & Blockchain": ["IBIT", "MSTR", "COIN", "MARA", "RIOT", "CLSK", "HUT", "CIFR", "ARBK", "HIVE", "BITF", "WULF", "CORZ", "IREN"],
-        "Uran, Jádro & Zelená Energie": ["CCJ", "UEC", "NXE", "BWXT", "CEG", "URA", "URNM", "VST", "TLN", "ENPH", "FSLR", "SEDG", "RUN", "PLUG", "NEE", "BEP", "CWEN", "DNN", "UUUU", "URG"],
-        "Zlato, Stříbro & Komodity": ["GLD", "SLV", "NEM", "GOLD", "AEM", "KGC", "WPM", "FNV", "AGI", "PAAS", "CDE", "HL", "EXK", "SSRM", "AU", "GFI", "HMY", "COPX", "FCX", "SCCO"],
-        "Obrana, Letectví & Vesmír": ["LMT", "RTX", "NOC", "GD", "BA", "LHX", "HII", "TDY", "TXT", "SPR", "RKLB", "SPCE", "PL", "LDOS", "CACI"]
-    }
+    return {"portfolio": [], "watchlist": [], "baskets": {}}
 
 def load_baskets():
     data = get_full_watchlist()
-    if "baskets" not in data or not data["baskets"]:
-        data["baskets"] = get_default_baskets()
-        with open(WATCHLIST_FILE, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=4, ensure_ascii=False)
-    return data["baskets"]
+    return data.get("baskets", {})
 
 baskets = load_baskets()
 
@@ -186,15 +164,13 @@ def calculate_metrics(df_close, baskets_dict):
 with st.spinner(_["spin"]):
     df_raw = fetch_basket_data(baskets)
 
-if not df_raw.empty:
+if not df_raw.empty and baskets:
     st.subheader(_["chart_h"])
     
     col_chart_sel, col_chart_time = st.columns([3, 1])
     available_baskets = list(baskets.keys())
     
-    default_sel = [b for b in ["Indexy & Sektorové ETFs", "AI, Polovodiče & Hardware"] if b in available_baskets]
-    if not default_sel and available_baskets:
-        default_sel = [available_baskets[0]]
+    default_sel = [available_baskets[0]] if available_baskets else []
         
     selected_baskets = col_chart_sel.multiselect(_["chart_sel"], available_baskets, default=default_sel, label_visibility="collapsed", placeholder=_["chart_sel"])
     period = col_chart_time.radio(_["chart_tf"], ["1M", "6M", "YTD", "1Y", "3Y", "MAX"], index=3, horizontal=True, label_visibility="collapsed")
@@ -255,10 +231,9 @@ if not df_raw.empty:
     with st.expander(_["exp_h"]):
         st.caption(_["exp_c"])
         
-        col_json, col_btn = st.columns([4, 1])
-        edit_json = col_json.text_area(_["json_lbl"], value=json.dumps(baskets, indent=4), height=300, label_visibility="collapsed")
+        edit_json = st.text_area(_["json_lbl"], value=json.dumps(baskets, indent=4), height=300, label_visibility="collapsed")
         
-        if col_btn.button(_["btn_save"], use_container_width=True):
+        if st.button(_["btn_save"], use_container_width=True):
             try:
                 new_baskets = json.loads(edit_json)
                 full_data = get_full_watchlist()
@@ -268,13 +243,9 @@ if not df_raw.empty:
                 st.success(_["msg_save"])
             except Exception as e:
                 st.error(f"{_['msg_err']} {e}")
-                
-        if col_btn.button(_["btn_reset"], use_container_width=True):
-            full_data = get_full_watchlist()
-            full_data["baskets"] = get_default_baskets()
-            with open(WATCHLIST_FILE, "w", encoding="utf-8") as f:
-                json.dump(full_data, f, indent=4, ensure_ascii=False)
-            st.success(_["msg_reset"])
 
 else:
-    st.warning(_["msg_nodata"])
+    if not baskets:
+        st.info("Nejsou definovány žádné koše. Přidejte je v souboru watchlist.json.")
+    else:
+        st.warning(_["msg_nodata"])
