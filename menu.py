@@ -50,7 +50,7 @@ def vykresli_menu():
             st.page_link("pages/4_Opcni_Radar.py", label="🎲 Opční Radar")
             st.page_link("pages/5_COT_Reporty.py", label="🏛️ COT Reporty")
             st.page_link("pages/6_Makro.py", label="🌍 Makro & Rizika")
-            st.page_link("pages/7_Baskets.py", label="🧺 Tematické Koše")
+            st.page_link("pages/7_Baskets.py", label="🧺 Koše")
             st.page_link("pages/8_Aktualizace.py", label="🗄️ Aktualizace Dat")
         else:
             st.page_link("Dashboard.py", label="🏠 Main Dashboard")
@@ -60,5 +60,5 @@ def vykresli_menu():
             st.page_link("pages/4_Opcni_Radar.py", label="🎲 Options Radar")
             st.page_link("pages/5_COT_Reporty.py", label="🏛️ COT Reports")
             st.page_link("pages/6_Makro.py", label="🌍 Macro & Risks")
-            st.page_link("pages/7_Baskets.py", label="🧺 Thematic Baskets")
+            st.page_link("pages/7_Baskets.py", label="🧺 Baskets")
             st.page_link("pages/8_Aktualizace.py", label="🗄️ Data Update")
