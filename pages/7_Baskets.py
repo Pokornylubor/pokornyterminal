@@ -18,20 +18,67 @@ sys.path.append(hlavni_slozka)
 import menu
 menu.vykresli_menu()
 
+# --- DICTIONARY ---
+t = {
+    "CZ": {
+        "title": "SEKTOROVÁ ROTACE & TEMATICKÉ KOŠE",
+        "desc": "SLEDOVÁNÍ TOKU LIKVIDITY, VÝKONNOSTI SEKTORŮ A TRENDŮ (BASKETS).",
+        "spin": "Stahování historie 180+ akcií a kalkulace metrik (může trvat 15-30 vteřin)...",
+        "chart_h": "Výkonnost sektorů v čase",
+        "chart_sel": "Vyberte koše k porovnání:",
+        "chart_tf": "Timeframe grafu:",
+        "table_h": "Matice agregované výkonnosti",
+        "col_theme": "Téma (Koš)",
+        "col_ud": "Růst / Pokles",
+        "col_top": "Top Mover (1D)",
+        "exp_h": "⚙️ Nastavení a editace košů (JSON)",
+        "exp_c": "Můžete přidávat vlastní koše a tickery. V případě potíží můžete tabulku resetovat na původní strukturu.",
+        "json_lbl": "JSON Konfigurace:",
+        "btn_save": "💾 Uložit změny",
+        "btn_reset": "🔄 Tovární nastavení",
+        "msg_save": "Uloženo! Obnovte stránku (F5).",
+        "msg_err": "Chyba formátu JSON:",
+        "msg_reset": "Tovární nastavení obnoveno! Obnovte stránku (F5).",
+        "msg_nodata": "Nepodařilo se stáhnout data. Zkontrolujte připojení nebo ticker symboly."
+    },
+    "EN": {
+        "title": "SECTOR ROTATION & THEMATIC BASKETS",
+        "desc": "TRACKING LIQUIDITY FLOW, SECTOR PERFORMANCE AND TRENDS (BASKETS).",
+        "spin": "Downloading 5-year history for 180+ stocks and calculating metrics (may take 15-30 seconds)...",
+        "chart_h": "Sector Performance Over Time",
+        "chart_sel": "Select baskets to compare:",
+        "chart_tf": "Chart Timeframe:",
+        "table_h": "Aggregated Performance Matrix",
+        "col_theme": "Theme (Basket)",
+        "col_ud": "Up / Down",
+        "col_top": "Top Mover (1D)",
+        "exp_h": "⚙️ Baskets Setup & Editing (JSON)",
+        "exp_c": "You can add custom baskets and tickers. In case of issues, you can factory reset the structure.",
+        "json_lbl": "JSON Configuration:",
+        "btn_save": "💾 Save Changes",
+        "btn_reset": "🔄 Factory Reset",
+        "msg_save": "Saved! Refresh the page (F5).",
+        "msg_err": "JSON format error:",
+        "msg_reset": "Factory settings restored! Refresh the page (F5).",
+        "msg_nodata": "Failed to download data. Check connection or ticker symbols."
+    }
+}
+_ = t.get(st.session_state.get("lang", "CZ"), t["CZ"])
+
 BASKETS_FILE = os.path.join(hlavni_slozka, "baskets.json")
 
 # --- MASIVNÍ DEFAULTNÍ KOŠE (180+ Akcií) ---
 DEFAULT_BASKETS = {
-    "Indexy & Sektorové ETFs": ["SPY", "QQQ", "IWM", "DIA", "XLK", "XLF", "XLV", "XLE", "XLI", "XLY", "XLP", "XLU", "XLB", "SMH", "ARKK"],
-    "AI, Polovodiče & Hardware": ["NVDA", "AMD", "TSM", "ASML", "AVGO", "MU", "ARM", "INTC", "QCOM", "TXN", "AMAT", "LRCX", "KLAC", "MRVL", "SNPS", "CDNS", "MPWR", "SWKS", "ANET", "SMCI", "VRT", "DELL", "HPE", "WDC", "STX"],
+    "Indexes & Sector ETFs": ["SPY", "QQQ", "IWM", "DIA", "XLK", "XLF", "XLV", "XLE", "XLI", "XLY", "XLP", "XLU", "XLB", "SMH", "ARKK"],
+    "AI, Semiconductors & Hardware": ["NVDA", "AMD", "TSM", "ASML", "AVGO", "MU", "ARM", "INTC", "QCOM", "TXN", "AMAT", "LRCX", "KLAC", "MRVL", "SNPS", "CDNS", "MPWR", "SWKS", "ANET", "SMCI", "VRT", "DELL", "HPE", "WDC", "STX"],
     "Software, Cloud & Cyber": ["MSFT", "CRM", "ADBE", "ORCL", "NOW", "PLTR", "CRWD", "PANW", "FTNT", "ZS", "CHKP", "NET", "DDOG", "SNOW", "MDB", "TEAM", "WDAY", "INTU", "ROP", "TYL", "PTC", "OKTA", "PATH", "U"],
-    "Big Tech, Internet & Média": ["AAPL", "GOOGL", "META", "AMZN", "NFLX", "TSLA", "SPOT", "ROKU", "PINS", "SNAP", "TTD", "MTCH", "DIS", "WBD", "CMCSA", "UBER", "ABNB", "DASH"],
-    "Finance, Banky & FinTech": ["JPM", "BAC", "WFC", "C", "GS", "MS", "V", "MA", "AXP", "PYPL", "SQ", "SOFI", "AFRM", "HOOD", "COF", "DFS", "SCHW", "IBKR", "BLK", "BX", "KKR"],
-    "Zdravotnictví (Pharma & Biotech)": ["LLY", "NVO", "VRTX", "UNH", "JNJ", "MRK", "ABBV", "AMGN", "PFE", "GILD", "BIIB", "REGN", "ISRG", "SYK", "BSX", "MDT", "ZTS", "TMO", "DHR", "ILMN"],
-    "Krypto, Těžaři & Blockchain": ["IBIT", "MSTR", "COIN", "MARA", "RIOT", "CLSK", "HUT", "CIFR", "ARBK", "HIVE", "BITF", "WULF", "CORZ", "IREN"],
-    "Uran, Jádro & Zelená Energie": ["CCJ", "UEC", "NXE", "BWXT", "CEG", "URA", "URNM", "VST", "TLN", "ENPH", "FSLR", "SEDG", "RUN", "PLUG", "NEE", "BEP", "CWEN", "DNN", "UUUU", "URG"],
-    "Zlato, Stříbro & Komodity": ["GLD", "SLV", "NEM", "GOLD", "AEM", "KGC", "WPM", "FNV", "AGI", "PAAS", "CDE", "HL", "EXK", "SSRM", "AU", "GFI", "HMY", "COPX", "FCX", "SCCO"],
-    "Obrana, Letectví & Vesmír": ["LMT", "RTX", "NOC", "GD", "BA", "LHX", "HII", "TDY", "TXT", "SPR", "RKLB", "SPCE", "PL", "LDOS", "CACI"]
+    "Big Tech, Internet & Media": ["AAPL", "GOOGL", "META", "AMZN", "NFLX", "TSLA", "SPOT", "ROKU", "PINS", "SNAP", "TTD", "MTCH", "DIS", "WBD", "CMCSA", "UBER", "ABNB", "DASH"],
+    "Finance, Banks & FinTech": ["JPM", "BAC", "WFC", "C", "GS", "MS", "V", "MA", "AXP", "PYPL", "SQ", "SOFI", "AFRM", "HOOD", "COF", "DFS", "SCHW", "IBKR", "BLK", "BX", "KKR"],
+    "Healthcare (Pharma & Biotech)": ["LLY", "NVO", "VRTX", "UNH", "JNJ", "MRK", "ABBV", "AMGN", "PFE", "GILD", "BIIB", "REGN", "ISRG", "SYK", "BSX", "MDT", "ZTS", "TMO", "DHR", "ILMN"],
+    "Crypto, Miners & Blockchain": ["IBIT", "MSTR", "COIN", "MARA", "RIOT", "CLSK", "HUT", "CIFR", "ARBK", "HIVE", "BITF", "WULF", "CORZ", "IREN"],
+    "Uranium, Nuclear & Green Energy": ["CCJ", "UEC", "NXE", "BWXT", "CEG", "URA", "URNM", "VST", "TLN", "ENPH", "FSLR", "SEDG", "RUN", "PLUG", "NEE", "BEP", "CWEN", "DNN", "UUUU", "URG"],
+    "Gold, Silver & Commodities": ["GLD", "SLV", "NEM", "GOLD", "AEM", "KGC", "WPM", "FNV", "AGI", "PAAS", "CDE", "HL", "EXK", "SSRM", "AU", "GFI", "HMY", "COPX", "FCX", "SCCO"],
+    "Defense & Aerospace": ["LMT", "RTX", "NOC", "GD", "BA", "LHX", "HII", "TDY", "TXT", "SPR", "RKLB", "SPCE", "PL", "LDOS", "CACI"]
 }
 
 def load_baskets():
@@ -47,8 +94,8 @@ def load_baskets():
 
 baskets = load_baskets()
 
-st.title("SEKTOROVÁ ROTACE & TEMATICKÉ KOŠE")
-st.caption("SLEDOVÁNÍ TOKU LIKVIDITY, VÝKONNOSTI SEKTORŮ A TRENDŮ (BASKETS).")
+st.title(_["title"])
+st.caption(_["desc"])
 st.markdown("---")
 
 @st.cache_data(ttl=3600)
@@ -62,7 +109,6 @@ def fetch_basket_data(baskets_dict):
         return pd.DataFrame()
         
     try:
-        # Hromadné stažení dat pro všechny tickery (může zabrat 10-20 vteřin, poté se uloží do cache)
         df = yf.download(all_tickers, period="5y", progress=False)
         if isinstance(df.columns, pd.MultiIndex):
             if 'Close' in df.columns.levels[0]:
@@ -119,7 +165,7 @@ def calculate_metrics(df_close, baskets_dict):
         top_mover_str = f"{top_mover_ticker} ({top_mover_perf:+.2f}%)" if top_mover_ticker else "N/A"
         
         results.append({
-            "Téma (Koš)": theme,
+            _["col_theme"]: theme,
             "1D": avg_perfs["1D"],
             "1W": avg_perfs["1W"],
             "1M": avg_perfs["1M"],
@@ -127,27 +173,26 @@ def calculate_metrics(df_close, baskets_dict):
             "1Y": avg_perfs["1Y"],
             "3Y": avg_perfs["3Y"],
             "5Y": avg_perfs["5Y"],
-            "Up/Down": f"{up_count} / {down_count}",
-            "Top Mover (1D)": top_mover_str
+            _["col_ud"]: f"{up_count} / {down_count}",
+            _["col_top"]: top_mover_str
         })
     return pd.DataFrame(results)
 
-with st.spinner("Stahování historie 180+ akcií a kalkulace metrik (může trvat 15-30 vteřin)..."):
+with st.spinner(_["spin"]):
     df_raw = fetch_basket_data(baskets)
 
 if not df_raw.empty:
-    # 1. GRAFICKÁ VIZUALIZACE (CHART)
-    st.subheader("Výkonnost sektorů v čase")
+    st.subheader(_["chart_h"])
     
     col_chart_sel, col_chart_time = st.columns([3, 1])
     available_baskets = list(baskets.keys())
     
-    default_sel = [b for b in ["Indexy & Sektorové ETFs", "AI, Polovodiče & Hardware"] if b in available_baskets]
+    default_sel = [b for b in ["Indexes & Sector ETFs", "AI, Semiconductors & Hardware"] if b in available_baskets]
     if not default_sel and available_baskets:
         default_sel = [available_baskets[0]]
         
-    selected_baskets = col_chart_sel.multiselect("Vyberte koše k porovnání:", available_baskets, default=default_sel, label_visibility="collapsed")
-    period = col_chart_time.radio("Timeframe grafu:", ["1M", "6M", "YTD", "1Y", "3Y", "5Y"], index=3, horizontal=True, label_visibility="collapsed")
+    selected_baskets = col_chart_sel.multiselect(_["chart_sel"], available_baskets, default=default_sel, label_visibility="collapsed", placeholder=_["chart_sel"])
+    period = col_chart_time.radio(_["chart_tf"], ["1M", "6M", "YTD", "1Y", "3Y", "5Y"], index=3, horizontal=True, label_visibility="collapsed")
     
     if selected_baskets:
         fig = go.Figure()
@@ -177,8 +222,7 @@ if not df_raw.empty:
 
     st.markdown("---")
     
-    # 2. TABULKA VÝKONNOSTI
-    st.subheader("Matice agregované výkonnosti")
+    st.subheader(_["table_h"])
     df_metrics = calculate_metrics(df_raw, baskets)
     
     if not df_metrics.empty:
@@ -203,26 +247,25 @@ if not df_raw.empty:
     
     st.markdown("---")
     
-    # 3. EDITACE KOŠŮ
-    with st.expander("⚙️ Nastavení a editace košů (JSON)"):
-        st.caption("Můžete přidávat vlastní koše a tickery. V případě potíží můžete tabulku resetovat na původní strukturu.")
+    with st.expander(_["exp_h"]):
+        st.caption(_["exp_c"])
         
         col_json, col_btn = st.columns([4, 1])
-        edit_json = col_json.text_area("JSON Konfigurace:", value=json.dumps(baskets, indent=4), height=300, label_visibility="collapsed")
+        edit_json = col_json.text_area(_["json_lbl"], value=json.dumps(baskets, indent=4), height=300, label_visibility="collapsed")
         
-        if col_btn.button("💾 Uložit změny", use_container_width=True):
+        if col_btn.button(_["btn_save"], use_container_width=True):
             try:
                 new_baskets = json.loads(edit_json)
                 with open(BASKETS_FILE, "w", encoding="utf-8") as f:
                     json.dump(new_baskets, f, indent=4, ensure_ascii=False)
-                st.success("Uloženo! Obnovte stránku (F5).")
+                st.success(_["msg_save"])
             except Exception as e:
-                st.error(f"Chyba formátu JSON: {e}")
+                st.error(f"{_['msg_err']} {e}")
                 
-        if col_btn.button("🔄 Tovární nastavení", use_container_width=True):
+        if col_btn.button(_["btn_reset"], use_container_width=True):
             with open(BASKETS_FILE, "w", encoding="utf-8") as f:
                 json.dump(DEFAULT_BASKETS, f, indent=4, ensure_ascii=False)
-            st.success("Tovární nastavení obnoveno! Obnovte stránku (F5).")
+            st.success(_["msg_reset"])
 
 else:
-    st.warning("Nepodařilo se stáhnout data. Zkontrolujte připojení nebo ticker symboly.")
+    st.warning(_["msg_nodata"])
