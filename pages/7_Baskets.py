@@ -26,17 +26,17 @@ t = {
         "spin": "Stahování maximální dostupné historie a kalkulace metrik (může chvíli trvat)...",
         "chart_h": "Výkonnost sektorů v čase",
         "chart_sel": "Vyberte koše k porovnání:",
-        "chart_tf": "Timeframe grafu:",
+        "chart_tf": "Časový horizont grafu:",
         "table_h": "Matice agregované výkonnosti",
         "col_theme": "Téma (Koš)",
         "col_ud": "Růst / Pokles",
         "col_top": "Top Mover (1D)",
         "exp_h": "⚙️ Nastavení a editace košů (JSON)",
-        "exp_c": "Můžete přidávat vlastní koše a tickery. V případě potíží můžete tabulku resetovat na původní strukturu.",
-        "json_lbl": "JSON Konfigurace:",
+        "exp_c": "Můžete editovat koše pro watchlist.json. Změní se pouze sekce 'baskets', zbytek dat zůstane nedotčen.",
+        "json_lbl": "Konfigurace košů (sekce 'baskets'):",
         "btn_save": "💾 Uložit změny",
-        "btn_reset": "🔄 Tovární nastavení",
-        "msg_save": "Uloženo! Obnovte stránku (F5).",
+        "btn_reset": "🔄 Tovární nastavení košů (Reset)",
+        "msg_save": "Uloženo do watchlist.json! Obnovte stránku (F5).",
         "msg_err": "Chyba formátu JSON:",
         "msg_reset": "Tovární nastavení obnoveno! Obnovte stránku (F5).",
         "msg_nodata": "Nepodařilo se stáhnout data. Zkontrolujte připojení nebo ticker symboly."
@@ -53,11 +53,11 @@ t = {
         "col_ud": "Up / Down",
         "col_top": "Top Mover (1D)",
         "exp_h": "⚙️ Baskets Setup & Editing (JSON)",
-        "exp_c": "You can add custom baskets and tickers. In case of issues, you can factory reset the structure.",
-        "json_lbl": "JSON Configuration:",
+        "exp_c": "You can edit baskets for watchlist.json. Only the 'baskets' section will change.",
+        "json_lbl": "Baskets configuration:",
         "btn_save": "💾 Save Changes",
-        "btn_reset": "🔄 Factory Reset",
-        "msg_save": "Saved! Refresh the page (F5).",
+        "btn_reset": "🔄 Factory Reset Baskets",
+        "msg_save": "Saved to watchlist.json! Refresh the page (F5).",
         "msg_err": "JSON format error:",
         "msg_reset": "Factory settings restored! Refresh the page (F5).",
         "msg_nodata": "Failed to download data. Check connection or ticker symbols."
@@ -65,32 +65,37 @@ t = {
 }
 _ = t.get(st.session_state.get("lang", "CZ"), t["CZ"])
 
-BASKETS_FILE = os.path.join(hlavni_slozka, "baskets.json")
+WATCHLIST_FILE = os.path.join(hlavni_slozka, "watchlist.json")
 
-# --- MASIVNÍ DEFAULTNÍ KOŠE (180+ Akcií) ---
-DEFAULT_BASKETS = {
-    "Indexes & Sector ETFs": ["SPY", "QQQ", "IWM", "DIA", "XLK", "XLF", "XLV", "XLE", "XLI", "XLY", "XLP", "XLU", "XLB", "SMH", "ARKK"],
-    "AI, Semiconductors & Hardware": ["NVDA", "AMD", "TSM", "ASML", "AVGO", "MU", "ARM", "INTC", "QCOM", "TXN", "AMAT", "LRCX", "KLAC", "MRVL", "SNPS", "CDNS", "MPWR", "SWKS", "ANET", "SMCI", "VRT", "DELL", "HPE", "WDC", "STX"],
-    "Software, Cloud & Cyber": ["MSFT", "CRM", "ADBE", "ORCL", "NOW", "PLTR", "CRWD", "PANW", "FTNT", "ZS", "CHKP", "NET", "DDOG", "SNOW", "MDB", "TEAM", "WDAY", "INTU", "ROP", "TYL", "PTC", "OKTA", "PATH", "U"],
-    "Big Tech, Internet & Media": ["AAPL", "GOOGL", "META", "AMZN", "NFLX", "TSLA", "SPOT", "ROKU", "PINS", "SNAP", "TTD", "MTCH", "DIS", "WBD", "CMCSA", "UBER", "ABNB", "DASH"],
-    "Finance, Banks & FinTech": ["JPM", "BAC", "WFC", "C", "GS", "MS", "V", "MA", "AXP", "PYPL", "SQ", "SOFI", "AFRM", "HOOD", "COF", "DFS", "SCHW", "IBKR", "BLK", "BX", "KKR"],
-    "Healthcare (Pharma & Biotech)": ["LLY", "NVO", "VRTX", "UNH", "JNJ", "MRK", "ABBV", "AMGN", "PFE", "GILD", "BIIB", "REGN", "ISRG", "SYK", "BSX", "MDT", "ZTS", "TMO", "DHR", "ILMN"],
-    "Crypto, Miners & Blockchain": ["IBIT", "MSTR", "COIN", "MARA", "RIOT", "CLSK", "HUT", "CIFR", "ARBK", "HIVE", "BITF", "WULF", "CORZ", "IREN"],
-    "Uranium, Nuclear & Green Energy": ["CCJ", "UEC", "NXE", "BWXT", "CEG", "URA", "URNM", "VST", "TLN", "ENPH", "FSLR", "SEDG", "RUN", "PLUG", "NEE", "BEP", "CWEN", "DNN", "UUUU", "URG"],
-    "Gold, Silver & Commodities": ["GLD", "SLV", "NEM", "GOLD", "AEM", "KGC", "WPM", "FNV", "AGI", "PAAS", "CDE", "HL", "EXK", "SSRM", "AU", "GFI", "HMY", "COPX", "FCX", "SCCO"],
-    "Defense & Aerospace": ["LMT", "RTX", "NOC", "GD", "BA", "LHX", "HII", "TDY", "TXT", "SPR", "RKLB", "SPCE", "PL", "LDOS", "CACI"]
-}
+def get_full_watchlist():
+    if os.path.exists(WATCHLIST_FILE):
+        try:
+            with open(WATCHLIST_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except: pass
+    return {"portfolio": [], "watchlist": []}
+
+def get_default_baskets():
+    return {
+        "Indexy & Sektorové ETFs": ["SPY", "QQQ", "IWM", "DIA", "XLK", "XLF", "XLV", "XLE", "XLI", "XLY", "XLP", "XLU", "XLB", "SMH", "ARKK"],
+        "AI, Polovodiče & Hardware": ["NVDA", "AMD", "TSM", "ASML", "AVGO", "MU", "ARM", "INTC", "QCOM", "TXN", "AMAT", "LRCX", "KLAC", "MRVL", "SNPS", "CDNS", "MPWR", "SWKS", "ANET", "SMCI", "VRT", "DELL", "HPE", "WDC", "STX"],
+        "Software, Cloud & Cyber": ["MSFT", "CRM", "ADBE", "ORCL", "NOW", "PLTR", "CRWD", "PANW", "FTNT", "ZS", "CHKP", "NET", "DDOG", "SNOW", "MDB", "TEAM", "WDAY", "INTU", "ROP", "TYL", "PTC", "OKTA", "PATH", "U"],
+        "Big Tech, Internet & Média": ["AAPL", "GOOGL", "META", "AMZN", "NFLX", "TSLA", "SPOT", "ROKU", "PINS", "SNAP", "TTD", "MTCH", "DIS", "WBD", "CMCSA", "UBER", "ABNB", "DASH"],
+        "Finance, Banky & FinTech": ["JPM", "BAC", "WFC", "C", "GS", "MS", "V", "MA", "AXP", "PYPL", "SQ", "SOFI", "AFRM", "HOOD", "COF", "DFS", "SCHW", "IBKR", "BLK", "BX", "KKR"],
+        "Zdravotnictví (Pharma & Biotech)": ["LLY", "NVO", "VRTX", "UNH", "JNJ", "MRK", "ABBV", "AMGN", "PFE", "GILD", "BIIB", "REGN", "ISRG", "SYK", "BSX", "MDT", "ZTS", "TMO", "DHR", "ILMN"],
+        "Krypto, Těžaři & Blockchain": ["IBIT", "MSTR", "COIN", "MARA", "RIOT", "CLSK", "HUT", "CIFR", "ARBK", "HIVE", "BITF", "WULF", "CORZ", "IREN"],
+        "Uran, Jádro & Zelená Energie": ["CCJ", "UEC", "NXE", "BWXT", "CEG", "URA", "URNM", "VST", "TLN", "ENPH", "FSLR", "SEDG", "RUN", "PLUG", "NEE", "BEP", "CWEN", "DNN", "UUUU", "URG"],
+        "Zlato, Stříbro & Komodity": ["GLD", "SLV", "NEM", "GOLD", "AEM", "KGC", "WPM", "FNV", "AGI", "PAAS", "CDE", "HL", "EXK", "SSRM", "AU", "GFI", "HMY", "COPX", "FCX", "SCCO"],
+        "Obrana, Letectví & Vesmír": ["LMT", "RTX", "NOC", "GD", "BA", "LHX", "HII", "TDY", "TXT", "SPR", "RKLB", "SPCE", "PL", "LDOS", "CACI"]
+    }
 
 def load_baskets():
-    if not os.path.exists(BASKETS_FILE):
-        with open(BASKETS_FILE, "w", encoding="utf-8") as f:
-            json.dump(DEFAULT_BASKETS, f, indent=4, ensure_ascii=False)
-        return DEFAULT_BASKETS
-    try:
-        with open(BASKETS_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except:
-        return DEFAULT_BASKETS
+    data = get_full_watchlist()
+    if "baskets" not in data or not data["baskets"]:
+        data["baskets"] = get_default_baskets()
+        with open(WATCHLIST_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=4, ensure_ascii=False)
+    return data["baskets"]
 
 baskets = load_baskets()
 
@@ -109,7 +114,6 @@ def fetch_basket_data(baskets_dict):
         return pd.DataFrame()
         
     try:
-        # Změna z "5y" na "max" pro stahování celé dostupné historie
         df = yf.download(all_tickers, period="max", progress=False)
         if isinstance(df.columns, pd.MultiIndex):
             if 'Close' in df.columns.levels[0]:
@@ -132,7 +136,6 @@ def calculate_metrics(df_close, baskets_dict):
         valid_tickers = [t for t in tickers if t in df_close.columns]
         if not valid_tickers: continue
         
-        # Přidán klíč MAX, odstraněn klíč 5Y
         theme_perf = {"1D": [], "1W": [], "1M": [], "YTD": [], "1Y": [], "3Y": [], "MAX": []}
         up_count = 0
         down_count = 0
@@ -161,8 +164,6 @@ def calculate_metrics(df_close, baskets_dict):
             
             if len(s) >= 252: theme_perf["1Y"].append((c_now / s.iloc[-252] - 1) * 100)
             if len(s) >= 756: theme_perf["3Y"].append((c_now / s.iloc[-756] - 1) * 100)
-            
-            # Kalkulace absolutního výnosu od prvního dostupného datového bodu tickeru
             if len(s) > 0: theme_perf["MAX"].append((c_now / s.iloc[0] - 1) * 100)
             
         avg_perfs = {k: np.mean(v) if v else None for k, v in theme_perf.items()}
@@ -191,7 +192,7 @@ if not df_raw.empty:
     col_chart_sel, col_chart_time = st.columns([3, 1])
     available_baskets = list(baskets.keys())
     
-    default_sel = [b for b in ["Indexes & Sector ETFs", "AI, Semiconductors & Hardware"] if b in available_baskets]
+    default_sel = [b for b in ["Indexy & Sektorové ETFs", "AI, Polovodiče & Hardware"] if b in available_baskets]
     if not default_sel and available_baskets:
         default_sel = [available_baskets[0]]
         
@@ -260,15 +261,19 @@ if not df_raw.empty:
         if col_btn.button(_["btn_save"], use_container_width=True):
             try:
                 new_baskets = json.loads(edit_json)
-                with open(BASKETS_FILE, "w", encoding="utf-8") as f:
-                    json.dump(new_baskets, f, indent=4, ensure_ascii=False)
+                full_data = get_full_watchlist()
+                full_data["baskets"] = new_baskets
+                with open(WATCHLIST_FILE, "w", encoding="utf-8") as f:
+                    json.dump(full_data, f, indent=4, ensure_ascii=False)
                 st.success(_["msg_save"])
             except Exception as e:
                 st.error(f"{_['msg_err']} {e}")
                 
         if col_btn.button(_["btn_reset"], use_container_width=True):
-            with open(BASKETS_FILE, "w", encoding="utf-8") as f:
-                json.dump(DEFAULT_BASKETS, f, indent=4, ensure_ascii=False)
+            full_data = get_full_watchlist()
+            full_data["baskets"] = get_default_baskets()
+            with open(WATCHLIST_FILE, "w", encoding="utf-8") as f:
+                json.dump(full_data, f, indent=4, ensure_ascii=False)
             st.success(_["msg_reset"])
 
 else:
