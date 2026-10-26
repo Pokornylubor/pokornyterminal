@@ -133,7 +133,7 @@ if not df_results.empty:
             "1D Δ": "{:+.2f} %",
             "1W Δ": "{:+.2f} %",
             "YTD Δ": "{:+.2f} %"
-        }).applymap(
+        }).map(
             lambda x: 'color: #26A69A; font-weight: bold;' if x > 0 else ('color: #EF5350; font-weight: bold;' if x < 0 else 'color: #787B86;'),
             subset=["1D Δ", "1W Δ", "YTD Δ"]
         )
