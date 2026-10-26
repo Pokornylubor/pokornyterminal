@@ -25,7 +25,7 @@ t = {
         "desc": "SLEDOVÁNÍ TOKU LIKVIDITY A VÝKONNOSTI SEKTORŮ.",
         "spin": "Stahování maximální dostupné historie a kalkulace metrik (může chvíli trvat)...",
         "chart_h": "Výkonnost sektorů v čase",
-        "chart_sel": "Vyberte koše k porovnání:",
+        "chart_sel": "Vyberte koše k porovnání...",
         "chart_tf": "Časový horizont grafu:",
         "table_h": "Matice agregované výkonnosti",
         "col_theme": "Téma (Koš)",
@@ -35,16 +35,17 @@ t = {
         "exp_c": "Úpravy se uloží přímo do souboru watchlist.json v sekci 'baskets'. Zbytek dat zůstane nedotčen.",
         "json_lbl": "Konfigurace košů (sekce 'baskets'):",
         "btn_save": "💾 Uložit změny",
-        "msg_save": "Uloženo do watchlist.json! Obnovte stránku (F5).",
+        "msg_save": "Úspěšně uloženo do watchlist.json! Aktualizuji terminál...",
         "msg_err": "Chyba formátu JSON:",
-        "msg_nodata": "Nepodařilo se stáhnout data. Zkontrolujte připojení nebo ticker symboly."
+        "msg_nodata": "Nepodařilo se stáhnout data. Zkontrolujte připojení nebo ticker symboly.",
+        "msg_empty": "Nejsou definovány žádné koše. Přidejte je v nastavení přes JSON editor."
     },
     "EN": {
         "title": "BASKETS",
         "desc": "TRACKING LIQUIDITY FLOW AND SECTOR PERFORMANCE.",
         "spin": "Downloading max available history and calculating metrics (may take a while)...",
         "chart_h": "Sector Performance Over Time",
-        "chart_sel": "Select baskets to compare:",
+        "chart_sel": "Select baskets to compare...",
         "chart_tf": "Chart Timeframe:",
         "table_h": "Aggregated Performance Matrix",
         "col_theme": "Theme (Basket)",
@@ -54,9 +55,10 @@ t = {
         "exp_c": "Modifications will be saved to watchlist.json in the 'baskets' section. Other data remains intact.",
         "json_lbl": "Baskets configuration:",
         "btn_save": "💾 Save Changes",
-        "msg_save": "Saved to watchlist.json! Refresh the page (F5).",
+        "msg_save": "Successfully saved to watchlist.json! Refreshing terminal...",
         "msg_err": "JSON format error:",
-        "msg_nodata": "Failed to download data. Check connection or ticker symbols."
+        "msg_nodata": "Failed to download data. Check connection or ticker symbols.",
+        "msg_empty": "No baskets defined. Add them in the settings via the JSON editor."
     }
 }
 _ = t.get(st.session_state.get("lang", "CZ"), t["CZ"])
@@ -170,9 +172,8 @@ if not df_raw.empty and baskets:
     col_chart_sel, col_chart_time = st.columns([3, 1])
     available_baskets = list(baskets.keys())
     
-    default_sel = [available_baskets[0]] if available_baskets else []
-        
-    selected_baskets = col_chart_sel.multiselect(_["chart_sel"], available_baskets, default=default_sel, label_visibility="collapsed", placeholder=_["chart_sel"])
+    # Výchozí stav grafu: prázdný seznam (nic není vybráno)
+    selected_baskets = col_chart_sel.multiselect(_["chart_sel"], available_baskets, default=[], label_visibility="collapsed", placeholder=_["chart_sel"])
     period = col_chart_time.radio(_["chart_tf"], ["1M", "6M", "YTD", "1Y", "3Y", "MAX"], index=3, horizontal=True, label_visibility="collapsed")
     
     if selected_baskets:
@@ -240,12 +241,16 @@ if not df_raw.empty and baskets:
                 full_data["baskets"] = new_baskets
                 with open(WATCHLIST_FILE, "w", encoding="utf-8") as f:
                     json.dump(full_data, f, indent=4, ensure_ascii=False)
+                
+                # Záměrné vyčištění cache pro načtení čerstvých dat
+                st.cache_data.clear()
                 st.success(_["msg_save"])
+                st.rerun() # Okamžitý refresh stránky bez nutnosti F5
             except Exception as e:
                 st.error(f"{_['msg_err']} {e}")
 
 else:
     if not baskets:
-        st.info("Nejsou definovány žádné koše. Přidejte je v souboru watchlist.json.")
+        st.info(_["msg_empty"])
     else:
         st.warning(_["msg_nodata"])
