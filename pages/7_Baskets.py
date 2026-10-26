@@ -21,9 +21,9 @@ menu.vykresli_menu()
 # --- DICTIONARY ---
 t = {
     "CZ": {
-        "title": "SEKTOROVÁ ROTACE & TEMATICKÉ KOŠE",
-        "desc": "SLEDOVÁNÍ TOKU LIKVIDITY, VÝKONNOSTI SEKTORŮ A TRENDŮ (BASKETS).",
-        "spin": "Stahování historie 180+ akcií a kalkulace metrik (může trvat 15-30 vteřin)...",
+        "title": "KOŠE",
+        "desc": "SLEDOVÁNÍ TOKU LIKVIDITY A VÝKONNOSTI SEKTORŮ.",
+        "spin": "Stahování maximální dostupné historie a kalkulace metrik (může chvíli trvat)...",
         "chart_h": "Výkonnost sektorů v čase",
         "chart_sel": "Vyberte koše k porovnání:",
         "chart_tf": "Timeframe grafu:",
@@ -42,9 +42,9 @@ t = {
         "msg_nodata": "Nepodařilo se stáhnout data. Zkontrolujte připojení nebo ticker symboly."
     },
     "EN": {
-        "title": "SECTOR ROTATION & THEMATIC BASKETS",
-        "desc": "TRACKING LIQUIDITY FLOW, SECTOR PERFORMANCE AND TRENDS (BASKETS).",
-        "spin": "Downloading 5-year history for 180+ stocks and calculating metrics (may take 15-30 seconds)...",
+        "title": "BASKETS",
+        "desc": "TRACKING LIQUIDITY FLOW AND SECTOR PERFORMANCE.",
+        "spin": "Downloading max available history and calculating metrics (may take a while)...",
         "chart_h": "Sector Performance Over Time",
         "chart_sel": "Select baskets to compare:",
         "chart_tf": "Chart Timeframe:",
@@ -109,7 +109,8 @@ def fetch_basket_data(baskets_dict):
         return pd.DataFrame()
         
     try:
-        df = yf.download(all_tickers, period="5y", progress=False)
+        # Změna z "5y" na "max" pro stahování celé dostupné historie
+        df = yf.download(all_tickers, period="max", progress=False)
         if isinstance(df.columns, pd.MultiIndex):
             if 'Close' in df.columns.levels[0]:
                 df_close = df['Close']
@@ -131,7 +132,8 @@ def calculate_metrics(df_close, baskets_dict):
         valid_tickers = [t for t in tickers if t in df_close.columns]
         if not valid_tickers: continue
         
-        theme_perf = {"1D": [], "1W": [], "1M": [], "YTD": [], "1Y": [], "3Y": [], "5Y": []}
+        # Přidán klíč MAX, odstraněn klíč 5Y
+        theme_perf = {"1D": [], "1W": [], "1M": [], "YTD": [], "1Y": [], "3Y": [], "MAX": []}
         up_count = 0
         down_count = 0
         top_mover_ticker = ""
@@ -159,7 +161,9 @@ def calculate_metrics(df_close, baskets_dict):
             
             if len(s) >= 252: theme_perf["1Y"].append((c_now / s.iloc[-252] - 1) * 100)
             if len(s) >= 756: theme_perf["3Y"].append((c_now / s.iloc[-756] - 1) * 100)
-            if len(s) >= 1260: theme_perf["5Y"].append((c_now / s.iloc[-1260] - 1) * 100)
+            
+            # Kalkulace absolutního výnosu od prvního dostupného datového bodu tickeru
+            if len(s) > 0: theme_perf["MAX"].append((c_now / s.iloc[0] - 1) * 100)
             
         avg_perfs = {k: np.mean(v) if v else None for k, v in theme_perf.items()}
         top_mover_str = f"{top_mover_ticker} ({top_mover_perf:+.2f}%)" if top_mover_ticker else "N/A"
@@ -172,7 +176,7 @@ def calculate_metrics(df_close, baskets_dict):
             "YTD": avg_perfs["YTD"],
             "1Y": avg_perfs["1Y"],
             "3Y": avg_perfs["3Y"],
-            "5Y": avg_perfs["5Y"],
+            "MAX": avg_perfs["MAX"],
             _["col_ud"]: f"{up_count} / {down_count}",
             _["col_top"]: top_mover_str
         })
@@ -192,7 +196,7 @@ if not df_raw.empty:
         default_sel = [available_baskets[0]]
         
     selected_baskets = col_chart_sel.multiselect(_["chart_sel"], available_baskets, default=default_sel, label_visibility="collapsed", placeholder=_["chart_sel"])
-    period = col_chart_time.radio(_["chart_tf"], ["1M", "6M", "YTD", "1Y", "3Y", "5Y"], index=3, horizontal=True, label_visibility="collapsed")
+    period = col_chart_time.radio(_["chart_tf"], ["1M", "6M", "YTD", "1Y", "3Y", "MAX"], index=3, horizontal=True, label_visibility="collapsed")
     
     if selected_baskets:
         fig = go.Figure()
@@ -205,8 +209,8 @@ if not df_raw.empty:
             
             if period == "YTD":
                 df_theme = df_theme[df_theme.index.year == datetime.now().year]
-            else:
-                days_map = {"1M": 21, "6M": 126, "1Y": 252, "3Y": 756, "5Y": 1260}
+            elif period != "MAX":
+                days_map = {"1M": 21, "6M": 126, "1Y": 252, "3Y": 756}
                 df_theme = df_theme.tail(days_map.get(period, 252))
                 
             if df_theme.empty: continue
@@ -240,8 +244,8 @@ if not df_raw.empty:
             
         styled_df = df_metrics.style.format({
             "1D": format_val, "1W": format_val, "1M": format_val, 
-            "YTD": format_val, "1Y": format_val, "3Y": format_val, "5Y": format_val
-        }).map(style_val, subset=["1D", "1W", "1M", "YTD", "1Y", "3Y", "5Y"]).hide(axis="index")
+            "YTD": format_val, "1Y": format_val, "3Y": format_val, "MAX": format_val
+        }).map(style_val, subset=["1D", "1W", "1M", "YTD", "1Y", "3Y", "MAX"]).hide(axis="index")
 
         st.table(styled_df)
     
