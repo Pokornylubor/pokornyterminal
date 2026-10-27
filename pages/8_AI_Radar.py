@@ -69,19 +69,24 @@ _ = t.get(current_lang, t["CZ"])
 
 WATCHLIST_FILE = os.path.join(hlavni_slozka, "watchlist.json")
 
-def load_tickers():
+def load_app_data():
     if os.path.exists(WATCHLIST_FILE):
         try:
             with open(WATCHLIST_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                return list(set(data.get("portfolio", []) + data.get("watchlist", [])))
+                return json.load(f)
         except: pass
-    return ["AAPL", "MSFT", "NVDA"]
+    return {"portfolio": [], "watchlist": [], "settings": {}}
 
-# --- NAČTENÍ KONFIGURACE Z GLOBÁLNÍ PAMĚTI ---
-api_key = st.session_state.get("ai_api_key", "")
-model_provider = st.session_state.get("ai_provider", "Groq")
-selected_model = st.session_state.get("ai_model", "")
+app_data = load_app_data()
+saved_settings = app_data.get("settings", {})
+
+def load_tickers():
+    return list(set(app_data.get("portfolio", []) + app_data.get("watchlist", [])))
+
+# --- NAČTENÍ KONFIGURACE (Priorita má JSON, fallback je prázdno) ---
+api_key = st.session_state.get("ai_api_key", saved_settings.get("ai_api_key", ""))
+model_provider = st.session_state.get("ai_provider", saved_settings.get("ai_provider", "Groq"))
+selected_model = st.session_state.get("ai_model", saved_settings.get("ai_model", ""))
 
 st.title(_["title"])
 st.caption(_["desc"])
@@ -92,16 +97,11 @@ if not api_key or not selected_model:
     st.stop()
 
 # --- SPRÁVA STAVU PRO CHAT A ANALÝZU ---
-if "radar_vybrany_ticker" not in st.session_state:
-    st.session_state.radar_vybrany_ticker = None
-if "radar_analyza" not in st.session_state:
-    st.session_state.radar_analyza = None
-if "radar_zpravy_text" not in st.session_state:
-    st.session_state.radar_zpravy_text = ""
-if "radar_zpravy_list" not in st.session_state:
-    st.session_state.radar_zpravy_list = []
-if "radar_chat" not in st.session_state:
-    st.session_state.radar_chat = []
+if "radar_vybrany_ticker" not in st.session_state: st.session_state.radar_vybrany_ticker = None
+if "radar_analyza" not in st.session_state: st.session_state.radar_analyza = None
+if "radar_zpravy_text" not in st.session_state: st.session_state.radar_zpravy_text = ""
+if "radar_zpravy_list" not in st.session_state: st.session_state.radar_zpravy_list = []
+if "radar_chat" not in st.session_state: st.session_state.radar_chat = []
 
 # --- VÝBĚR TICKERU ---
 tickers = load_tickers()
@@ -113,7 +113,6 @@ custom_val = c2.text_input(_["tick_cust"], placeholder="")
 
 vybrany_ticker = custom_val.strip().upper() if custom_val.strip() else dropdown_val
 
-# Reset stavu pokud uživatel změnil ticker
 if vybrany_ticker != st.session_state.radar_vybrany_ticker:
     st.session_state.radar_vybrany_ticker = vybrany_ticker
     st.session_state.radar_analyza = None
@@ -156,14 +155,12 @@ def fetch_news(ticker):
     return news_list
 
 def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, provider, model_name, lang):
-    # Přidán max_retries=3 pro neprůstřelnost enginu
     if provider == "Groq":
         client = OpenAI(api_key=api_klic, base_url="https://api.groq.com/openai/v1", max_retries=3)
     else:
         client = OpenAI(api_key=api_klic, max_retries=3)
 
     jazyk_vyzva = "v češtině (Czech)" if lang == "CZ" else "in English"
-    
     prompt = f"""
     You are an elite quantitative hedge fund analyst. Read the following recent news headlines for ticker {ticker}.
     Synthesize them into one unified, professional market update. Return the output STRICTLY as valid JSON.
@@ -179,12 +176,7 @@ def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, provider, model_na
     Do not output anything other than raw JSON.
     """
     try:
-        response = client.chat.completions.create(
-            model=model_name, 
-            messages=[{"role": "user", "content": prompt}], 
-            temperature=0.1,
-            timeout=20.0
-        )
+        response = client.chat.completions.create(model=model_name, messages=[{"role": "user", "content": prompt}], temperature=0.1, timeout=20.0)
         vysledek = response.choices[0].message.content
         if vysledek.startswith("```json"): vysledek = vysledek.strip("`").replace("json\n", "")
         return json.loads(vysledek)
@@ -192,7 +184,6 @@ def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, provider, model_na
         return {"error": str(e)}
 
 def chat_s_ai(otazka, kontext_zprav, analyza_json, historie, api_klic, provider, model_name, lang):
-    # Přidán max_retries=3 pro stabilitu doptávání
     if provider == "Groq":
         client = OpenAI(api_key=api_klic, base_url="[https://api.groq.com/openai/v1](https://api.groq.com/openai/v1)", max_retries=3)
     else:
@@ -204,30 +195,20 @@ def chat_s_ai(otazka, kontext_zprav, analyza_json, historie, api_klic, provider,
     messages = [
         {"role": "system", "content": f"Jsi institucionální analytik hedgeového fondu. Odpovídej uživateli na dotazy ohledně této tržní události. Buď přímý, analytický a přesný. Zde je tvá původní syntéza: {analyza_str}. Zdrojové zprávy: {kontext_zprav}. {jazyk_vyzva}"}
     ]
-    
-    for msg in historie:
-        messages.append({"role": msg["role"], "content": msg["content"]})
-        
+    for msg in historie: messages.append({"role": msg["role"], "content": msg["content"]})
     messages.append({"role": "user", "content": otazka})
     
     try:
-        response = client.chat.completions.create(
-            model=model_name, 
-            messages=messages, 
-            temperature=0.3,
-            timeout=15.0
-        )
+        response = client.chat.completions.create(model=model_name, messages=messages, temperature=0.3, timeout=15.0)
         return response.choices[0].message.content
     except Exception as e:
         return f"⚠️ Došlo k výpadku spojení s AI serverem ({e}). Zkuste to prosím znovu."
 
 if vybrany_ticker:
     st.markdown("<br>", unsafe_allow_html=True)
-    
     if st.button(_["btn_ai"], use_container_width=True):
         with st.spinner(_["spin_search"]):
             news_data = fetch_news(vybrany_ticker)
-            
         if not news_data:
             st.warning(_["err_news"])
         else:
@@ -249,17 +230,13 @@ if vybrany_ticker:
         st.markdown("<br>", unsafe_allow_html=True)
         with st.container(border=True):
             st.markdown(f"### 🔹 {a.get('hlavni_nadpis', 'Analýza trhu')}")
-            
             barva = "green" if skore > 0 else "red" if skore < 0 else "grey"
             st.markdown(f"`{vybrany_ticker}` &nbsp; <span style='color:{barva}; font-weight:bold; background-color:rgba(255,255,255,0.1); padding: 2px 6px; border-radius:4px;'>{skore:+.4f}</span>", unsafe_allow_html=True)
             st.caption(_["sent_desc"])
-            
             st.markdown("---")
             st.markdown(f"#### {_['ai_expl']}")
-            
             st.markdown(f"**{_['what_happened']}**")
             st.write(a.get("co_se_stalo", ""))
-            
             st.markdown(f"**{_['why_move']}**")
             st.write(a.get("proc_to_hybe_trhem", ""))
             
@@ -267,33 +244,19 @@ if vybrany_ticker:
             for article in st.session_state.radar_zpravy_list:
                 st.markdown(f"- **{article['pub_time_str']}** | [{article['title']}]({article['link']})")
 
-        # --- Q&A CHAT SEKCE ---
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown(f"#### {_['chat_h']}")
         
         for msg in st.session_state.radar_chat:
-            with st.chat_message(msg["role"]):
-                st.markdown(msg["content"])
+            with st.chat_message(msg["role"]): st.markdown(msg["content"])
                 
         if prompt := st.chat_input(_["chat_ph"]):
             st.session_state.radar_chat.append({"role": "user", "content": prompt})
-            with st.chat_message("user"):
-                st.markdown(prompt)
+            with st.chat_message("user"): st.markdown(prompt)
                 
             with st.chat_message("assistant"):
                 with st.spinner("AI formuluje odpověď..."):
-                    odpoved = chat_s_ai(
-                        prompt, 
-                        st.session_state.radar_zpravy_text, 
-                        st.session_state.radar_analyza, 
-                        st.session_state.radar_chat[:-1],
-                        api_key, 
-                        model_provider, 
-                        selected_model, 
-                        current_lang
-                    )
+                    odpoved = chat_s_ai(prompt, st.session_state.radar_zpravy_text, st.session_state.radar_analyza, st.session_state.radar_chat[:-1], api_key, model_provider, selected_model, current_lang)
                     st.markdown(odpoved)
-            
-            # Neukládat chybu do paměti chatu, aby nezůstala viset v kontextu
             if not odpoved.startswith("⚠️"):
                 st.session_state.radar_chat.append({"role": "assistant", "content": odpoved})

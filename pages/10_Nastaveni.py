@@ -1,6 +1,7 @@
 import streamlit as st
 import os
 import sys
+import json
 from openai import OpenAI
 
 # --- INITIAL SETUP ---
@@ -15,6 +16,26 @@ menu.vykresli_menu()
 
 current_lang = st.session_state.get("lang", "CZ")
 
+WATCHLIST_FILE = os.path.join(hlavni_slozka, "watchlist.json")
+
+def load_watchlist_data():
+    if os.path.exists(WATCHLIST_FILE):
+        try:
+            with open(WATCHLIST_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except: pass
+    return {}
+
+def save_settings_to_json(ai_key, provider, model):
+    data = load_watchlist_data()
+    data["settings"] = {
+        "ai_api_key": ai_key,
+        "ai_provider": provider,
+        "ai_model": model
+    }
+    with open(WATCHLIST_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=4, ensure_ascii=False)
+
 # --- DICTIONARY ---
 t = {
     "CZ": {
@@ -27,8 +48,8 @@ t = {
         "api_lbl": "API Klíč (Groq / OpenAI):",
         "prov_lbl": "Poskytovatel:",
         "mod_lbl": "Výchozí model:",
-        "save_btn": "💾 Uložit konfiguraci AI",
-        "saved_msg": "Konfigurace byla úspěšně uložena pro aktuální relaci.",
+        "save_btn": "💾 Uložit konfiguraci napevno",
+        "saved_msg": "Konfigurace byla úspěšně uložena do watchlist.json.",
         "no_models": "Zadejte platný API klíč pro načtení modelů.",
         "future_h": "🔧 Budoucí moduly",
         "future_desc": "Tato sekce je připravena pro přidání napojení na brokery, upozornění (Webhooky) či exporty."
@@ -43,8 +64,8 @@ t = {
         "api_lbl": "API Key (Groq / OpenAI):",
         "prov_lbl": "Provider:",
         "mod_lbl": "Default Model:",
-        "save_btn": "💾 Save AI Configuration",
-        "saved_msg": "Configuration successfully saved for the current session.",
+        "save_btn": "💾 Save Configuration Permanently",
+        "saved_msg": "Configuration successfully saved to watchlist.json.",
         "no_models": "Enter a valid API key to fetch models.",
         "future_h": "🔧 Future Modules",
         "future_desc": "This section is reserved for broker integrations, webhooks, or data exports."
@@ -72,7 +93,6 @@ def fetch_available_models(api_klic, provider):
 
 col1, col2 = st.columns(2, gap="large")
 
-# LEVÝ SLOUPEC - UI & BUDOUCNOST
 with col1:
     with st.container(border=True):
         st.markdown(f"#### {_['ui_h']}")
@@ -85,18 +105,19 @@ with col1:
         st.markdown(f"#### {_['future_h']}")
         st.info(_["future_desc"])
 
-# PRAVÝ SLOUPEC - AI KONFIGURACE
 with col2:
     with st.container(border=True):
         st.markdown(f"#### {_['ai_h']}")
         st.caption(_["ai_desc"])
         
-        # Inicializace proměnných v session_state
-        if "ai_api_key" not in st.session_state: st.session_state.ai_api_key = ""
-        if "ai_provider" not in st.session_state: st.session_state.ai_provider = "Groq"
-        if "ai_model" not in st.session_state: st.session_state.ai_model = ""
+        # Načtení trvalých dat z JSONu při startu
+        app_data = load_watchlist_data()
+        saved_settings = app_data.get("settings", {})
+        
+        if "ai_api_key" not in st.session_state: st.session_state.ai_api_key = saved_settings.get("ai_api_key", "")
+        if "ai_provider" not in st.session_state: st.session_state.ai_provider = saved_settings.get("ai_provider", "Groq")
+        if "ai_model" not in st.session_state: st.session_state.ai_model = saved_settings.get("ai_model", "")
 
-        # Formulářové prvky (čtou hodnotu ze session_state)
         temp_api = st.text_input(_["api_lbl"], value=st.session_state.ai_api_key, type="password", placeholder="gsk_... / sk-...")
         temp_prov = st.selectbox(_["prov_lbl"], ["Groq", "OpenAI"], index=0 if st.session_state.ai_provider == "Groq" else 1)
         
@@ -117,4 +138,7 @@ with col2:
             st.session_state.ai_provider = temp_prov
             if temp_model:
                 st.session_state.ai_model = temp_model
+            
+            # Zápis do JSONu
+            save_settings_to_json(temp_api, temp_prov, temp_model)
             st.success(_["saved_msg"])
