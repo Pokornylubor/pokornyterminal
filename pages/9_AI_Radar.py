@@ -97,11 +97,19 @@ with st.expander("⚙️ Konfigurace AI Enginu", expanded=True):
     model_provider = col_provider.selectbox(_["prov_lbl"], ["Groq", "OpenAI"])
     
     if model_provider == "Groq":
-        selected_model = col_model.selectbox(_["mod_lbl"], [
-            "llama3-70b-8192", 
-            "llama3-8b-8192",
-            "mixtral-8x7b-32768"
-        ], index=0)
+        # Přidána podpora pro manuální zápis při budoucím výpadku
+        groq_options = [
+            "llama-3.3-70b-versatile",
+            "llama-3.1-8b-instant",
+            "mixtral-8x7b-32768",
+            "gemma2-9b-it",
+            "Vlastní model (napsat manuálně)"
+        ]
+        selected_option = col_model.selectbox(_["mod_lbl"], groq_options, index=0)
+        if selected_option == "Vlastní model (napsat manuálně)":
+            selected_model = col_model.text_input("Zadejte přesný název Groq modelu:", value="llama-3.3-70b-versatile")
+        else:
+            selected_model = selected_option
     else:
         selected_model = col_model.selectbox(_["mod_lbl"], ["gpt-4o-mini", "gpt-4o"], index=0)
 
