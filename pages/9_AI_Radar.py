@@ -27,8 +27,8 @@ t = {
         "desc": "KVANTITATIVNÍ A FUNDAMENTÁLNÍ ANALÝZA TRŽNÍCH KATALYZÁTORŮ.",
         "api_lbl": "🔑 API Klíč (Groq / OpenAI):",
         "prov_lbl": "Poskytovatel infrastruktury:",
-        "mod_lbl": "Jazykový model (LLM):",
-        "api_help": "Pro analýzu zpráv vložte API klíč. Doporučujeme Groq pro bleskové a bezplatné zpracování.",
+        "mod_lbl": "Dostupné modely pro váš klíč:",
+        "api_help": "Vložte API klíč pro dynamické načtení povolených modelů.",
         "tick_lbl": "Zvolte ticker pro analýzu:",
         "news_h": "Poslední katalyzátory a zprávy:",
         "btn_ai": "🧠 Generovat AI Syntézu",
@@ -45,15 +45,16 @@ t = {
         "risk_off": "-Risk-Off",
         "neutral": "Neutrální",
         "no_title": "Bez titulku",
-        "no_time": "Neznámý čas"
+        "no_time": "Neznámý čas",
+        "no_models": "Nepodařilo se načíst modely. Zkontrolujte API klíč."
     },
     "EN": {
         "title": "AI SENTIMENT & NEWS RADAR",
         "desc": "QUANTITATIVE AND FUNDAMENTAL ANALYSIS OF MARKET CATALYSTS.",
         "api_lbl": "🔑 API Key (Groq / OpenAI):",
         "prov_lbl": "Infrastructure Provider:",
-        "mod_lbl": "Language Model (LLM):",
-        "api_help": "Insert an API key for news analysis. We recommend Groq for lightning-fast, free processing.",
+        "mod_lbl": "Available models for your key:",
+        "api_help": "Insert API key to dynamically fetch allowed models.",
         "tick_lbl": "Select ticker for analysis:",
         "news_h": "Latest Catalysts and News:",
         "btn_ai": "🧠 Generate AI Synthesis",
@@ -70,7 +71,8 @@ t = {
         "risk_off": "-Risk-Off",
         "neutral": "Neutral",
         "no_title": "No Title",
-        "no_time": "Unknown Time"
+        "no_time": "Unknown Time",
+        "no_models": "Failed to fetch models. Check your API key."
     }
 }
 _ = t.get(current_lang, t["CZ"])
@@ -86,34 +88,42 @@ def load_tickers():
         except: pass
     return ["AAPL", "MSFT", "NVDA"]
 
+# --- AUTO-DISCOVERY MODELŮ ---
+@st.cache_data(ttl=300)
+def fetch_available_models(api_klic, provider):
+    if not api_klic:
+        return []
+    try:
+        if provider == "Groq":
+            client = OpenAI(api_key=api_klic, base_url="https://api.groq.com/openai/v1")
+            models = client.models.list().data
+            # Filtrujeme jen užitečné textové LLM (vyřadíme Whisper a tool-only modely)
+            llm_models = [m.id for m in models if "whisper" not in m.id and "tool-use" not in m.id]
+            return sorted(llm_models, reverse=True)
+        else:
+            return ["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo"]
+    except:
+        return []
+
 st.title(_["title"])
 st.caption(_["desc"])
 st.markdown("---")
 
-# --- API KEY MANAGEMENT ---
-with st.expander("⚙️ Konfigurace AI Enginu", expanded=True):
+# --- API KEY & DYNAMIC MODEL SELECTION ---
+with st.expander("⚙️ Konfigurace AI Enginu (Auto-Discovery)", expanded=True):
     col_api, col_provider, col_model = st.columns([2, 1, 1])
     api_key = col_api.text_input(_["api_lbl"], type="password", placeholder="gsk_... / sk-...")
     model_provider = col_provider.selectbox(_["prov_lbl"], ["Groq", "OpenAI"])
     
-    if model_provider == "Groq":
-        # Odstraněn nedostupný 70B model, výchozí je nyní 8B-instant a Mixtral
-        groq_options = [
-            "llama-3.1-8b-instant",
-            "mixtral-8x7b-32768",
-            "gemma2-9b-it",
-            "Vlastní model (napsat manuálně)"
-        ]
-        selected_option = col_model.selectbox(_["mod_lbl"], groq_options, index=0)
-        if selected_option == "Vlastní model (napsat manuálně)":
-            selected_model = col_model.text_input("Zadejte přesný název Groq modelu:", value="llama-3.1-8b-instant")
+    selected_model = None
+    if api_key:
+        available_models = fetch_available_models(api_key, model_provider)
+        if available_models:
+            selected_model = col_model.selectbox(_["mod_lbl"], available_models, index=0)
         else:
-            selected_model = selected_option
+            col_model.error(_["no_models"])
     else:
-        selected_model = col_model.selectbox(_["mod_lbl"], ["gpt-4o-mini", "gpt-4o"], index=0)
-
-if not api_key:
-    st.info(_["api_help"])
+        col_model.info(_["api_help"])
 
 # --- UI PRO VÝBĚR TICKERU ---
 tickers = load_tickers()
@@ -228,7 +238,7 @@ if vybrany_ticker:
                 st.markdown(f"**{_['orig']}** [{title}]({link})")
                 
                 if st.button(_["btn_ai"], key=f"btn_{idx}"):
-                    if not api_key:
+                    if not api_key or not selected_model:
                         st.error(_["err_api"])
                     else:
                         with st.spinner(_["spin_ai"]):
