@@ -25,15 +25,16 @@ t = {
     "CZ": {
         "title": "AI SENTIMENT & NEWS RADAR",
         "desc": "KVANTITATIVNÍ A FUNDAMENTÁLNÍ ANALÝZA TRŽNÍCH KATALYZÁTORŮ.",
+        "api_settings_h": "⚙️ AI Konfigurace",
         "api_lbl": "🔑 API Klíč (Groq / OpenAI):",
-        "prov_lbl": "Poskytovatel infrastruktury:",
-        "mod_lbl": "Dostupné modely pro váš klíč:",
-        "api_help": "Vložte API klíč pro dynamické načtení povolených modelů.",
+        "prov_lbl": "Poskytovatel:",
+        "mod_lbl": "Dostupné modely:",
+        "api_help": "Vložte API klíč pro načtení modelů.",
         "tick_lbl": "Zvolte ticker pro analýzu:",
         "btn_ai": "🧠 Generovat celkovou AI syntézu",
         "spin_search": "Stahování datového toku...",
         "spin_ai": "AI analyzuje agregovaný datový tok a počítá sentiment...",
-        "err_api": "Nejprve vložte API klíč v horní části modulu.",
+        "err_api_main": "👈 Pro spuštění analýzy zadejte API klíč v levém postranním panelu (Menu).",
         "err_ai": "Chyba AI enginu:",
         "err_news": "Žádné aktuální zprávy nebyly nalezeny.",
         "sources": "🗄️ Zdrojové zprávy použité pro syntézu",
@@ -44,20 +45,21 @@ t = {
         "sent": "Sentiment",
         "no_title": "Bez titulku",
         "no_time": "Neznámý čas",
-        "no_models": "Nepodařilo se načíst modely. Zkontrolujte API klíč."
+        "no_models": "Nepodařilo se načíst modely."
     },
     "EN": {
         "title": "AI SENTIMENT & NEWS RADAR",
         "desc": "QUANTITATIVE AND FUNDAMENTAL ANALYSIS OF MARKET CATALYSTS.",
-        "api_lbl": "🔑 API Key (Groq / OpenAI):",
-        "prov_lbl": "Infrastructure Provider:",
-        "mod_lbl": "Available models for your key:",
-        "api_help": "Insert API key to dynamically fetch allowed models.",
+        "api_settings_h": "⚙️ AI Configuration",
+        "api_lbl": "🔑 API Key (Groq/OpenAI):",
+        "prov_lbl": "Provider:",
+        "mod_lbl": "Available models:",
+        "api_help": "Insert API key to fetch models.",
         "tick_lbl": "Select ticker for analysis:",
         "btn_ai": "🧠 Generate Aggregated AI Synthesis",
         "spin_search": "Downloading data feed...",
         "spin_ai": "AI is analyzing aggregated data feed and calculating sentiment...",
-        "err_api": "Please insert your API key at the top of the module first.",
+        "err_api_main": "👈 Please insert your API key in the left sidebar (Menu) to run analysis.",
         "err_ai": "AI Engine Error:",
         "err_news": "No current news found.",
         "sources": "🗄️ Source news used for synthesis",
@@ -68,7 +70,7 @@ t = {
         "sent": "Sentiment",
         "no_title": "No Title",
         "no_time": "Unknown Time",
-        "no_models": "Failed to fetch models. Check your API key."
+        "no_models": "Failed to fetch models."
     }
 }
 _ = t.get(current_lang, t["CZ"])
@@ -84,7 +86,6 @@ def load_tickers():
         except: pass
     return ["AAPL", "MSFT", "NVDA"]
 
-# --- AUTO-DISCOVERY MODELŮ ---
 @st.cache_data(ttl=300)
 def fetch_available_models(api_klic, provider):
     if not api_klic:
@@ -100,32 +101,37 @@ def fetch_available_models(api_klic, provider):
     except:
         return []
 
-st.title(_["title"])
-st.caption(_["desc"])
-st.markdown("---")
-
-# --- API KEY & DYNAMIC MODEL SELECTION ---
-with st.expander("⚙️ Konfigurace AI Enginu (Auto-Discovery)", expanded=True):
-    col_api, col_provider, col_model = st.columns([2, 1, 1])
-    api_key = col_api.text_input(_["api_lbl"], type="password", placeholder="gsk_... / sk-...")
-    model_provider = col_provider.selectbox(_["prov_lbl"], ["Groq", "OpenAI"])
+# --- SIDEBAR KONFIGURACE (Skryté z hlavní plochy) ---
+with st.sidebar:
+    st.markdown("---")
+    st.markdown(f"### {_['api_settings_h']}")
+    api_key = st.text_input(_["api_lbl"], type="password", placeholder="gsk_... / sk-...")
+    model_provider = st.selectbox(_["prov_lbl"], ["Groq", "OpenAI"])
     
     selected_model = None
     if api_key:
         available_models = fetch_available_models(api_key, model_provider)
         if available_models:
-            selected_model = col_model.selectbox(_["mod_lbl"], available_models, index=0)
+            selected_model = st.selectbox(_["mod_lbl"], available_models, index=0)
         else:
-            col_model.error(_["no_models"])
+            st.error(_["no_models"])
     else:
-        col_model.info(_["api_help"])
+        st.info(_["api_help"])
 
-# --- UI PRO VÝBĚR TICKERU ---
+# --- HLAVNÍ PLOCHA TERMINÁLU ---
+st.title(_["title"])
+st.caption(_["desc"])
+st.markdown("---")
+
+if not api_key:
+    st.warning(_["err_api_main"])
+
 tickers = load_tickers()
 tickers.sort()
 
+# Zúžený a čistší výběr tickeru
 c1, c2 = st.columns([1, 3])
-vybrany_ticker = c1.selectbox(_["tick_lbl"], tickers)
+vybrany_ticker = c1.selectbox(_["tick_lbl"], tickers, label_visibility="collapsed")
 
 @st.cache_data(ttl=600)
 def fetch_news(ticker):
@@ -219,7 +225,7 @@ def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, provider, model_na
         return {"error": str(e)}
 
 if vybrany_ticker:
-    st.markdown("---")
+    st.markdown("<br>", unsafe_allow_html=True)
     
     with st.spinner(_["spin_search"]):
         news_data = fetch_news(vybrany_ticker)
@@ -229,9 +235,8 @@ if vybrany_ticker:
     else:
         if st.button(_["btn_ai"], use_container_width=True, type="primary"):
             if not api_key or not selected_model:
-                st.error(_["err_api"])
+                st.error(_["err_api_main"])
             else:
-                # Agregace textu pro LLM
                 agregovany_text = "\n".join([f"- {n['pub_time_str']}: {n['title']}" for n in news_data])
                 
                 with st.spinner(_["spin_ai"]):
@@ -242,13 +247,11 @@ if vybrany_ticker:
                     else:
                         st.markdown("<br>", unsafe_allow_html=True)
                         
-                        # --- MOODIX STYLE VIZUALIZACE ---
                         with st.container(border=True):
                             st.markdown(f"### 🔹 {analyza.get('hlavni_nadpis', 'Analýza trhu')}")
                             
                             skore = float(analyza.get('sentiment_skore', 0))
                             
-                            # Sentiment blok
                             col_val, col_desc = st.columns([1, 4])
                             with col_val:
                                 st.metric(_["sent"], f"{skore:+.4f}")
