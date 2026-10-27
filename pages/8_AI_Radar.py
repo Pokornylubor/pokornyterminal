@@ -30,7 +30,7 @@ t = {
         "btn_ai": "📊 Analyzovat datový tok",
         "spin_search": "Stahování datového toku...",
         "spin_ai": "AI analyzuje agregovaný datový tok a počítá sentiment...",
-        "err_api": "⚠️ AI není nakonfigurována. Přejděte do sekce '⚙️ Nastavení' a vložte platný API klíč.",
+        "err_api": "⚠️ AI API klíč nebyl nalezen. Ujistěte se, že je GROQ_API_KEY uložen ve Streamlit Secrets.",
         "err_ai": "Chyba AI enginu:",
         "err_news": "Žádné aktuální zprávy nebyly nalezeny.",
         "sources": "🗄️ Zdrojové zprávy použité pro syntézu",
@@ -51,7 +51,7 @@ t = {
         "btn_ai": "📊 Analyze Data Feed",
         "spin_search": "Downloading data feed...",
         "spin_ai": "AI is analyzing aggregated data feed and calculating sentiment...",
-        "err_api": "⚠️ AI is not configured. Go to '⚙️ Settings' and provide a valid API key.",
+        "err_api": "⚠️ AI API key not found. Ensure GROQ_API_KEY is saved in Streamlit Secrets.",
         "err_ai": "AI Engine Error:",
         "err_news": "No current news found.",
         "sources": "🗄️ Source news used for synthesis",
@@ -83,8 +83,8 @@ saved_settings = app_data.get("settings", {})
 def load_tickers():
     return list(set(app_data.get("portfolio", []) + app_data.get("watchlist", [])))
 
-# --- NAČTENÍ KONFIGURACE (Priorita má JSON, fallback je prázdno) ---
-api_key = st.session_state.get("ai_api_key", saved_settings.get("ai_api_key", ""))
+# --- BEZPEČNÉ NAČTENÍ KONFIGURACE ---
+api_key = st.secrets.get("GROQ_API_KEY", "")
 model_provider = st.session_state.get("ai_provider", saved_settings.get("ai_provider", "Groq"))
 selected_model = st.session_state.get("ai_model", saved_settings.get("ai_model", ""))
 
@@ -96,14 +96,12 @@ if not api_key or not selected_model:
     st.warning(_["err_api"])
     st.stop()
 
-# --- SPRÁVA STAVU PRO CHAT A ANALÝZU ---
 if "radar_vybrany_ticker" not in st.session_state: st.session_state.radar_vybrany_ticker = None
 if "radar_analyza" not in st.session_state: st.session_state.radar_analyza = None
 if "radar_zpravy_text" not in st.session_state: st.session_state.radar_zpravy_text = ""
 if "radar_zpravy_list" not in st.session_state: st.session_state.radar_zpravy_list = []
 if "radar_chat" not in st.session_state: st.session_state.radar_chat = []
 
-# --- VÝBĚR TICKERU ---
 tickers = load_tickers()
 tickers.sort()
 
