@@ -25,16 +25,11 @@ t = {
     "CZ": {
         "title": "AI SENTIMENT & NEWS RADAR",
         "desc": "KVANTITATIVNÍ A FUNDAMENTÁLNÍ ANALÝZA TRŽNÍCH KATALYZÁTORŮ.",
-        "api_settings_btn": "⚙️ Nastavení AI",
-        "api_lbl": "🔑 API Klíč (Groq / OpenAI):",
-        "prov_lbl": "Poskytovatel:",
-        "mod_lbl": "Dostupné modely:",
-        "api_help": "Vložte API klíč pro načtení modelů.",
         "tick_lbl": "Zvolte ticker pro analýzu:",
         "btn_ai": "🧠 Generovat celkovou AI syntézu",
         "spin_search": "Stahování datového toku...",
         "spin_ai": "AI analyzuje agregovaný datový tok a počítá sentiment...",
-        "err_api_main": "👈 Pro spuštění analýzy klikněte v levém menu na 'Nastavení AI' a vložte API klíč.",
+        "err_api": "⚠️ AI není nakonfigurována. Přejděte do sekce '⚙️ Nastavení' a vložte platný API klíč.",
         "err_ai": "Chyba AI enginu:",
         "err_news": "Žádné aktuální zprávy nebyly nalezeny.",
         "sources": "🗄️ Zdrojové zprávy použité pro syntézu",
@@ -44,22 +39,16 @@ t = {
         "sent_desc": "Změřený dopad na tržní sentiment. Kladné hodnoty podporují Risk-On, záporné Risk-Off.",
         "sent": "Sentiment",
         "no_title": "Bez titulku",
-        "no_time": "Neznámý čas",
-        "no_models": "Nepodařilo se načíst modely."
+        "no_time": "Neznámý čas"
     },
     "EN": {
         "title": "AI SENTIMENT & NEWS RADAR",
         "desc": "QUANTITATIVE AND FUNDAMENTAL ANALYSIS OF MARKET CATALYSTS.",
-        "api_settings_btn": "⚙️ AI Settings",
-        "api_lbl": "🔑 API Key (Groq/OpenAI):",
-        "prov_lbl": "Provider:",
-        "mod_lbl": "Available models:",
-        "api_help": "Insert API key to fetch models.",
         "tick_lbl": "Select ticker for analysis:",
         "btn_ai": "🧠 Generate Aggregated AI Synthesis",
         "spin_search": "Downloading data feed...",
         "spin_ai": "AI is analyzing aggregated data feed and calculating sentiment...",
-        "err_api_main": "👈 Please click 'AI Settings' in the left sidebar and insert your API key.",
+        "err_api": "⚠️ AI is not configured. Go to '⚙️ Settings' and provide a valid API key.",
         "err_ai": "AI Engine Error:",
         "err_news": "No current news found.",
         "sources": "🗄️ Source news used for synthesis",
@@ -69,8 +58,7 @@ t = {
         "sent_desc": "Measured impact on market sentiment. Positive values support Risk-On, negative Risk-Off.",
         "sent": "Sentiment",
         "no_title": "No Title",
-        "no_time": "Unknown Time",
-        "no_models": "Failed to fetch models."
+        "no_time": "Unknown Time"
     }
 }
 _ = t.get(current_lang, t["CZ"])
@@ -86,45 +74,18 @@ def load_tickers():
         except: pass
     return ["AAPL", "MSFT", "NVDA"]
 
-@st.cache_data(ttl=300)
-def fetch_available_models(api_klic, provider):
-    if not api_klic:
-        return []
-    try:
-        if provider == "Groq":
-            client = OpenAI(api_key=api_klic, base_url="https://api.groq.com/openai/v1")
-            models = client.models.list().data
-            llm_models = [m.id for m in models if "whisper" not in m.id and "tool-use" not in m.id]
-            return sorted(llm_models, reverse=True)
-        else:
-            return ["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo"]
-    except:
-        return []
+# --- NAČTENÍ KONFIGURACE Z GLOBÁLNÍ PAMĚTI ---
+api_key = st.session_state.get("ai_api_key", "")
+model_provider = st.session_state.get("ai_provider", "Groq")
+selected_model = st.session_state.get("ai_model", "")
 
-# --- SIDEBAR KONFIGURACE (Vyskakovací popover tlačítko) ---
-with st.sidebar:
-    st.markdown("---")
-    with st.popover(_["api_settings_btn"], use_container_width=True):
-        api_key = st.text_input(_["api_lbl"], type="password", placeholder="gsk_... / sk-...")
-        model_provider = st.selectbox(_["prov_lbl"], ["Groq", "OpenAI"])
-        
-        selected_model = None
-        if api_key:
-            available_models = fetch_available_models(api_key, model_provider)
-            if available_models:
-                selected_model = st.selectbox(_["mod_lbl"], available_models, index=0)
-            else:
-                st.error(_["no_models"])
-        else:
-            st.info(_["api_help"])
-
-# --- HLAVNÍ PLOCHA TERMINÁLU ---
 st.title(_["title"])
 st.caption(_["desc"])
 st.markdown("---")
 
-if not api_key:
-    st.warning(_["err_api_main"])
+if not api_key or not selected_model:
+    st.warning(_["err_api"])
+    st.stop()
 
 tickers = load_tickers()
 tickers.sort()
@@ -140,26 +101,15 @@ def fetch_news(ticker):
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
         with urllib.request.urlopen(req, timeout=5) as response:
             xml_data = response.read()
-        
         root = ET.fromstring(xml_data)
         for item in root.findall('.//item')[:8]:
             title = item.find('title').text if item.find('title') is not None else _["no_title"]
             link = item.find('link').text if item.find('link') is not None else "#"
             pubDate = item.find('pubDate').text if item.find('pubDate') is not None else _["no_time"]
-            
-            if len(pubDate) > 22:
-                pubDate = pubDate[:22]
-                
-            news_list.append({
-                "title": title,
-                "link": link,
-                "publisher": "Yahoo Finance (RSS)",
-                "pub_time_str": pubDate
-            })
-        if news_list:
-            return news_list
-    except Exception:
-        pass
+            if len(pubDate) > 22: pubDate = pubDate[:22]
+            news_list.append({"title": title, "link": link, "publisher": "Yahoo Finance (RSS)", "pub_time_str": pubDate})
+        if news_list: return news_list
+    except: pass
 
     try:
         t = yf.Ticker(ticker)
@@ -173,16 +123,8 @@ def fetch_news(ticker):
                 pubDate = datetime.fromtimestamp(ts).strftime("%d.%m.%Y %H:%M") if ts else _["no_time"]
             except:
                 pubDate = _["no_time"]
-                
-            news_list.append({
-                "title": title,
-                "link": link,
-                "publisher": publisher,
-                "pub_time_str": pubDate
-            })
-    except:
-        pass
-        
+            news_list.append({"title": title, "link": link, "publisher": publisher, "pub_time_str": pubDate})
+    except: pass
     return news_list
 
 def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, provider, model_name, lang):
@@ -196,9 +138,7 @@ def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, provider, model_na
     prompt = f"""
     You are an elite quantitative hedge fund analyst. Read the following recent news headlines for ticker {ticker}.
     Synthesize them into one unified, professional market update. Return the output STRICTLY as valid JSON.
-    
-    News Data:
-    {zpravy_text}
+    News Data: {zpravy_text}
     
     JSON Structure:
     {{
@@ -209,23 +149,16 @@ def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, provider, model_na
     }}
     Do not output anything other than raw JSON.
     """
-    
     try:
-        response = client.chat.completions.create(
-            model=model_name,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.1
-        )
+        response = client.chat.completions.create(model=model_name, messages=[{"role": "user", "content": prompt}], temperature=0.1)
         vysledek = response.choices[0].message.content
-        if vysledek.startswith("```json"):
-            vysledek = vysledek.strip("`").replace("json\n", "")
+        if vysledek.startswith("```json"): vysledek = vysledek.strip("`").replace("json\n", "")
         return json.loads(vysledek)
     except Exception as e:
         return {"error": str(e)}
 
 if vybrany_ticker:
     st.markdown("<br>", unsafe_allow_html=True)
-    
     with st.spinner(_["spin_search"]):
         news_data = fetch_news(vybrany_ticker)
     
@@ -233,38 +166,25 @@ if vybrany_ticker:
         st.warning(_["err_news"])
     else:
         if st.button(_["btn_ai"], use_container_width=True, type="primary"):
-            if not api_key or not selected_model:
-                st.error(_["err_api_main"])
-            else:
-                agregovany_text = "\n".join([f"- {n['pub_time_str']}: {n['title']}" for n in news_data])
-                
-                with st.spinner(_["spin_ai"]):
-                    analyza = analyzuj_agregovane_zpravy(vybrany_ticker, agregovany_text, api_key, model_provider, selected_model, current_lang)
-                    
-                    if "error" in analyza:
-                        st.error(f"{_['err_ai']} {analyza['error']}")
-                    else:
-                        st.markdown("<br>", unsafe_allow_html=True)
-                        
-                        with st.container(border=True):
-                            st.markdown(f"### 🔹 {analyza.get('hlavni_nadpis', 'Analýza trhu')}")
-                            
-                            skore = float(analyza.get('sentiment_skore', 0))
-                            
-                            col_val, col_desc = st.columns([1, 4])
-                            with col_val:
-                                st.metric(_["sent"], f"{skore:+.4f}")
-                            with col_desc:
-                                st.caption(_["sent_desc"])
-                            
-                            st.markdown("---")
-                            st.markdown(f"#### {_['ai_expl']}")
-                            
-                            st.markdown(f"**{_['what_happened']}**")
-                            st.write(analyza.get("co_se_stalo", ""))
-                            
-                            st.markdown(f"**{_['fund_imp']}**")
-                            st.write(analyza.get("dopad_fundament", ""))
+            agregovany_text = "\n".join([f"- {n['pub_time_str']}: {n['title']}" for n in news_data])
+            with st.spinner(_["spin_ai"]):
+                analyza = analyzuj_agregovane_zpravy(vybrany_ticker, agregovany_text, api_key, model_provider, selected_model, current_lang)
+                if "error" in analyza:
+                    st.error(f"{_['err_ai']} {analyza['error']}")
+                else:
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    with st.container(border=True):
+                        st.markdown(f"### 🔹 {analyza.get('hlavni_nadpis', 'Analýza trhu')}")
+                        skore = float(analyza.get('sentiment_skore', 0))
+                        col_val, col_desc = st.columns([1, 4])
+                        with col_val: st.metric(_["sent"], f"{skore:+.4f}")
+                        with col_desc: st.caption(_["sent_desc"])
+                        st.markdown("---")
+                        st.markdown(f"#### {_['ai_expl']}")
+                        st.markdown(f"**{_['what_happened']}**")
+                        st.write(analyza.get("co_se_stalo", ""))
+                        st.markdown(f"**{_['fund_imp']}**")
+                        st.write(analyza.get("dopad_fundament", ""))
         
         st.markdown("<br>", unsafe_allow_html=True)
         with st.expander(_["sources"]):

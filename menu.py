@@ -31,17 +31,20 @@ def vykresli_menu():
     """, unsafe_allow_html=True)
 
     with st.sidebar:
-        st.markdown("### ⚙️ Nastavení / Settings")
         if "lang" not in st.session_state:
             st.session_state.lang = "CZ"
 
-        selected_lang = st.radio("🌐 Jazyk / Language:", ["CZ", "EN"], index=0 if st.session_state.lang == "CZ" else 1)
-        if selected_lang != st.session_state.lang:
-            st.session_state.lang = selected_lang
-            st.rerun()
-
+        st.markdown("### 📊 POKORNY TERMINAL")
+        
+        # Globální nastavení pevně nahoře
+        if st.session_state.lang == "CZ":
+            st.page_link("pages/10_Nastaveni.py", label="⚙️ Nastavení")
+        else:
+            st.page_link("pages/10_Nastaveni.py", label="⚙️ Settings")
+            
         st.markdown("---")
 
+        # Analytické moduly
         if st.session_state.lang == "CZ":
             st.page_link("Dashboard.py", label="🏠 Hlavní Dashboard")
             st.page_link("pages/1_Insider_4F.py", label="🧛 Insider Tracker (4F)")
@@ -51,8 +54,8 @@ def vykresli_menu():
             st.page_link("pages/5_COT_Reporty.py", label="🏛️ COT Reporty")
             st.page_link("pages/6_Makro.py", label="🌍 Makro & Rizika")
             st.page_link("pages/7_Baskets.py", label="🧺 Koše")
-            st.page_link("pages/8_Aktualizace.py", label="🗄️ Aktualizace Dat")
-            st.page_link("pages/9_AI_Radar.py", label="🧠 AI Zprávy & Sentiment")
+            st.page_link("pages/8_AI_Radar.py", label="🧠 AI Zprávy & Sentiment")
+            st.page_link("pages/9_Aktualizace.py", label="🗄️ Aktualizace Dat")
         else:
             st.page_link("Dashboard.py", label="🏠 Main Dashboard")
             st.page_link("pages/1_Insider_4F.py", label="🧛 Insider Tracker (4F)")
@@ -62,5 +65,5 @@ def vykresli_menu():
             st.page_link("pages/5_COT_Reporty.py", label="🏛️ COT Reports")
             st.page_link("pages/6_Makro.py", label="🌍 Macro & Risks")
             st.page_link("pages/7_Baskets.py", label="🧺 Baskets")
-            st.page_link("pages/8_Aktualizace.py", label="🗄️ Data Update")
-            st.page_link("pages/9_AI_Radar.py", label="🧠 AI News & Sentiment")
+            st.page_link("pages/8_AI_Radar.py", label="🧠 AI News & Sentiment")
+            st.page_link("pages/9_Aktualizace.py", label="🗄️ Data Update")
