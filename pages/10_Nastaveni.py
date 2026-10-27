@@ -2,6 +2,7 @@ import streamlit as st
 import os
 import sys
 import json
+import subprocess
 from openai import OpenAI
 
 # --- INITIAL SETUP ---
@@ -33,8 +34,26 @@ def save_settings_to_json(ai_key, provider, model):
         "ai_provider": provider,
         "ai_model": model
     }
+    
+    # 1. Zápis do lokálního souboru
     with open(WATCHLIST_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
+        
+    # 2. Automatická synchronizace s GitHubem (stejná logika jako v Dashboardu)
+    try:
+        if "GITHUB_TOKEN" in st.secrets:
+            token = st.secrets["GITHUB_TOKEN"]
+            owner = st.secrets["GITHUB_OWNER"]
+            repo = st.secrets["GITHUB_REPO"]
+            remote_url = f"https://{owner}:{token}@github.com/{owner}/{repo}.git"
+            
+            subprocess.run(["git", "config", "--global", "user.email", "bot@pokornyterminal.cz"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(["git", "config", "--global", "user.name", "Terminal Bot"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(["git", "add", WATCHLIST_FILE], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(["git", "commit", "-m", "Automatická úprava AI konfigurace z Nastavení"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(["git", "push", remote_url, "HEAD:main"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception:
+        pass
 
 # --- DICTIONARY ---
 t = {
@@ -48,8 +67,8 @@ t = {
         "api_lbl": "API Klíč (Groq / OpenAI):",
         "prov_lbl": "Poskytovatel:",
         "mod_lbl": "Výchozí model:",
-        "save_btn": "💾 Uložit konfiguraci napevno",
-        "saved_msg": "Konfigurace byla úspěšně uložena do watchlist.json.",
+        "save_btn": "💾 Uložit a synchronizovat na GitHub",
+        "saved_msg": "Konfigurace byla úspěšně uložena a zapsána do cloudu na GitHub.",
         "no_models": "Zadejte platný API klíč pro načtení modelů.",
         "future_h": "🔧 Budoucí moduly",
         "future_desc": "Tato sekce je připravena pro přidání napojení na brokery, upozornění (Webhooky) či exporty."
@@ -64,8 +83,8 @@ t = {
         "api_lbl": "API Key (Groq / OpenAI):",
         "prov_lbl": "Provider:",
         "mod_lbl": "Default Model:",
-        "save_btn": "💾 Save Configuration Permanently",
-        "saved_msg": "Configuration successfully saved to watchlist.json.",
+        "save_btn": "💾 Save & Sync to GitHub",
+        "saved_msg": "Configuration successfully saved and pushed to GitHub cloud.",
         "no_models": "Enter a valid API key to fetch models.",
         "future_h": "🔧 Future Modules",
         "future_desc": "This section is reserved for broker integrations, webhooks, or data exports."
@@ -134,11 +153,11 @@ with col2:
             st.warning(_["no_models"])
             
         if st.button(_["save_btn"], type="primary", use_container_width=True):
-            st.session_state.ai_api_key = temp_api
-            st.session_state.ai_provider = temp_prov
-            if temp_model:
-                st.session_state.ai_model = temp_model
-            
-            # Zápis do JSONu
-            save_settings_to_json(temp_api, temp_prov, temp_model)
-            st.success(_["saved_msg"])
+            with st.spinner("Ukládám a synchronizuji s GitHubem..."):
+                st.session_state.ai_api_key = temp_api
+                st.session_state.ai_provider = temp_prov
+                if temp_model:
+                    st.session_state.ai_model = temp_model
+                
+                save_settings_to_json(temp_api, temp_prov, temp_model)
+                st.success(_["saved_msg"])
