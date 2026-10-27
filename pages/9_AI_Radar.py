@@ -25,7 +25,7 @@ t = {
     "CZ": {
         "title": "AI SENTIMENT & NEWS RADAR",
         "desc": "KVANTITATIVNÍ A FUNDAMENTÁLNÍ ANALÝZA TRŽNÍCH KATALYZÁTORŮ.",
-        "api_settings_h": "⚙️ AI Konfigurace",
+        "api_settings_btn": "⚙️ Nastavení AI",
         "api_lbl": "🔑 API Klíč (Groq / OpenAI):",
         "prov_lbl": "Poskytovatel:",
         "mod_lbl": "Dostupné modely:",
@@ -34,7 +34,7 @@ t = {
         "btn_ai": "🧠 Generovat celkovou AI syntézu",
         "spin_search": "Stahování datového toku...",
         "spin_ai": "AI analyzuje agregovaný datový tok a počítá sentiment...",
-        "err_api_main": "👈 Pro spuštění analýzy zadejte API klíč v levém postranním panelu (Menu).",
+        "err_api_main": "👈 Pro spuštění analýzy klikněte v levém menu na 'Nastavení AI' a vložte API klíč.",
         "err_ai": "Chyba AI enginu:",
         "err_news": "Žádné aktuální zprávy nebyly nalezeny.",
         "sources": "🗄️ Zdrojové zprávy použité pro syntézu",
@@ -50,7 +50,7 @@ t = {
     "EN": {
         "title": "AI SENTIMENT & NEWS RADAR",
         "desc": "QUANTITATIVE AND FUNDAMENTAL ANALYSIS OF MARKET CATALYSTS.",
-        "api_settings_h": "⚙️ AI Configuration",
+        "api_settings_btn": "⚙️ AI Settings",
         "api_lbl": "🔑 API Key (Groq/OpenAI):",
         "prov_lbl": "Provider:",
         "mod_lbl": "Available models:",
@@ -59,7 +59,7 @@ t = {
         "btn_ai": "🧠 Generate Aggregated AI Synthesis",
         "spin_search": "Downloading data feed...",
         "spin_ai": "AI is analyzing aggregated data feed and calculating sentiment...",
-        "err_api_main": "👈 Please insert your API key in the left sidebar (Menu) to run analysis.",
+        "err_api_main": "👈 Please click 'AI Settings' in the left sidebar and insert your API key.",
         "err_ai": "AI Engine Error:",
         "err_news": "No current news found.",
         "sources": "🗄️ Source news used for synthesis",
@@ -101,22 +101,22 @@ def fetch_available_models(api_klic, provider):
     except:
         return []
 
-# --- SIDEBAR KONFIGURACE (Skryté z hlavní plochy) ---
+# --- SIDEBAR KONFIGURACE (Vyskakovací popover tlačítko) ---
 with st.sidebar:
     st.markdown("---")
-    st.markdown(f"### {_['api_settings_h']}")
-    api_key = st.text_input(_["api_lbl"], type="password", placeholder="gsk_... / sk-...")
-    model_provider = st.selectbox(_["prov_lbl"], ["Groq", "OpenAI"])
-    
-    selected_model = None
-    if api_key:
-        available_models = fetch_available_models(api_key, model_provider)
-        if available_models:
-            selected_model = st.selectbox(_["mod_lbl"], available_models, index=0)
+    with st.popover(_["api_settings_btn"], use_container_width=True):
+        api_key = st.text_input(_["api_lbl"], type="password", placeholder="gsk_... / sk-...")
+        model_provider = st.selectbox(_["prov_lbl"], ["Groq", "OpenAI"])
+        
+        selected_model = None
+        if api_key:
+            available_models = fetch_available_models(api_key, model_provider)
+            if available_models:
+                selected_model = st.selectbox(_["mod_lbl"], available_models, index=0)
+            else:
+                st.error(_["no_models"])
         else:
-            st.error(_["no_models"])
-    else:
-        st.info(_["api_help"])
+            st.info(_["api_help"])
 
 # --- HLAVNÍ PLOCHA TERMINÁLU ---
 st.title(_["title"])
@@ -129,7 +129,6 @@ if not api_key:
 tickers = load_tickers()
 tickers.sort()
 
-# Zúžený a čistší výběr tickeru
 c1, c2 = st.columns([1, 3])
 vybrany_ticker = c1.selectbox(_["tick_lbl"], tickers, label_visibility="collapsed")
 
