@@ -26,12 +26,16 @@ def load_watchlist_data():
         except: pass
     return {}
 
-def save_settings_to_json(provider, model):
+def save_settings_to_json(lang, provider, model):
     data = load_watchlist_data()
-    data["settings"] = {
-        "ai_provider": provider,
-        "ai_model": model
-    }
+    
+    # Bezpečné vytvoření bloku settings, pokud ještě neexistuje
+    if "settings" not in data:
+        data["settings"] = {}
+        
+    data["settings"]["lang"] = lang
+    data["settings"]["ai_provider"] = provider
+    data["settings"]["ai_model"] = model
     
     with open(WATCHLIST_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
@@ -46,7 +50,7 @@ def save_settings_to_json(provider, model):
             subprocess.run(["git", "config", "--global", "user.email", "bot@pokornyterminal.cz"], capture_output=True)
             subprocess.run(["git", "config", "--global", "user.name", "Terminal Bot"], capture_output=True)
             subprocess.run(["git", "add", WATCHLIST_FILE], capture_output=True)
-            subprocess.run(["git", "commit", "-m", "Automatická úprava AI konfigurace (Bez API klíče)"], capture_output=True)
+            subprocess.run(["git", "commit", "-m", "Automatická úprava globálního nastavení (Jazyk, AI)"], capture_output=True)
             subprocess.run(["git", "pull", "--rebase", remote_url, "main"], capture_output=True)
             push_res = subprocess.run(["git", "push", remote_url, "HEAD:main"], capture_output=True, text=True)
             
@@ -70,8 +74,8 @@ t = {
         "api_lbl": "Dočasný API Klíč:",
         "prov_lbl": "Poskytovatel:",
         "mod_lbl": "Výchozí model:",
-        "save_btn": "💾 Uložit model a synchronizovat na GitHub",
-        "saved_msg": "Výchozí model a poskytovatel uloženi na GitHub.",
+        "save_btn": "💾 Uložit veškeré nastavení a synchronizovat na GitHub",
+        "saved_msg": "Globální konfigurace (jazyk, modely) bezpečně uložena na GitHub.",
         "no_models": "Klíč nenalezen. Vložte GROQ_API_KEY do Streamlit Secrets.",
         "future_h": "🔧 Budoucí moduly",
         "future_desc": "Připraveno pro napojení na brokery a webhooky."
@@ -86,8 +90,8 @@ t = {
         "api_lbl": "Temporary API Key:",
         "prov_lbl": "Provider:",
         "mod_lbl": "Default Model:",
-        "save_btn": "💾 Save Model & Sync to GitHub",
-        "saved_msg": "Default model and provider saved to GitHub.",
+        "save_btn": "💾 Save All Settings & Sync to GitHub",
+        "saved_msg": "Global configuration (language, models) safely saved to GitHub.",
         "no_models": "Key not found. Add GROQ_API_KEY to Streamlit Secrets.",
         "future_h": "🔧 Future Modules",
         "future_desc": "Prepared for broker integration and webhooks."
@@ -119,6 +123,8 @@ with col1:
     with st.container(border=True):
         st.markdown(f"#### {_['ui_h']}")
         new_lang = st.radio(_["lang_lbl"], ["CZ", "EN"], index=0 if current_lang == "CZ" else 1, horizontal=True)
+        
+        # Plynulé přepnutí v UI hned po kliknutí
         if new_lang != st.session_state.lang:
             st.session_state.lang = new_lang
             st.rerun()
@@ -138,7 +144,6 @@ with col2:
         if "ai_provider" not in st.session_state: st.session_state.ai_provider = saved_settings.get("ai_provider", "Groq")
         if "ai_model" not in st.session_state: st.session_state.ai_model = saved_settings.get("ai_model", "")
 
-        # Bezpečná správa API klíče
         has_secret = "GROQ_API_KEY" in st.secrets
         if has_secret:
             st.success("✅ API Klíč je bezpečně načten z tajného trezoru Streamlit Cloud.")
@@ -166,6 +171,7 @@ with col2:
                 if temp_model:
                     st.session_state.ai_model = temp_model
                 
-                success = save_settings_to_json(temp_prov, temp_model)
+                # Zapsání jazyka i modelů natrvalo
+                success = save_settings_to_json(st.session_state.lang, temp_prov, temp_model)
                 if success:
                     st.success(_["saved_msg"])

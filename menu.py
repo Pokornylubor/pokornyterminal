@@ -1,4 +1,6 @@
 import streamlit as st
+import os
+import json
 
 def check_password():
     if st.session_state.get("password_correct", False):
@@ -20,6 +22,18 @@ def check_password():
         
     return False
 
+def load_global_lang():
+    # Načtení trvalého jazyka z watchlist.json při startu
+    aktualni_slozka = os.path.dirname(os.path.abspath(__file__))
+    watchlist_file = os.path.join(aktualni_slozka, "watchlist.json")
+    if os.path.exists(watchlist_file):
+        try:
+            with open(watchlist_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                return data.get("settings", {}).get("lang", "CZ")
+        except: pass
+    return "CZ"
+
 def vykresli_menu():
     if not check_password():
         st.stop()
@@ -31,12 +45,12 @@ def vykresli_menu():
     """, unsafe_allow_html=True)
 
     with st.sidebar:
+        # Pokud relace právě začala, přečteme preferovaný jazyk z databáze
         if "lang" not in st.session_state:
-            st.session_state.lang = "CZ"
+            st.session_state.lang = load_global_lang()
 
         st.markdown("### 📊 POKORNY TERMINAL")
         
-        # Globální nastavení pevně nahoře
         if st.session_state.lang == "CZ":
             st.page_link("pages/10_Nastaveni.py", label="⚙️ Nastavení")
         else:
@@ -44,7 +58,6 @@ def vykresli_menu():
             
         st.markdown("---")
 
-        # Analytické moduly
         if st.session_state.lang == "CZ":
             st.page_link("Dashboard.py", label="🏠 Hlavní Dashboard")
             st.page_link("pages/1_Insider_4F.py", label="🧛 Insider Tracker (4F)")
