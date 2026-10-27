@@ -52,6 +52,7 @@ def vykresli_menu():
             st.page_link("pages/6_Makro.py", label="🌍 Makro & Rizika")
             st.page_link("pages/7_Baskets.py", label="🧺 Koše")
             st.page_link("pages/8_Aktualizace.py", label="🗄️ Aktualizace Dat")
+            st.page_link("pages/9_AI_Radar.py", label="🧠 AI Zprávy & Sentiment")
         else:
             st.page_link("Dashboard.py", label="🏠 Main Dashboard")
             st.page_link("pages/1_Insider_4F.py", label="🧛 Insider Tracker (4F)")
@@ -62,3 +63,4 @@ def vykresli_menu():
             st.page_link("pages/6_Makro.py", label="🌍 Macro & Risks")
             st.page_link("pages/7_Baskets.py", label="🧺 Baskets")
             st.page_link("pages/8_Aktualizace.py", label="🗄️ Data Update")
+            st.page_link("pages/9_AI_Radar.py", label="🧠 AI News & Sentiment")
