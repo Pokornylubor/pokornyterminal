@@ -30,20 +30,18 @@ t = {
         "mod_lbl": "Dostupné modely pro váš klíč:",
         "api_help": "Vložte API klíč pro dynamické načtení povolených modelů.",
         "tick_lbl": "Zvolte ticker pro analýzu:",
-        "news_h": "Poslední katalyzátory a zprávy:",
-        "btn_ai": "🧠 Generovat AI Syntézu",
-        "spin_search": "Vyhledávám tržní katalyzátory...",
-        "spin_ai": "AI provádí kvantitativní a fundamentální syntézu...",
+        "btn_ai": "🧠 Generovat celkovou AI syntézu",
+        "spin_search": "Stahování datového toku...",
+        "spin_ai": "AI analyzuje agregovaný datový tok a počítá sentiment...",
         "err_api": "Nejprve vložte API klíč v horní části modulu.",
         "err_ai": "Chyba AI enginu:",
-        "err_news": "Žádné aktuální zprávy nebyly nalezeny. Zdrojová data momentálně neodpovídají.",
-        "orig": "Zdrojový dokument:",
-        "exec_sum": "EXECUTIVE SUMMARY",
-        "fund_imp": "FUNDAMENTÁLNÍ DOPAD (DCF & CASH-FLOW)",
+        "err_news": "Žádné aktuální zprávy nebyly nalezeny.",
+        "sources": "🗄️ Zdrojové zprávy použité pro syntézu",
+        "ai_expl": "🤖 AI VYSVĚTLENÍ",
+        "what_happened": "CO SE STALO",
+        "fund_imp": "FUNDAMENTÁLNÍ DOPAD",
+        "sent_desc": "Změřený dopad na tržní sentiment. Kladné hodnoty podporují Risk-On, záporné Risk-Off.",
         "sent": "Sentiment",
-        "risk_on": "Risk-On",
-        "risk_off": "-Risk-Off",
-        "neutral": "Neutrální",
         "no_title": "Bez titulku",
         "no_time": "Neznámý čas",
         "no_models": "Nepodařilo se načíst modely. Zkontrolujte API klíč."
@@ -56,20 +54,18 @@ t = {
         "mod_lbl": "Available models for your key:",
         "api_help": "Insert API key to dynamically fetch allowed models.",
         "tick_lbl": "Select ticker for analysis:",
-        "news_h": "Latest Catalysts and News:",
-        "btn_ai": "🧠 Generate AI Synthesis",
-        "spin_search": "Searching for market catalysts...",
-        "spin_ai": "AI is performing quantitative and fundamental synthesis...",
+        "btn_ai": "🧠 Generate Aggregated AI Synthesis",
+        "spin_search": "Downloading data feed...",
+        "spin_ai": "AI is analyzing aggregated data feed and calculating sentiment...",
         "err_api": "Please insert your API key at the top of the module first.",
         "err_ai": "AI Engine Error:",
-        "err_news": "No current news found. Source data is currently unresponsive.",
-        "orig": "Source document:",
-        "exec_sum": "EXECUTIVE SUMMARY",
-        "fund_imp": "FUNDAMENTAL IMPACT (DCF & CASH-FLOW)",
+        "err_news": "No current news found.",
+        "sources": "🗄️ Source news used for synthesis",
+        "ai_expl": "🤖 AI EXPLANATION",
+        "what_happened": "WHAT HAPPENED",
+        "fund_imp": "FUNDAMENTAL IMPACT",
+        "sent_desc": "Measured impact on market sentiment. Positive values support Risk-On, negative Risk-Off.",
         "sent": "Sentiment",
-        "risk_on": "Risk-On",
-        "risk_off": "-Risk-Off",
-        "neutral": "Neutral",
         "no_title": "No Title",
         "no_time": "Unknown Time",
         "no_models": "Failed to fetch models. Check your API key."
@@ -97,7 +93,6 @@ def fetch_available_models(api_klic, provider):
         if provider == "Groq":
             client = OpenAI(api_key=api_klic, base_url="https://api.groq.com/openai/v1")
             models = client.models.list().data
-            # Filtrujeme jen užitečné textové LLM (vyřadíme Whisper a tool-only modely)
             llm_models = [m.id for m in models if "whisper" not in m.id and "tool-use" not in m.id]
             return sorted(llm_models, reverse=True)
         else:
@@ -185,7 +180,7 @@ def fetch_news(ticker):
         
     return news_list
 
-def analyzuj_text(titulek, api_klic, provider, model_name, lang):
+def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, provider, model_name, lang):
     if provider == "Groq":
         client = OpenAI(api_key=api_klic, base_url="https://api.groq.com/openai/v1")
     else:
@@ -194,13 +189,17 @@ def analyzuj_text(titulek, api_klic, provider, model_name, lang):
     jazyk_vyzva = "v češtině (Czech)" if lang == "CZ" else "in English"
     
     prompt = f"""
-    You are an elite quantitative hedge fund analyst. Analyze the following corporate news and return the output STRICTLY as valid JSON.
-    News headline/text: {titulek}
+    You are an elite quantitative hedge fund analyst. Read the following recent news headlines for ticker {ticker}.
+    Synthesize them into one unified, professional market update. Return the output STRICTLY as valid JSON.
+    
+    News Data:
+    {zpravy_text}
     
     JSON Structure:
     {{
-        "co_se_stalo": "Brief executive summary of the news in 2-3 sentences {jazyk_vyzva}.",
-        "dopad_fundament": "How this impacts the business model, cash-flow, or DCF valuation {jazyk_vyzva}.",
+        "hlavni_nadpis": "One overarching headline summarizing the current situation for {ticker} {jazyk_vyzva}.",
+        "co_se_stalo": "Executive summary combining the key points from the news in 3-5 sentences {jazyk_vyzva}.",
+        "dopad_fundament": "Fundamental impact analysis (business model, DCF, liquidity) {jazyk_vyzva}.",
         "sentiment_skore": <float between -1.0 (strong Risk-Off) and 1.0 (strong Risk-On)>
     }}
     Do not output anything other than raw JSON.
@@ -220,7 +219,7 @@ def analyzuj_text(titulek, api_klic, provider, model_name, lang):
         return {"error": str(e)}
 
 if vybrany_ticker:
-    st.markdown(f"### {_['news_h']} **{vybrany_ticker}**")
+    st.markdown("---")
     
     with st.spinner(_["spin_search"]):
         news_data = fetch_news(vybrany_ticker)
@@ -228,45 +227,44 @@ if vybrany_ticker:
     if not news_data:
         st.warning(_["err_news"])
     else:
-        for idx, article in enumerate(news_data):
-            title = article.get("title", _["no_title"])
-            publisher = article.get("publisher", "N/A")
-            link = article.get("link", "#")
-            pub_time = article.get("pub_time_str", _["no_time"])
-            
-            with st.expander(f"📰 {pub_time} | {publisher}: {title}"):
-                st.markdown(f"**{_['orig']}** [{title}]({link})")
+        if st.button(_["btn_ai"], use_container_width=True, type="primary"):
+            if not api_key or not selected_model:
+                st.error(_["err_api"])
+            else:
+                # Agregace textu pro LLM
+                agregovany_text = "\n".join([f"- {n['pub_time_str']}: {n['title']}" for n in news_data])
                 
-                if st.button(_["btn_ai"], key=f"btn_{idx}"):
-                    if not api_key or not selected_model:
-                        st.error(_["err_api"])
+                with st.spinner(_["spin_ai"]):
+                    analyza = analyzuj_agregovane_zpravy(vybrany_ticker, agregovany_text, api_key, model_provider, selected_model, current_lang)
+                    
+                    if "error" in analyza:
+                        st.error(f"{_['err_ai']} {analyza['error']}")
                     else:
-                        with st.spinner(_["spin_ai"]):
-                            analyza = analyzuj_text(title, api_key, model_provider, selected_model, current_lang)
+                        st.markdown("<br>", unsafe_allow_html=True)
+                        
+                        # --- MOODIX STYLE VIZUALIZACE ---
+                        with st.container(border=True):
+                            st.markdown(f"### 🔹 {analyza.get('hlavni_nadpis', 'Analýza trhu')}")
                             
-                            if "error" in analyza:
-                                st.error(f"{_['err_ai']} {analyza['error']}")
-                            else:
-                                st.markdown("---")
-                                col_skore, col_text = st.columns([1, 4])
-                                skore = float(analyza.get('sentiment_skore', 0))
-                                
-                                with col_skore:
-                                    if skore > 0.2:
-                                        st.metric(_["sent"], f"{skore:+.2f}", _["risk_on"])
-                                    elif skore < -0.2:
-                                        st.metric(_["sent"], f"{skore:+.2f}", _["risk_off"])
-                                    else:
-                                        st.metric(_["sent"], f"{skore:+.2f}", _["neutral"], delta_color="off")
-                                
-                                with col_text:
-                                    st.markdown(f"#### {_['exec_sum']}")
-                                    st.info(analyza.get("co_se_stalo", ""))
-                                    
-                                    st.markdown(f"#### {_['fund_imp']}")
-                                    if skore > 0:
-                                        st.success(analyza.get("dopad_fundament", ""))
-                                    elif skore < 0:
-                                        st.error(analyza.get("dopad_fundament", ""))
-                                    else:
-                                        st.warning(analyza.get("dopad_fundament", ""))
+                            skore = float(analyza.get('sentiment_skore', 0))
+                            
+                            # Sentiment blok
+                            col_val, col_desc = st.columns([1, 4])
+                            with col_val:
+                                st.metric(_["sent"], f"{skore:+.4f}")
+                            with col_desc:
+                                st.caption(_["sent_desc"])
+                            
+                            st.markdown("---")
+                            st.markdown(f"#### {_['ai_expl']}")
+                            
+                            st.markdown(f"**{_['what_happened']}**")
+                            st.write(analyza.get("co_se_stalo", ""))
+                            
+                            st.markdown(f"**{_['fund_imp']}**")
+                            st.write(analyza.get("dopad_fundament", ""))
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        with st.expander(_["sources"]):
+            for article in news_data:
+                st.markdown(f"- **{article['pub_time_str']}** | [{article['title']}]({article['link']})")
