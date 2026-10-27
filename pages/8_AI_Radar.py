@@ -25,7 +25,9 @@ t = {
     "CZ": {
         "title": "AI SENTIMENT & NEWS RADAR",
         "desc": "KVANTITATIVNÍ A FUNDAMENTÁLNÍ ANALÝZA TRŽNÍCH KATALYZÁTORŮ.",
-        "tick_lbl": "Zvolte ticker pro analýzu:",
+        "tick_h": "Vyhledávání katalyzátorů",
+        "tick_dd": "Vyberte z watchlistu...",
+        "tick_cust": "Nebo zadejte libovolný ticker...",
         "btn_ai": "🧠 Generovat celkovou AI syntézu",
         "spin_search": "Stahování datového toku...",
         "spin_ai": "AI analyzuje agregovaný datový tok a počítá sentiment...",
@@ -44,7 +46,9 @@ t = {
     "EN": {
         "title": "AI SENTIMENT & NEWS RADAR",
         "desc": "QUANTITATIVE AND FUNDAMENTAL ANALYSIS OF MARKET CATALYSTS.",
-        "tick_lbl": "Select ticker for analysis:",
+        "tick_h": "Catalyst Search",
+        "tick_dd": "Select from watchlist...",
+        "tick_cust": "Or enter any custom ticker...",
         "btn_ai": "🧠 Generate Aggregated AI Synthesis",
         "spin_search": "Downloading data feed...",
         "spin_ai": "AI is analyzing aggregated data feed and calculating sentiment...",
@@ -87,11 +91,21 @@ if not api_key or not selected_model:
     st.warning(_["err_api"])
     st.stop()
 
+# --- PROFI VÝBĚR TICKERU (PRÁZDNÝ DEFAULT + VLASTNÍ VSTUP) ---
 tickers = load_tickers()
 tickers.sort()
 
-c1, c2 = st.columns([1, 3])
-vybrany_ticker = c1.selectbox(_["tick_lbl"], tickers, label_visibility="collapsed")
+st.markdown(f"#### {_['tick_h']}")
+c1, c2, c3 = st.columns([1, 1, 2])
+
+# Dropdown menu s předdefinovaným seznamem a prázdným výchozím stavem (index=None)
+dropdown_val = c1.selectbox("Watchlist", tickers, index=None, placeholder=_["tick_dd"], label_visibility="collapsed")
+
+# Textové pole pro ruční zadání naprosto libovolného tickeru
+custom_val = c2.text_input("Custom Ticker", placeholder=_["tick_cust"], label_visibility="collapsed")
+
+# Logika výběru: Vlastní textové pole má přednost. Pokud je prázdné, vezme se hodnota z roletky.
+vybrany_ticker = custom_val.strip().upper() if custom_val.strip() else dropdown_val
 
 @st.cache_data(ttl=600)
 def fetch_news(ticker):
