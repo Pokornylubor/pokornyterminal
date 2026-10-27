@@ -156,10 +156,11 @@ def fetch_news(ticker):
     return news_list
 
 def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, provider, model_name, lang):
+    # Přidán max_retries=3 pro neprůstřelnost enginu
     if provider == "Groq":
-        client = OpenAI(api_key=api_klic, base_url="https://api.groq.com/openai/v1")
+        client = OpenAI(api_key=api_klic, base_url="https://api.groq.com/openai/v1", max_retries=3)
     else:
-        client = OpenAI(api_key=api_klic)
+        client = OpenAI(api_key=api_klic, max_retries=3)
 
     jazyk_vyzva = "v češtině (Czech)" if lang == "CZ" else "in English"
     
@@ -178,7 +179,12 @@ def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, provider, model_na
     Do not output anything other than raw JSON.
     """
     try:
-        response = client.chat.completions.create(model=model_name, messages=[{"role": "user", "content": prompt}], temperature=0.1)
+        response = client.chat.completions.create(
+            model=model_name, 
+            messages=[{"role": "user", "content": prompt}], 
+            temperature=0.1,
+            timeout=20.0
+        )
         vysledek = response.choices[0].message.content
         if vysledek.startswith("```json"): vysledek = vysledek.strip("`").replace("json\n", "")
         return json.loads(vysledek)
@@ -186,15 +192,17 @@ def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, provider, model_na
         return {"error": str(e)}
 
 def chat_s_ai(otazka, kontext_zprav, analyza_json, historie, api_klic, provider, model_name, lang):
+    # Přidán max_retries=3 pro stabilitu doptávání
     if provider == "Groq":
-        client = OpenAI(api_key=api_klic, base_url="[https://api.groq.com/openai/v1](https://api.groq.com/openai/v1)")
+        client = OpenAI(api_key=api_klic, base_url="[https://api.groq.com/openai/v1](https://api.groq.com/openai/v1)", max_retries=3)
     else:
-        client = OpenAI(api_key=api_klic)
+        client = OpenAI(api_key=api_klic, max_retries=3)
         
     jazyk_vyzva = "Odpovídej v češtině." if lang == "CZ" else "Answer in English."
+    analyza_str = json.dumps(analyza_json, ensure_ascii=False)
     
     messages = [
-        {"role": "system", "content": f"Jsi institucionální analytik. Odpovídej uživateli na dotazy ohledně této zprávy. Buď přímý, analytický a přesný. Zde je zdrojový datový tok: {kontext_zprav}. Zde je tvá původní syntéza: {json.dumps(analyza_json)}. {jazyk_vyzva}"}
+        {"role": "system", "content": f"Jsi institucionální analytik hedgeového fondu. Odpovídej uživateli na dotazy ohledně této tržní události. Buď přímý, analytický a přesný. Zde je tvá původní syntéza: {analyza_str}. Zdrojové zprávy: {kontext_zprav}. {jazyk_vyzva}"}
     ]
     
     for msg in historie:
@@ -203,15 +211,19 @@ def chat_s_ai(otazka, kontext_zprav, analyza_json, historie, api_klic, provider,
     messages.append({"role": "user", "content": otazka})
     
     try:
-        response = client.chat.completions.create(model=model_name, messages=messages, temperature=0.3)
+        response = client.chat.completions.create(
+            model=model_name, 
+            messages=messages, 
+            temperature=0.3,
+            timeout=15.0
+        )
         return response.choices[0].message.content
     except Exception as e:
-        return f"Chyba spojení s AI: {e}"
+        return f"⚠️ Došlo k výpadku spojení s AI serverem ({e}). Zkuste to prosím znovu."
 
 if vybrany_ticker:
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # Rozložení tlačítek a akce
     if st.button(_["btn_ai"], use_container_width=True):
         with st.spinner(_["spin_search"]):
             news_data = fetch_news(vybrany_ticker)
@@ -230,17 +242,14 @@ if vybrany_ticker:
                 else:
                     st.error(f"{_['err_ai']} {analyza['error']}")
 
-    # Vykreslení výsledků (čte se ze session state, aby to nezmizelo při chatu)
     if st.session_state.radar_analyza:
         a = st.session_state.radar_analyza
         skore = float(a.get('sentiment_skore', 0))
         
         st.markdown("<br>", unsafe_allow_html=True)
         with st.container(border=True):
-            # Čistý design podle vzoru Moodix
             st.markdown(f"### 🔹 {a.get('hlavni_nadpis', 'Analýza trhu')}")
             
-            # Formátování metrik
             barva = "green" if skore > 0 else "red" if skore < 0 else "grey"
             st.markdown(f"`{vybrany_ticker}` &nbsp; <span style='color:{barva}; font-weight:bold; background-color:rgba(255,255,255,0.1); padding: 2px 6px; border-radius:4px;'>{skore:+.4f}</span>", unsafe_allow_html=True)
             st.caption(_["sent_desc"])
@@ -262,31 +271,29 @@ if vybrany_ticker:
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown(f"#### {_['chat_h']}")
         
-        # Vykreslení historie
         for msg in st.session_state.radar_chat:
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
                 
-        # Vstup pro novou otázku
         if prompt := st.chat_input(_["chat_ph"]):
-            # Přidání otázky uživatele
             st.session_state.radar_chat.append({"role": "user", "content": prompt})
             with st.chat_message("user"):
                 st.markdown(prompt)
                 
-            # Odpověď AI
             with st.chat_message("assistant"):
                 with st.spinner("AI formuluje odpověď..."):
                     odpoved = chat_s_ai(
                         prompt, 
                         st.session_state.radar_zpravy_text, 
                         st.session_state.radar_analyza, 
-                        st.session_state.radar_chat[:-1], # historie bez poslední otázky (tu posíláme zvlášť)
+                        st.session_state.radar_chat[:-1],
                         api_key, 
                         model_provider, 
                         selected_model, 
                         current_lang
                     )
                     st.markdown(odpoved)
-            # Uložení odpovědi
-            st.session_state.radar_chat.append({"role": "assistant", "content": odpoved})
+            
+            # Neukládat chybu do paměti chatu, aby nezůstala viset v kontextu
+            if not odpoved.startswith("⚠️"):
+                st.session_state.radar_chat.append({"role": "assistant", "content": odpoved})
