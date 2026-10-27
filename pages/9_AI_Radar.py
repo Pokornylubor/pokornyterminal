@@ -110,7 +110,8 @@ def fetch_news(ticker):
 def analyzuj_text(titulek, api_klic, provider):
     if "Groq" in provider:
         client = OpenAI(api_key=api_klic, base_url="https://api.groq.com/openai/v1")
-        model_name = "llama-3.1-8b-instant"
+        # Opravený model na ten nejstabilnější z Groq nabídky
+        model_name = "llama3-8b-8192"
     else:
         client = OpenAI(api_key=api_klic)
         model_name = "gpt-4o-mini"
