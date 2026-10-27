@@ -25,10 +25,8 @@ t = {
     "CZ": {
         "title": "AI SENTIMENT & NEWS RADAR",
         "desc": "KVANTITATIVNÍ A FUNDAMENTÁLNÍ ANALÝZA TRŽNÍCH KATALYZÁTORŮ.",
-        "tick_h": "Vyhledávání katalyzátorů",
-        "tick_dd": "Vyberte ticker...",
-        "tick_cust_opt": "✏️ Napsat vlastní ticker...",
-        "tick_cust_ph": "Napište ticker (např. TSLA) a stiskněte Enter...",
+        "tick_db": "DATABÁZE",
+        "tick_cust": "VLASTNÍ TICKER",
         "btn_ai": "🧠 Generovat celkovou AI syntézu",
         "spin_search": "Stahování datového toku...",
         "spin_ai": "AI analyzuje agregovaný datový tok a počítá sentiment...",
@@ -47,10 +45,8 @@ t = {
     "EN": {
         "title": "AI SENTIMENT & NEWS RADAR",
         "desc": "QUANTITATIVE AND FUNDAMENTAL ANALYSIS OF MARKET CATALYSTS.",
-        "tick_h": "Catalyst Search",
-        "tick_dd": "Select ticker...",
-        "tick_cust_opt": "✏️ Enter custom ticker...",
-        "tick_cust_ph": "Type ticker (e.g. TSLA) and press Enter...",
+        "tick_db": "DATABASE",
+        "tick_cust": "CUSTOM TICKER",
         "btn_ai": "🧠 Generate Aggregated AI Synthesis",
         "spin_search": "Downloading data feed...",
         "spin_ai": "AI is analyzing aggregated data feed and calculating sentiment...",
@@ -93,26 +89,16 @@ if not api_key or not selected_model:
     st.warning(_["err_api"])
     st.stop()
 
-# --- ČISTÝ VÝBĚR TICKERU ---
+# --- KONZISTENTNÍ VÝBĚR TICKERU ---
 tickers = load_tickers()
 tickers.sort()
 
-# Sestavení možností (Watchlist + volba pro vlastní zadání)
-options = tickers + [_["tick_cust_opt"]]
+c1, c2, c3 = st.columns([1, 1, 2])
 
-st.markdown(f"#### {_['tick_h']}")
-c1, c2 = st.columns([1, 3])
+dropdown_val = c1.selectbox(_["tick_db"], tickers, index=None, placeholder="Choose an option")
+custom_val = c2.text_input(_["tick_cust"], placeholder="")
 
-with c1:
-    selected_dropdown = st.selectbox("Výběr", options, index=None, placeholder=_["tick_dd"], label_visibility="collapsed")
-    
-    vybrany_ticker = None
-    if selected_dropdown == _["tick_cust_opt"]:
-        vybrany_ticker = st.text_input("Custom Ticker", placeholder=_["tick_cust_ph"], label_visibility="collapsed")
-        if vybrany_ticker:
-            vybrany_ticker = vybrany_ticker.strip().upper()
-    elif selected_dropdown:
-        vybrany_ticker = selected_dropdown
+vybrany_ticker = custom_val.strip().upper() if custom_val.strip() else dropdown_val
 
 @st.cache_data(ttl=600)
 def fetch_news(ticker):
