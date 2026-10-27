@@ -34,9 +34,20 @@ st.caption("AUTOMATICKÁ FUNDAMENTÁLNÍ ANALÝZA ZPRÁV A MĚŘENÍ TRŽNÍHO S
 st.markdown("---")
 
 # --- API KEY MANAGEMENT ---
-col_api, col_model = st.columns([2, 1])
+col_api, col_provider, col_model = st.columns([2, 1, 1])
 api_key = col_api.text_input("🔑 Groq / OpenAI API Klíč:", type="password", placeholder="gsk_... nebo sk-...", help="Získejte zdarma na console.groq.com")
-model_provider = col_model.selectbox("Poskytovatel:", ["Groq (Zdarma & Rychlé)", "OpenAI (GPT-4)"])
+model_provider = col_provider.selectbox("Poskytovatel:", ["Groq (Zdarma)", "OpenAI (Placené)"])
+
+# Dynamický výběr modelu podle poskytovatele
+if "Groq" in model_provider:
+    selected_model = col_model.selectbox("Model:", [
+        "llama-3.1-70b-versatile", 
+        "llama-3.1-8b-instant",
+        "mixtral-8x7b-32768",
+        "gemma2-9b-it"
+    ], index=0)
+else:
+    selected_model = col_model.selectbox("Model:", ["gpt-4o-mini", "gpt-4o"], index=0)
 
 if not api_key:
     st.info("Pro analýzu zpráv vložte API klíč. Doporučujeme [Groq](https://console.groq.com/keys) pro bleskové a bezplatné zpracování.")
@@ -52,7 +63,7 @@ vybrany_ticker = c1.selectbox("Zvolte ticker pro analýzu:", tickers)
 def fetch_news(ticker):
     news_list = []
     
-    # 1. Primární metoda: Přímý přístup na Yahoo Finance RSS (Obejmutí yfinance bloku)
+    # 1. Primární metoda: Přímý přístup na Yahoo Finance RSS
     try:
         url = f"https://feeds.finance.yahoo.com/rss/2.0/headline?s={ticker}&region=US&lang=en-US"
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
@@ -65,7 +76,6 @@ def fetch_news(ticker):
             link = item.find('link').text if item.find('link') is not None else "#"
             pubDate = item.find('pubDate').text if item.find('pubDate') is not None else "Neznámý čas"
             
-            # Oříznutí dlouhého RSS datumu
             if len(pubDate) > 22:
                 pubDate = pubDate[:22]
                 
@@ -107,14 +117,11 @@ def fetch_news(ticker):
         
     return news_list
 
-def analyzuj_text(titulek, api_klic, provider):
+def analyzuj_text(titulek, api_klic, provider, model_name):
     if "Groq" in provider:
         client = OpenAI(api_key=api_klic, base_url="https://api.groq.com/openai/v1")
-        # Opravený model na ten nejstabilnější z Groq nabídky
-        model_name = "llama3-8b-8192"
     else:
         client = OpenAI(api_key=api_klic)
-        model_name = "gpt-4o-mini"
 
     prompt = f"""
     Jsi špičkový analytik hedgeového fondu. Analyzuj následující novinku o společnosti a vrať výsledek STRIKTNĚ jako validní JSON.
@@ -165,7 +172,7 @@ if vybrany_ticker:
                         st.error("Nejprve nahoře vložte API klíč.")
                     else:
                         with st.spinner("AI provádí kvantitativní a fundamentální syntézu..."):
-                            analyza = analyzuj_text(title, api_key, model_provider)
+                            analyza = analyzuj_text(title, api_key, model_provider, selected_model)
                             
                             if "error" in analyza:
                                 st.error(f"Chyba AI: {analyza['error']}")
