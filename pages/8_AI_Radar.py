@@ -26,8 +26,9 @@ t = {
         "title": "AI SENTIMENT & NEWS RADAR",
         "desc": "KVANTITATIVNÍ A FUNDAMENTÁLNÍ ANALÝZA TRŽNÍCH KATALYZÁTORŮ.",
         "tick_h": "Vyhledávání katalyzátorů",
-        "tick_dd": "Vyberte z watchlistu...",
-        "tick_cust": "Nebo zadejte libovolný ticker...",
+        "tick_dd": "Vyberte ticker...",
+        "tick_cust_opt": "✏️ Napsat vlastní ticker...",
+        "tick_cust_ph": "Napište ticker (např. TSLA) a stiskněte Enter...",
         "btn_ai": "🧠 Generovat celkovou AI syntézu",
         "spin_search": "Stahování datového toku...",
         "spin_ai": "AI analyzuje agregovaný datový tok a počítá sentiment...",
@@ -47,8 +48,9 @@ t = {
         "title": "AI SENTIMENT & NEWS RADAR",
         "desc": "QUANTITATIVE AND FUNDAMENTAL ANALYSIS OF MARKET CATALYSTS.",
         "tick_h": "Catalyst Search",
-        "tick_dd": "Select from watchlist...",
-        "tick_cust": "Or enter any custom ticker...",
+        "tick_dd": "Select ticker...",
+        "tick_cust_opt": "✏️ Enter custom ticker...",
+        "tick_cust_ph": "Type ticker (e.g. TSLA) and press Enter...",
         "btn_ai": "🧠 Generate Aggregated AI Synthesis",
         "spin_search": "Downloading data feed...",
         "spin_ai": "AI is analyzing aggregated data feed and calculating sentiment...",
@@ -91,21 +93,26 @@ if not api_key or not selected_model:
     st.warning(_["err_api"])
     st.stop()
 
-# --- PROFI VÝBĚR TICKERU (PRÁZDNÝ DEFAULT + VLASTNÍ VSTUP) ---
+# --- ČISTÝ VÝBĚR TICKERU ---
 tickers = load_tickers()
 tickers.sort()
 
+# Sestavení možností (Watchlist + volba pro vlastní zadání)
+options = tickers + [_["tick_cust_opt"]]
+
 st.markdown(f"#### {_['tick_h']}")
-c1, c2, c3 = st.columns([1, 1, 2])
+c1, c2 = st.columns([1, 3])
 
-# Dropdown menu s předdefinovaným seznamem a prázdným výchozím stavem (index=None)
-dropdown_val = c1.selectbox("Watchlist", tickers, index=None, placeholder=_["tick_dd"], label_visibility="collapsed")
-
-# Textové pole pro ruční zadání naprosto libovolného tickeru
-custom_val = c2.text_input("Custom Ticker", placeholder=_["tick_cust"], label_visibility="collapsed")
-
-# Logika výběru: Vlastní textové pole má přednost. Pokud je prázdné, vezme se hodnota z roletky.
-vybrany_ticker = custom_val.strip().upper() if custom_val.strip() else dropdown_val
+with c1:
+    selected_dropdown = st.selectbox("Výběr", options, index=None, placeholder=_["tick_dd"], label_visibility="collapsed")
+    
+    vybrany_ticker = None
+    if selected_dropdown == _["tick_cust_opt"]:
+        vybrany_ticker = st.text_input("Custom Ticker", placeholder=_["tick_cust_ph"], label_visibility="collapsed")
+        if vybrany_ticker:
+            vybrany_ticker = vybrany_ticker.strip().upper()
+    elif selected_dropdown:
+        vybrany_ticker = selected_dropdown
 
 @st.cache_data(ttl=600)
 def fetch_news(ticker):
