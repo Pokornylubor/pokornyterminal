@@ -27,40 +27,42 @@ t = {
         "desc": "KVANTITATIVNÍ A FUNDAMENTÁLNÍ ANALÝZA TRŽNÍCH KATALYZÁTORŮ.",
         "tick_db": "DATABÁZE",
         "tick_cust": "VLASTNÍ TICKER",
-        "btn_ai": "🧠 Generovat celkovou AI syntézu",
+        "btn_ai": "📊 Analyzovat datový tok",
         "spin_search": "Stahování datového toku...",
         "spin_ai": "AI analyzuje agregovaný datový tok a počítá sentiment...",
         "err_api": "⚠️ AI není nakonfigurována. Přejděte do sekce '⚙️ Nastavení' a vložte platný API klíč.",
         "err_ai": "Chyba AI enginu:",
         "err_news": "Žádné aktuální zprávy nebyly nalezeny.",
         "sources": "🗄️ Zdrojové zprávy použité pro syntézu",
-        "ai_expl": "🤖 AI VYSVĚTLENÍ",
+        "ai_expl": "✨ AI vysvětlení",
         "what_happened": "CO SE STALO",
-        "fund_imp": "FUNDAMENTÁLNÍ DOPAD",
+        "why_move": "PROČ TO HÝBE TRHEM (FUNDAMENT)",
         "sent_desc": "Změřený dopad na tržní sentiment. Kladné hodnoty podporují Risk-On, záporné Risk-Off.",
-        "sent": "Sentiment",
         "no_title": "Bez titulku",
-        "no_time": "Neznámý čas"
+        "no_time": "Neznámý čas",
+        "chat_h": "💬 Vaše otázky k této zprávě",
+        "chat_ph": "Zeptejte se na detaily, valuaci nebo historický kontext..."
     },
     "EN": {
         "title": "AI SENTIMENT & NEWS RADAR",
         "desc": "QUANTITATIVE AND FUNDAMENTAL ANALYSIS OF MARKET CATALYSTS.",
         "tick_db": "DATABASE",
         "tick_cust": "CUSTOM TICKER",
-        "btn_ai": "🧠 Generate Aggregated AI Synthesis",
+        "btn_ai": "📊 Analyze Data Feed",
         "spin_search": "Downloading data feed...",
         "spin_ai": "AI is analyzing aggregated data feed and calculating sentiment...",
         "err_api": "⚠️ AI is not configured. Go to '⚙️ Settings' and provide a valid API key.",
         "err_ai": "AI Engine Error:",
         "err_news": "No current news found.",
         "sources": "🗄️ Source news used for synthesis",
-        "ai_expl": "🤖 AI EXPLANATION",
+        "ai_expl": "✨ AI Explanation",
         "what_happened": "WHAT HAPPENED",
-        "fund_imp": "FUNDAMENTAL IMPACT",
+        "why_move": "WHY IT MOVES THE MARKET (FUNDAMENTALS)",
         "sent_desc": "Measured impact on market sentiment. Positive values support Risk-On, negative Risk-Off.",
-        "sent": "Sentiment",
         "no_title": "No Title",
-        "no_time": "Unknown Time"
+        "no_time": "Unknown Time",
+        "chat_h": "💬 Your questions about this news",
+        "chat_ph": "Ask about details, valuation, or historical context..."
     }
 }
 _ = t.get(current_lang, t["CZ"])
@@ -89,16 +91,35 @@ if not api_key or not selected_model:
     st.warning(_["err_api"])
     st.stop()
 
-# --- KONZISTENTNÍ VÝBĚR TICKERU ---
+# --- SPRÁVA STAVU PRO CHAT A ANALÝZU ---
+if "radar_vybrany_ticker" not in st.session_state:
+    st.session_state.radar_vybrany_ticker = None
+if "radar_analyza" not in st.session_state:
+    st.session_state.radar_analyza = None
+if "radar_zpravy_text" not in st.session_state:
+    st.session_state.radar_zpravy_text = ""
+if "radar_zpravy_list" not in st.session_state:
+    st.session_state.radar_zpravy_list = []
+if "radar_chat" not in st.session_state:
+    st.session_state.radar_chat = []
+
+# --- VÝBĚR TICKERU ---
 tickers = load_tickers()
 tickers.sort()
 
 c1, c2, c3 = st.columns([1, 1, 2])
-
 dropdown_val = c1.selectbox(_["tick_db"], tickers, index=None, placeholder="Choose an option")
 custom_val = c2.text_input(_["tick_cust"], placeholder="")
 
 vybrany_ticker = custom_val.strip().upper() if custom_val.strip() else dropdown_val
+
+# Reset stavu pokud uživatel změnil ticker
+if vybrany_ticker != st.session_state.radar_vybrany_ticker:
+    st.session_state.radar_vybrany_ticker = vybrany_ticker
+    st.session_state.radar_analyza = None
+    st.session_state.radar_chat = []
+    st.session_state.radar_zpravy_text = ""
+    st.session_state.radar_zpravy_list = []
 
 @st.cache_data(ttl=600)
 def fetch_news(ticker):
@@ -151,7 +172,7 @@ def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, provider, model_na
     {{
         "hlavni_nadpis": "One overarching headline summarizing the current situation for {ticker} {jazyk_vyzva}.",
         "co_se_stalo": "Executive summary combining the key points from the news in 3-5 sentences {jazyk_vyzva}.",
-        "dopad_fundament": "Fundamental impact analysis (business model, DCF, liquidity) {jazyk_vyzva}.",
+        "proc_to_hybe_trhem": "Fundamental impact analysis (business model, DCF, liquidity, reasons for price action) {jazyk_vyzva}.",
         "sentiment_skore": <float between -1.0 (strong Risk-Off) and 1.0 (strong Risk-On)>
     }}
     Do not output anything other than raw JSON.
@@ -164,36 +185,108 @@ def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, provider, model_na
     except Exception as e:
         return {"error": str(e)}
 
+def chat_s_ai(otazka, kontext_zprav, analyza_json, historie, api_klic, provider, model_name, lang):
+    if provider == "Groq":
+        client = OpenAI(api_key=api_klic, base_url="[https://api.groq.com/openai/v1](https://api.groq.com/openai/v1)")
+    else:
+        client = OpenAI(api_key=api_klic)
+        
+    jazyk_vyzva = "Odpovídej v češtině." if lang == "CZ" else "Answer in English."
+    
+    messages = [
+        {"role": "system", "content": f"Jsi institucionální analytik. Odpovídej uživateli na dotazy ohledně této zprávy. Buď přímý, analytický a přesný. Zde je zdrojový datový tok: {kontext_zprav}. Zde je tvá původní syntéza: {json.dumps(analyza_json)}. {jazyk_vyzva}"}
+    ]
+    
+    for msg in historie:
+        messages.append({"role": msg["role"], "content": msg["content"]})
+        
+    messages.append({"role": "user", "content": otazka})
+    
+    try:
+        response = client.chat.completions.create(model=model_name, messages=messages, temperature=0.3)
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"Chyba spojení s AI: {e}"
+
 if vybrany_ticker:
     st.markdown("<br>", unsafe_allow_html=True)
-    with st.spinner(_["spin_search"]):
-        news_data = fetch_news(vybrany_ticker)
     
-    if not news_data:
-        st.warning(_["err_news"])
-    else:
-        if st.button(_["btn_ai"], use_container_width=True, type="primary"):
+    # Rozložení tlačítek a akce
+    if st.button(_["btn_ai"], use_container_width=True):
+        with st.spinner(_["spin_search"]):
+            news_data = fetch_news(vybrany_ticker)
+            
+        if not news_data:
+            st.warning(_["err_news"])
+        else:
             agregovany_text = "\n".join([f"- {n['pub_time_str']}: {n['title']}" for n in news_data])
             with st.spinner(_["spin_ai"]):
                 analyza = analyzuj_agregovane_zpravy(vybrany_ticker, agregovany_text, api_key, model_provider, selected_model, current_lang)
-                if "error" in analyza:
-                    st.error(f"{_['err_ai']} {analyza['error']}")
+                if "error" not in analyza:
+                    st.session_state.radar_analyza = analyza
+                    st.session_state.radar_zpravy_text = agregovany_text
+                    st.session_state.radar_zpravy_list = news_data
+                    st.session_state.radar_chat = []
                 else:
-                    st.markdown("<br>", unsafe_allow_html=True)
-                    with st.container(border=True):
-                        st.markdown(f"### 🔹 {analyza.get('hlavni_nadpis', 'Analýza trhu')}")
-                        skore = float(analyza.get('sentiment_skore', 0))
-                        col_val, col_desc = st.columns([1, 4])
-                        with col_val: st.metric(_["sent"], f"{skore:+.4f}")
-                        with col_desc: st.caption(_["sent_desc"])
-                        st.markdown("---")
-                        st.markdown(f"#### {_['ai_expl']}")
-                        st.markdown(f"**{_['what_happened']}**")
-                        st.write(analyza.get("co_se_stalo", ""))
-                        st.markdown(f"**{_['fund_imp']}**")
-                        st.write(analyza.get("dopad_fundament", ""))
+                    st.error(f"{_['err_ai']} {analyza['error']}")
+
+    # Vykreslení výsledků (čte se ze session state, aby to nezmizelo při chatu)
+    if st.session_state.radar_analyza:
+        a = st.session_state.radar_analyza
+        skore = float(a.get('sentiment_skore', 0))
         
         st.markdown("<br>", unsafe_allow_html=True)
+        with st.container(border=True):
+            # Čistý design podle vzoru Moodix
+            st.markdown(f"### 🔹 {a.get('hlavni_nadpis', 'Analýza trhu')}")
+            
+            # Formátování metrik
+            barva = "green" if skore > 0 else "red" if skore < 0 else "grey"
+            st.markdown(f"`{vybrany_ticker}` &nbsp; <span style='color:{barva}; font-weight:bold; background-color:rgba(255,255,255,0.1); padding: 2px 6px; border-radius:4px;'>{skore:+.4f}</span>", unsafe_allow_html=True)
+            st.caption(_["sent_desc"])
+            
+            st.markdown("---")
+            st.markdown(f"#### {_['ai_expl']}")
+            
+            st.markdown(f"**{_['what_happened']}**")
+            st.write(a.get("co_se_stalo", ""))
+            
+            st.markdown(f"**{_['why_move']}**")
+            st.write(a.get("proc_to_hybe_trhem", ""))
+            
         with st.expander(_["sources"]):
-            for article in news_data:
+            for article in st.session_state.radar_zpravy_list:
                 st.markdown(f"- **{article['pub_time_str']}** | [{article['title']}]({article['link']})")
+
+        # --- Q&A CHAT SEKCE ---
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown(f"#### {_['chat_h']}")
+        
+        # Vykreslení historie
+        for msg in st.session_state.radar_chat:
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
+                
+        # Vstup pro novou otázku
+        if prompt := st.chat_input(_["chat_ph"]):
+            # Přidání otázky uživatele
+            st.session_state.radar_chat.append({"role": "user", "content": prompt})
+            with st.chat_message("user"):
+                st.markdown(prompt)
+                
+            # Odpověď AI
+            with st.chat_message("assistant"):
+                with st.spinner("AI formuluje odpověď..."):
+                    odpoved = chat_s_ai(
+                        prompt, 
+                        st.session_state.radar_zpravy_text, 
+                        st.session_state.radar_analyza, 
+                        st.session_state.radar_chat[:-1], # historie bez poslední otázky (tu posíláme zvlášť)
+                        api_key, 
+                        model_provider, 
+                        selected_model, 
+                        current_lang
+                    )
+                    st.markdown(odpoved)
+            # Uložení odpovědi
+            st.session_state.radar_chat.append({"role": "assistant", "content": odpoved})
