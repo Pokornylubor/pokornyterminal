@@ -3,6 +3,8 @@ import yfinance as yf
 import json
 import os
 import sys
+import urllib.request
+import xml.etree.ElementTree as ET
 from datetime import datetime
 from openai import OpenAI
 
@@ -46,18 +48,69 @@ tickers.sort()
 c1, c2 = st.columns([1, 3])
 vybrany_ticker = c1.selectbox("Zvolte ticker pro analýzu:", tickers)
 
-@st.cache_data(ttl=900)
+@st.cache_data(ttl=600)
 def fetch_news(ticker):
+    news_list = []
+    
+    # 1. Primární metoda: Přímý přístup na Yahoo Finance RSS (Obejmutí yfinance bloku)
+    try:
+        url = f"https://feeds.finance.yahoo.com/rss/2.0/headline?s={ticker}&region=US&lang=en-US"
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+        with urllib.request.urlopen(req, timeout=5) as response:
+            xml_data = response.read()
+        
+        root = ET.fromstring(xml_data)
+        for item in root.findall('.//item')[:8]:
+            title = item.find('title').text if item.find('title') is not None else "Bez titulku"
+            link = item.find('link').text if item.find('link') is not None else "#"
+            pubDate = item.find('pubDate').text if item.find('pubDate') is not None else "Neznámý čas"
+            
+            # Oříznutí dlouhého RSS datumu
+            if len(pubDate) > 22:
+                pubDate = pubDate[:22]
+                
+            news_list.append({
+                "title": title,
+                "link": link,
+                "publisher": "Yahoo Finance (RSS)",
+                "pub_time_str": pubDate
+            })
+        
+        if news_list:
+            return news_list
+    except Exception:
+        pass
+
+    # 2. Záložní metoda: Standardní yfinance
     try:
         t = yf.Ticker(ticker)
-        return t.news
+        yf_news = t.news
+        for n in yf_news[:8]:
+            title = n.get("title", "Bez titulku")
+            link = n.get("link", "#")
+            publisher = n.get("publisher", "Yahoo Finance")
+            
+            try:
+                ts = n.get("providerPublishTime", 0)
+                pubDate = datetime.fromtimestamp(ts).strftime("%d.%m.%Y %H:%M") if ts else "Neznámý čas"
+            except:
+                pubDate = "Neznámý čas"
+                
+            news_list.append({
+                "title": title,
+                "link": link,
+                "publisher": publisher,
+                "pub_time_str": pubDate
+            })
     except:
-        return []
+        pass
+        
+    return news_list
 
 def analyzuj_text(titulek, api_klic, provider):
     if "Groq" in provider:
         client = OpenAI(api_key=api_klic, base_url="https://api.groq.com/openai/v1")
-        model_name = "llama3-8b-8192"
+        model_name = "llama-3.1-8b-instant"
     else:
         client = OpenAI(api_key=api_klic)
         model_name = "gpt-4o-mini"
@@ -82,7 +135,6 @@ def analyzuj_text(titulek, api_klic, provider):
             temperature=0.1
         )
         vysledek = response.choices[0].message.content
-        # Očištění případného markdownu
         if vysledek.startswith("```json"):
             vysledek = vysledek.strip("`").replace("json\n", "")
         return json.loads(vysledek)
@@ -91,26 +143,22 @@ def analyzuj_text(titulek, api_klic, provider):
 
 if vybrany_ticker:
     st.markdown(f"### Poslední katalyzátory a zprávy: **{vybrany_ticker}**")
-    news_data = fetch_news(vybrany_ticker)
+    
+    with st.spinner(f"Hledám katalyzátory pro {vybrany_ticker}..."):
+        news_data = fetch_news(vybrany_ticker)
     
     if not news_data:
-        st.warning("Žádné aktuální zprávy nebyly nalezeny.")
+        st.warning("Žádné aktuální zprávy nebyly nalezeny. API Yahoo Finance momentálně neodpovídá.")
     else:
-        for idx, article in enumerate(news_data[:5]): # Zobrazíme 5 nejnovějších
+        for idx, article in enumerate(news_data):
             title = article.get("title", "Bez titulku")
             publisher = article.get("publisher", "Neznámý zdroj")
             link = article.get("link", "#")
-            
-            # Čas publikace
-            try:
-                pub_time = datetime.fromtimestamp(article.get("providerPublishTime", 0)).strftime("%d.%m.%Y %H:%M")
-            except:
-                pub_time = "Neznámý čas"
+            pub_time = article.get("pub_time_str", "Neznámý čas")
             
             with st.expander(f"📰 {pub_time} | {publisher}: {title}"):
                 st.markdown(f"**Originál:** [{title}]({link})")
                 
-                # Unikátní tlačítko pro každou zprávu
                 if st.button(f"🧠 Analyzovat AI (Moodix Styl)", key=f"btn_{idx}"):
                     if not api_key:
                         st.error("Nejprve nahoře vložte API klíč.")
@@ -122,9 +170,7 @@ if vybrany_ticker:
                                 st.error(f"Chyba AI: {analyza['error']}")
                             else:
                                 st.markdown("---")
-                                # MOODIX STYLE VIZUALIZACE
                                 col_skore, col_text = st.columns([1, 4])
-                                
                                 skore = float(analyza.get('sentiment_skore', 0))
                                 
                                 with col_skore:
