@@ -5,6 +5,7 @@ import os
 import sys
 import requests
 import plotly.graph_objects as go
+import math
 from datetime import datetime
 
 # --- INITIAL SETUP ---
@@ -68,18 +69,6 @@ t = {
         "comp_period": "Časový horizont:",
         "loading": "Načítání makroekonomických dat...",
         "fed_title": "Pravděpodobnost cílové sazby (CME FedWatch Model)",
-        "fed_current_bracket": "Aktuální pásmo sazeb FEDu:",
-        "fed_next": "Nejbližší zasedání FOMC:",
-        "fed_days": "Zbývá dní:",
-        "fed_y": "Pravděpodobnost (%)",
-        "fed_x": "Cílová sazba (v bps)",
-        "f_tgt": "CÍLOVÁ SAZBA (BPS)",
-        "f_now": "NYNÍ",
-        "f_1d": "1 DEN",
-        "f_1w": "1 TÝDEN",
-        "f_1m": "1 MĚSÍC",
-        "fed_curr_lbl": "Aktuální cílová sazba je",
-        "fed_curr_tbl": " (Aktuální)",
         "chart_yc": "Spread výnosové křivky (10Y minus 3M)",
         "chart_vix": "Index strachu (VIX)",
         "sys_risk": "Systémová rizika",
@@ -93,12 +82,6 @@ Pravděpodobnosti implikované z futures kontraktů (ZQ=F). Neukazuje oficiáln�
 
 **3. Fear & Greed Index**
 Agregovaný sentiment trhu. <25: Extreme Fear (příležitost k akumulaci). >75: Extreme Greed (zvýšené riziko korekce).
-
-**4. DXY (Dolarový index)**
-Síla USD. Silný dolar (>105) sráží komodity.
-
-**5. S&P 500 vs. RSP (Equal Weight)**
-Pokud S&P roste a RSP klesá, trh je tažen úzkou skupinou firem.
         """
     },
     "EN": {
@@ -146,18 +129,6 @@ Pokud S&P roste a RSP klesá, trh je tažen úzkou skupinou firem.
         "comp_period": "Time horizon:",
         "loading": "Loading macroeconomic data...",
         "fed_title": "Target Rate Probabilities (CME FedWatch Model)",
-        "fed_current_bracket": "Current FED Target Bracket:",
-        "fed_next": "Next FOMC:",
-        "fed_days": "Days remaining:",
-        "fed_y": "Probability (%)",
-        "fed_x": "Target Rate (in bps)",
-        "f_tgt": "TARGET RATE (BPS)",
-        "f_now": "NOW",
-        "f_1d": "1 DAY",
-        "f_1w": "1 WEEK",
-        "f_1m": "1 MONTH",
-        "fed_curr_lbl": "Current target rate is",
-        "fed_curr_tbl": " (Current)",
         "chart_yc": "Yield Curve Spread (10Y minus 3M)",
         "chart_vix": "VIX History",
         "sys_risk": "Systemic Risks",
@@ -171,12 +142,6 @@ Implied probabilities from futures (ZQ=F). Market expectations, not official rat
 
 **3. Fear & Greed Index**
 Aggregated market sentiment. <25: Extreme Fear. >75: Extreme Greed.
-
-**4. DXY (Dollar Index)**
-USD strength. Strong dollar (>105) pressures commodities.
-
-**5. S&P 500 vs. RSP (Equal Weight)**
-Divergence signals narrow market breadth.
         """
     }
 }
@@ -221,29 +186,6 @@ def safe_iloc(df, steps_back):
     if len(df) > steps_back:
         return df['Close'].iloc[-(steps_back+1)]
     return None
-
-def calc_fed_probs(implied_rate):
-    lower_bound = (implied_rate // 0.25) * 0.25
-    mid_point = lower_bound + 0.125
-    
-    if implied_rate >= mid_point:
-        prob_move = (implied_rate - mid_point) / 0.25
-        prob_stay = 1.0 - prob_move
-        return {
-            "current_target": f"{int(lower_bound*100)}-{int((lower_bound+0.25)*100)}",
-            "next_target": f"{int((lower_bound+0.25)*100)}-{int((lower_bound+0.50)*100)}",
-            "prob_stay": prob_stay * 100,
-            "prob_move": prob_move * 100
-        }
-    else:
-        prob_move = (mid_point - implied_rate) / 0.25
-        prob_stay = 1.0 - prob_move
-        return {
-            "current_target": f"{int(lower_bound*100)}-{int((lower_bound+0.25)*100)}",
-            "next_target": f"{int((lower_bound-0.25)*100)}-{int(lower_bound*100)}",
-            "prob_stay": prob_stay * 100,
-            "prob_move": prob_move * 100
-        }
 
 @st.cache_data(ttl=3600)
 def fetch_fng():
@@ -292,14 +234,6 @@ def fetch_macro_data():
                 perf[_["p_1y"]] = safe_iloc(hist, 252)
                 perf[_["p_3y"]] = safe_iloc(hist, 252*3)
                 perf[_["p_5y"]] = safe_iloc(hist, 252*5)
-                
-                if key == "FED":
-                    data["FED_hist"] = {
-                        "now": current_price,
-                        "1d": prev_price,
-                        "1w": perf[_["p_1w"]] if perf[_["p_1w"]] else current_price,
-                        "1m": perf[_["p_1m"]] if perf[_["p_1m"]] else current_price
-                    }
                 
                 calculated_perf = {}
                 for p_key, p_val in perf.items():
@@ -551,14 +485,13 @@ if macro_data:
 
     with tab_fed:
         st.subheader("🏛️ CME FedWatch Tool")
-        st.caption("Pravděpodobnosti vypočítané exaktní CME metodikou z tržních cen Fed Funds Futures (ZQ kontraktů).")
+        st.caption("Pravděpodobnosti vypočítané exaktní metodikou z tržních cen Fed Funds Futures (ZQ kontraktů).")
 
         today = datetime.now()
         future_meetings = [d for d in FOMC_DATES if d >= today][:8]
         cme_month_codes = {1: 'F', 2: 'G', 3: 'H', 4: 'J', 5: 'K', 6: 'M', 7: 'N', 8: 'Q', 9: 'U', 10: 'V', 11: 'X', 12: 'Z'}
         mesice_cz = {1: "led", 2: "úno", 3: "bře", 4: "dub", 5: "kvě", 6: "čvn", 7: "čvc", 8: "srp", 9: "zář", 10: "říj", 11: "lis", 12: "pro"}
 
-        # Aktuální sazba z nejbližšího kontraktu funguje jako matematická kotva
         current_implied_rate = 100.0 - macro_data["FED"]["price"]
         curr_lower_target = math.floor((current_implied_rate * 100) / 25) * 25
         current_target_str = f"{int(curr_lower_target)}-{int(curr_lower_target+25)}"
@@ -572,7 +505,6 @@ if macro_data:
             tab_labels.append(tab_label)
             contract_code = f"ZQ{cme_month_codes[d.month]}{str(d.year)[-1]}"
 
-            # Přímé stažení surové ceny konkrétního kontraktu přes YF
             try:
                 tkr = yf.Ticker(f"{contract_code}.CBT", session=session)
                 hist = tkr.history(period="5d")
@@ -587,18 +519,13 @@ if macro_data:
                 price = macro_data["FED"]["price"]
                 vol, oi = 0, "-"
 
-            # --- ČISTÁ CME MATEMATIKA ---
             implied_rate = 100.0 - price
-            
-            # 1. Výpočet vzdálenosti od aktuální implikované sazby v bazických bodech
             diff_bps = (implied_rate - current_implied_rate) * 100
             
-            # 2. Rozdělení vzdálenosti na celé 25bps kroky a zbytek
             jumps = diff_bps / 25.0
             base_jump = math.floor(jumps)
             remainder = jumps - base_jump
             
-            # 3. Rozprostření pravděpodobnosti čistě mezi dvě sousední pásma
             p1 = (1.0 - remainder) * 100
             p2 = remainder * 100
             
@@ -612,7 +539,6 @@ if macro_data:
             
             brackets = dict(sorted(brackets.items(), key=lambda item: int(item[0].split('-')[0])))
 
-            # Metriky do tabulky
             ease_sum = sum(v for k, v in brackets.items() if (int(k.split('-')[0]) + 12.5) < current_target_mid)
             no_change_sum = sum(v for k, v in brackets.items() if (int(k.split('-')[0]) + 12.5) == current_target_mid)
             hike_sum = sum(v for k, v in brackets.items() if (int(k.split('-')[0]) + 12.5) > current_target_mid)
