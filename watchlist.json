@@ -264,7 +264,7 @@
     },
     "settings": {
         "ai_provider": "Google Gemini",
-        "ai_model": "models/gemini-robotics-er-2-streaming-preview",
+        "ai_model": "models/gemini-pro-latest",
         "lang": "CZ"
     }
 }
