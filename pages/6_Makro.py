@@ -492,8 +492,12 @@ if macro_data:
         cme_month_codes = {1: 'F', 2: 'G', 3: 'H', 4: 'J', 5: 'K', 6: 'M', 7: 'N', 8: 'Q', 9: 'U', 10: 'V', 11: 'X', 12: 'Z'}
         mesice_cz = {1: "led", 2: "úno", 3: "bře", 4: "dub", 5: "kvě", 6: "čvn", 7: "čvc", 8: "srp", 9: "zář", 10: "říj", 11: "lis", 12: "pro"}
 
-        current_implied_rate = 100.0 - macro_data["FED"]["price"]
-        curr_lower_target = math.floor((current_implied_rate * 100) / 25) * 25
+        # Fixní bezpečné zjištění aktuálního pásma sazeb (zajišťuje, že nikdy nebude ukazovat 9600 bps)
+        base_fed_rate = macro_data.get("FED", {}).get("price", 4.625)
+        if base_fed_rate > 50.0:
+            base_fed_rate = 100.0 - base_fed_rate
+        
+        curr_lower_target = math.floor((base_fed_rate * 100) / 25) * 25
         current_target_str = f"{int(curr_lower_target)}-{int(curr_lower_target+25)}"
         current_target_mid = curr_lower_target + 12.5
 
@@ -510,19 +514,19 @@ if macro_data:
                 hist = tkr.history(period="5d")
                 if not hist.empty:
                     raw_price = float(hist['Close'].iloc[-1])
-                    # OPRAVA: Pokud Yahoo vrátí čistou sazbu (např. 3.885), převedeme na cenu futures. Pokud vrátí cenu (např. 96.11), necháme tak.
-                    price = (100.0 - raw_price) if raw_price < 50.0 else raw_price
+                    # Ošetření: Pokud Yahoo vrací přímo futures cenu (např. 96.11), použijeme ji. Pokud vrací čistou sazbu (např. 3.88), přepočteme na 100 - sazba.
+                    future_price = raw_price if raw_price > 50.0 else (100.0 - raw_price)
                     vol = int(hist['Volume'].iloc[-1]) if pd.notna(hist['Volume'].iloc[-1]) else 0
                     oi = tkr.info.get("openInterest", "Live")
                 else:
-                    price = 100.0 - macro_data["FED"]["price"]
+                    future_price = 100.0 - base_fed_rate
                     vol, oi = 0, "-"
             except:
-                price = 100.0 - macro_data["FED"]["price"]
+                future_price = 100.0 - base_fed_rate
                 vol, oi = 0, "-"
 
-            implied_rate = 100.0 - price
-            diff_bps = (implied_rate - current_implied_rate) * 100
+            implied_rate_pct = 100.0 - future_price
+            diff_bps = (implied_rate_pct - base_fed_rate) * 100
             
             jumps = diff_bps / 25.0
             base_jump = math.floor(jumps)
@@ -539,6 +543,9 @@ if macro_data:
             if p1 >= 0.1: brackets[bracket_1] = round(p1, 1)
             if p2 >= 0.1: brackets[bracket_2] = round(p2, 1)
             
+            if not brackets:
+                brackets[current_target_str] = 100.0
+            
             brackets = dict(sorted(brackets.items(), key=lambda item: int(item[0].split('-')[0])))
 
             ease_sum = sum(v for k, v in brackets.items() if (int(k.split('-')[0]) + 12.5) < current_target_mid)
@@ -548,7 +555,7 @@ if macro_data:
             dynamic_fed_data[tab_label] = {
                 "date": f"{d.day}. {mesice_cz[d.month]} {d.year}",
                 "contract": contract_code,
-                "mid": f"{price:.4f}".replace(".", ","),
+                "mid": f"{future_price:.4f}".replace(".", ","),
                 "vol": f"{vol:,}".replace(",", " ") if vol > 0 else "-",
                 "oi": f"{oi:,}".replace(",", " ") if isinstance(oi, int) else oi,
                 "ease": f"{ease_sum:.1f} %".replace(".", ","),
