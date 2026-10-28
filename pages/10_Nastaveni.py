@@ -69,14 +69,14 @@ t = {
         "desc": "SPRÁVA ROZHRANÍ A INFRASTRUKTURY TERMINÁLU.",
         "ui_h": "🎨 Uživatelské rozhraní",
         "lang_lbl": "Jazyk aplikace (Language):",
-        "ai_h": "🧠 Umělá inteligence",
-        "ai_desc": "Propojení aplikace s LLM servery pro datovou analýzu.",
+        "ai_h": "🧠 Umělá inteligence (Google Gemini)",
+        "ai_desc": "Propojení aplikace s Google AI Studio pro datovou analýzu.",
         "api_lbl": "Dočasný API Klíč:",
         "prov_lbl": "Poskytovatel:",
         "mod_lbl": "Výchozí model:",
         "save_btn": "💾 Uložit veškeré nastavení a synchronizovat na GitHub",
         "saved_msg": "Globální konfigurace (jazyk, modely) bezpečně uložena na GitHub.",
-        "no_models": "Klíč nenalezen. Vložte GROQ_API_KEY do Streamlit Secrets.",
+        "no_models": "Klíč nenalezen. Vložte GOOGLE_API_KEY do Streamlit Secrets.",
         "future_h": "🔧 Budoucí moduly",
         "future_desc": "Připraveno pro napojení na brokery a webhooky."
     },
@@ -85,14 +85,14 @@ t = {
         "desc": "TERMINAL INTERFACE AND INFRASTRUCTURE MANAGEMENT.",
         "ui_h": "🎨 User Interface",
         "lang_lbl": "App Language:",
-        "ai_h": "🧠 Artificial Intelligence",
-        "ai_desc": "Connection to LLM servers for data analysis.",
+        "ai_h": "🧠 Artificial Intelligence (Google Gemini)",
+        "ai_desc": "Connection to Google AI Studio for data analysis.",
         "api_lbl": "Temporary API Key:",
         "prov_lbl": "Provider:",
         "mod_lbl": "Default Model:",
         "save_btn": "💾 Save All Settings & Sync to GitHub",
         "saved_msg": "Global configuration (language, models) safely saved to GitHub.",
-        "no_models": "Key not found. Add GROQ_API_KEY to Streamlit Secrets.",
+        "no_models": "Key not found. Add GOOGLE_API_KEY to Streamlit Secrets.",
         "future_h": "🔧 Future Modules",
         "future_desc": "Prepared for broker integration and webhooks."
     }
@@ -107,15 +107,17 @@ st.markdown("---")
 def fetch_available_models(api_klic, provider):
     if not api_klic: return []
     try:
-        if provider == "Groq":
-            client = OpenAI(api_key=api_klic, base_url="https://api.groq.com/openai/v1")
+        if "google" in provider.lower() or "gemini" in provider.lower():
+            # Připojení na Google AI Studio endpoint pro načtení dostupných modelů
+            client = OpenAI(api_key=api_klic, base_url="https://generativelanguage.googleapis.com/v1beta/openai/")
             models = client.models.list().data
-            llm_models = [m.id for m in models if "whisper" not in m.id and "tool-use" not in m.id]
+            llm_models = [m.id for m in models if "gemini" in m.id]
             return sorted(llm_models, reverse=True)
         else:
-            return ["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo"]
+            return ["gemini-2.5-flash", "gemini-2.5-pro"]
     except:
-        return []
+        # Fallback seznam spolehlivých modelů, pokud selže živé načtení z API
+        return ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-1.5-flash"]
 
 col1, col2 = st.columns(2, gap="large")
 
@@ -141,17 +143,18 @@ with col2:
         app_data = load_watchlist_data()
         saved_settings = app_data.get("settings", {})
         
-        if "ai_provider" not in st.session_state: st.session_state.ai_provider = saved_settings.get("ai_provider", "Groq")
-        if "ai_model" not in st.session_state: st.session_state.ai_model = saved_settings.get("ai_model", "")
+        if "ai_provider" not in st.session_state: st.session_state.ai_provider = saved_settings.get("ai_provider", "Google Gemini")
+        if "ai_model" not in st.session_state: st.session_state.ai_model = saved_settings.get("ai_model", "gemini-2.5-flash")
 
-        has_secret = "GROQ_API_KEY" in st.secrets
+        # Hledáme klíč pod klíčovými slovy pro Google/Gemini
+        has_secret = "GOOGLE_API_KEY" in st.secrets or "GEMINI_API_KEY" in st.secrets
         if has_secret:
-            st.success("✅ API Klíč je bezpečně načten z tajného trezoru Streamlit Cloud.")
-            temp_api = st.secrets["GROQ_API_KEY"]
+            st.success("✅ Google API Klíč je bezpečně načten z tajného trezoru Streamlit Cloud.")
+            temp_api = st.secrets.get("GOOGLE_API_KEY", st.secrets.get("GEMINI_API_KEY", ""))
         else:
-            temp_api = st.text_input(_["api_lbl"], type="password", placeholder="gsk_...", help="Pouze pro tuto relaci. Pro trvalé uložení vložte GROQ_API_KEY do Secrets.")
+            temp_api = st.text_input(_["api_lbl"], type="password", placeholder="AIza...", help="Pouze pro tuto relaci. Pro trvalé uložení vložte GOOGLE_API_KEY do Secrets.")
             
-        temp_prov = st.selectbox(_["prov_lbl"], ["Groq", "OpenAI"], index=0 if st.session_state.ai_provider == "Groq" else 1)
+        temp_prov = st.selectbox(_["prov_lbl"], ["Google Gemini"], index=0)
         
         models = fetch_available_models(temp_api, temp_prov)
         temp_model = None
@@ -161,7 +164,7 @@ with col2:
                 idx = models.index(st.session_state.ai_model) if st.session_state.ai_model in models else 0
                 temp_model = st.selectbox(_["mod_lbl"], models, index=idx)
             else:
-                st.error("Neplatný klíč nebo výpadek API.")
+                st.error("Neplatný klíč nebo výpadek Google API.")
         else:
             st.warning(_["no_models"])
             

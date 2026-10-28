@@ -29,8 +29,8 @@ t = {
         "tick_cust": "VLASTNÍ TICKER",
         "btn_ai": "📊 Analyzovat datový tok",
         "spin_search": "Stahování datového toku...",
-        "spin_ai": "AI analyzuje agregovaný datový tok a počítá sentiment...",
-        "err_api": "⚠️ AI API klíč nebyl nalezen. Ujistěte se, že je GROQ_API_KEY uložen ve Streamlit Secrets.",
+        "spin_ai": "AI (Gemini) analyzuje agregovaný datový tok a počítá sentiment...",
+        "err_api": "⚠️ AI API klíč nebyl nalezen. Ujistěte se, že je GOOGLE_API_KEY uložen ve Streamlit Secrets.",
         "err_ai": "Chyba AI enginu:",
         "err_news": "Žádné aktuální zprávy nebyly nalezeny.",
         "sources": "🗄️ Zdrojové zprávy použité pro syntézu",
@@ -50,8 +50,8 @@ t = {
         "tick_cust": "CUSTOM TICKER",
         "btn_ai": "📊 Analyze Data Feed",
         "spin_search": "Downloading data feed...",
-        "spin_ai": "AI is analyzing aggregated data feed and calculating sentiment...",
-        "err_api": "⚠️ AI API key not found. Ensure GROQ_API_KEY is saved in Streamlit Secrets.",
+        "spin_ai": "AI (Gemini) is analyzing aggregated data feed and calculating sentiment...",
+        "err_api": "⚠️ AI API key not found. Ensure GOOGLE_API_KEY is saved in Streamlit Secrets.",
         "err_ai": "AI Engine Error:",
         "err_news": "No current news found.",
         "sources": "🗄️ Source news used for synthesis",
@@ -83,16 +83,17 @@ saved_settings = app_data.get("settings", {})
 def load_tickers():
     return list(set(app_data.get("portfolio", []) + app_data.get("watchlist", [])))
 
-# --- BEZPEČNÉ NAČTENÍ KONFIGURACE ---
-api_key = st.secrets.get("GROQ_API_KEY", "")
-model_provider = st.session_state.get("ai_provider", saved_settings.get("ai_provider", "Groq"))
-selected_model = st.session_state.get("ai_model", saved_settings.get("ai_model", ""))
+# --- BEZPEČNÉ NAČTENÍ KONFIGURACE PRO GEMINI ---
+# Prioritně zkusíme načíst GOOGLE_API_KEY, případně fallback na GROQ_API_KEY
+api_key = st.secrets.get("GOOGLE_API_KEY", st.secrets.get("GEMINI_API_KEY", st.secrets.get("GROQ_API_KEY", "")))
+model_provider = st.session_state.get("ai_provider", saved_settings.get("ai_provider", "Google"))
+selected_model = st.session_state.get("ai_model", saved_settings.get("ai_model", "gemini-2.5-flash"))
 
 st.title(_["title"])
 st.caption(_["desc"])
 st.markdown("---")
 
-if not api_key or not selected_model:
+if not api_key:
     st.warning(_["err_api"])
     st.stop()
 
@@ -152,11 +153,25 @@ def fetch_news(ticker):
     except: pass
     return news_list
 
-def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, provider, model_name, lang):
-    if provider == "Groq":
-        client = OpenAI(api_key=api_klic, base_url="https://api.groq.com/openai/v1", max_retries=3)
+def get_ai_client(api_klic, provider):
+    # Pokud používáme Gemini / Google, směřujeme na Google AI Studio OpenAI-kompatibilní endpoint, 
+    # případně standardní klíč.
+    if "gemini" in provider.lower() or "google" in provider.lower() or not provider:
+        return OpenAI(
+            api_key=api_klic,
+            base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
+        )
+    elif provider == "Groq":
+        return OpenAI(api_key=api_klic, base_url="https://api.groq.com/openai/v1", max_retries=3)
     else:
-        client = OpenAI(api_key=api_klic, max_retries=3)
+        return OpenAI(api_key=api_klic, max_retries=3)
+
+def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, provider, model_name, lang):
+    client = get_ai_client(api_klic, provider)
+    
+    # Pokud uživatel nezadal model, nastavíme bezpečný výchozí pro Gemini
+    if not model_name or model_name == "":
+        model_name = "gemini-2.5-flash"
 
     jazyk_vyzva = "v češtině (Czech)" if lang == "CZ" else "in English"
     prompt = f"""
@@ -174,18 +189,22 @@ def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, provider, model_na
     Do not output anything other than raw JSON.
     """
     try:
-        response = client.chat.completions.create(model=model_name, messages=[{"role": "user", "content": prompt}], temperature=0.1, timeout=20.0)
+        response = client.chat.completions.create(
+            model=model_name, 
+            messages=[{"role": "user", "content": prompt}], 
+            temperature=0.1
+        )
         vysledek = response.choices[0].message.content
-        if vysledek.startswith("```json"): vysledek = vysledek.strip("`").replace("json\n", "")
+        if vysledek.startswith("```json"): 
+            vysledek = vysledek.replace("```json", "").replace("```", "").strip()
         return json.loads(vysledek)
     except Exception as e:
         return {"error": str(e)}
 
 def chat_s_ai(otazka, kontext_zprav, analyza_json, historie, api_klic, provider, model_name, lang):
-    if provider == "Groq":
-        client = OpenAI(api_key=api_klic, base_url="[https://api.groq.com/openai/v1](https://api.groq.com/openai/v1)", max_retries=3)
-    else:
-        client = OpenAI(api_key=api_klic, max_retries=3)
+    client = get_ai_client(api_klic, provider)
+    if not model_name or model_name == "":
+        model_name = "gemini-2.5-flash"
         
     jazyk_vyzva = "Odpovídej v češtině." if lang == "CZ" else "Answer in English."
     analyza_str = json.dumps(analyza_json, ensure_ascii=False)
@@ -197,7 +216,11 @@ def chat_s_ai(otazka, kontext_zprav, analyza_json, historie, api_klic, provider,
     messages.append({"role": "user", "content": otazka})
     
     try:
-        response = client.chat.completions.create(model=model_name, messages=messages, temperature=0.3, timeout=15.0)
+        response = client.chat.completions.create(
+            model=model_name, 
+            messages=messages, 
+            temperature=0.3
+        )
         return response.choices[0].message.content
     except Exception as e:
         return f"⚠️ Došlo k výpadku spojení s AI serverem ({e}). Zkuste to prosím znovu."
