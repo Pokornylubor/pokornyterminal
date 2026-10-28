@@ -84,10 +84,9 @@ def load_tickers():
     return list(set(app_data.get("portfolio", []) + app_data.get("watchlist", [])))
 
 # --- BEZPEČNÉ NAČTENÍ KONFIGURACE PRO GEMINI ---
-# Prioritně zkusíme načíst GOOGLE_API_KEY, případně fallback na GROQ_API_KEY
 api_key = st.secrets.get("GOOGLE_API_KEY", st.secrets.get("GEMINI_API_KEY", st.secrets.get("GROQ_API_KEY", "")))
-model_provider = st.session_state.get("ai_provider", saved_settings.get("ai_provider", "Google"))
-selected_model = st.session_state.get("ai_model", saved_settings.get("ai_model", "gemini-2.5-flash"))
+model_provider = st.session_state.get("ai_provider", saved_settings.get("ai_provider", "Google Gemini"))
+selected_model = st.session_state.get("ai_model", saved_settings.get("ai_model", "gemini-1.5-flash"))
 
 st.title(_["title"])
 st.caption(_["desc"])
@@ -153,25 +152,16 @@ def fetch_news(ticker):
     except: pass
     return news_list
 
-def get_ai_client(api_klic, provider):
-    # Pokud používáme Gemini / Google, směřujeme na Google AI Studio OpenAI-kompatibilní endpoint, 
-    # případně standardní klíč.
-    if "gemini" in provider.lower() or "google" in provider.lower() or not provider:
-        return OpenAI(
-            api_key=api_klic,
-            base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
-        )
-    elif provider == "Groq":
-        return OpenAI(api_key=api_klic, base_url="https://api.groq.com/openai/v1", max_retries=3)
-    else:
-        return OpenAI(api_key=api_klic, max_retries=3)
+def get_ai_client(api_klic):
+    return OpenAI(
+        api_key=api_klic,
+        base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
+    )
 
-def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, provider, model_name, lang):
-    client = get_ai_client(api_klic, provider)
-    
-    # Pokud uživatel nezadal model, nastavíme bezpečný výchozí pro Gemini
+def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, model_name, lang):
+    client = get_ai_client(api_klic)
     if not model_name or model_name == "":
-        model_name = "gemini-2.5-flash"
+        model_name = "gemini-1.5-flash"
 
     jazyk_vyzva = "v češtině (Czech)" if lang == "CZ" else "in English"
     prompt = f"""
@@ -201,10 +191,10 @@ def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, provider, model_na
     except Exception as e:
         return {"error": str(e)}
 
-def chat_s_ai(otazka, kontext_zprav, analyza_json, historie, api_klic, provider, model_name, lang):
-    client = get_ai_client(api_klic, provider)
+def chat_s_ai(otazka, kontext_zprav, analyza_json, historie, api_klic, model_name, lang):
+    client = get_ai_client(api_klic)
     if not model_name or model_name == "":
-        model_name = "gemini-2.5-flash"
+        model_name = "gemini-1.5-flash"
         
     jazyk_vyzva = "Odpovídej v češtině." if lang == "CZ" else "Answer in English."
     analyza_str = json.dumps(analyza_json, ensure_ascii=False)
@@ -235,7 +225,7 @@ if vybrany_ticker:
         else:
             agregovany_text = "\n".join([f"- {n['pub_time_str']}: {n['title']}" for n in news_data])
             with st.spinner(_["spin_ai"]):
-                analyza = analyzuj_agregovane_zpravy(vybrany_ticker, agregovany_text, api_key, model_provider, selected_model, current_lang)
+                analyza = analyzuj_agregovane_zpravy(vybrany_ticker, agregovany_text, api_key, selected_model, current_lang)
                 if "error" not in analyza:
                     st.session_state.radar_analyza = analyza
                     st.session_state.radar_zpravy_text = agregovany_text
@@ -277,7 +267,7 @@ if vybrany_ticker:
                 
             with st.chat_message("assistant"):
                 with st.spinner("AI formuluje odpověď..."):
-                    odpoved = chat_s_ai(prompt, st.session_state.radar_zpravy_text, st.session_state.radar_analyza, st.session_state.radar_chat[:-1], api_key, model_provider, selected_model, current_lang)
+                    odpoved = chat_s_ai(prompt, st.session_state.radar_zpravy_text, st.session_state.radar_analyza, st.session_state.radar_chat[:-1], api_key, selected_model, current_lang)
                     st.markdown(odpoved)
             if not odpoved.startswith("⚠️"):
                 st.session_state.radar_chat.append({"role": "assistant", "content": odpoved})
