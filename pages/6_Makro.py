@@ -215,6 +215,7 @@ def fetch_macro_data():
                 current_price = float(hist['Close'].iloc[-1])
                 prev_price = float(hist['Close'].iloc[-2]) if len(hist) > 1 else current_price
                 
+                # ZQ=F vrací cenu kontraktu. Implikovaná sazba je 100 - cena.
                 if key == "FED":
                     hist['Close'] = 100 - hist['Close']
                     current_price = 100 - current_price
@@ -498,8 +499,8 @@ if macro_data:
         cme_month_codes = {1: 'F', 2: 'G', 3: 'H', 4: 'J', 5: 'K', 6: 'M', 7: 'N', 8: 'Q', 9: 'U', 10: 'V', 11: 'X', 12: 'Z'}
         mesice_cz = {1: "led", 2: "úno", 3: "bře", 4: "dub", 5: "kvě", 6: "čvn", 7: "čvc", 8: "srp", 9: "zář", 10: "říj", 11: "lis", 12: "pro"}
 
-        # Výpočet absolutně aktuálního pásma (Kotva)
-        current_implied_bps = (100.0 - macro_data["FED"]["price"]) * 100
+        # OPRAVA MATEMATICKÉ KOTVY: Data z YF už jsou v sazbě (např. 4.83 %), proto násobíme přímo 100
+        current_implied_bps = macro_data["FED"]["price"] * 100
         curr_lower = (current_implied_bps // 25) * 25
         current_target_mid = curr_lower + 12.5
         current_target_str = f"{int(curr_lower)}-{int(curr_lower+25)}"
@@ -509,7 +510,7 @@ if macro_data:
         tab_labels = []
 
         for d in future_meetings:
-            # CME Formátování hlavičky a expirace
+            # CME Formátování hlavičky a expirace bez nadbytečných mezer
             tab_label = f"{d.day} {mesice_cz[d.month]}{str(d.year)[-2:]}"
             tab_labels.append(tab_label)
             
@@ -534,13 +535,13 @@ if macro_data:
                 
             mid_price_str = f"{price:.4f}".replace(".", ",")
             
-            # Gaussovo rozložení přesně jako CME 
+            # Gaussovo rozložení s upravenou směrodatnou odchylkou pro reálnější shodu s CME (širší rozložení Fat Tails)
             implied_rate_bps = (100.0 - price) * 100
-            sigma = 14.5
+            sigma = 18.0
             brackets = {}
             center_lower = (implied_rate_bps // 25) * 25
             
-            for i in range(-3, 4):
+            for i in range(-4, 5):
                 lower = center_lower + (i * 25)
                 upper = lower + 25
                 cdf_upper = 0.5 * (1 + math.erf((upper - implied_rate_bps) / (sigma * math.sqrt(2))))
@@ -553,7 +554,7 @@ if macro_data:
             if tot > 0:
                 brackets = {k: round((v / tot) * 100, 1) for k, v in brackets.items()}
 
-            # Výpočet metrik EASE / NO CHANGE / HIKE z vygenerovaného pole
+            # Výpočet metrik EASE / NO CHANGE / HIKE
             ease_sum = sum(v for k, v in brackets.items() if (int(k.split('-')[0]) + 12.5) < current_target_mid)
             no_change_sum = sum(v for k, v in brackets.items() if (int(k.split('-')[0]) + 12.5) == current_target_mid)
             hike_sum = sum(v for k, v in brackets.items() if (int(k.split('-')[0]) + 12.5) > current_target_mid)
