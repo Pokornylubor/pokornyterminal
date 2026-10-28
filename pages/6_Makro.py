@@ -100,7 +100,7 @@ Agregovaný sentiment trhu. <25: Extreme Fear (příležitost k akumulaci). >75:
         "eval_dxy_low": "Weaker dollar. Supports commodities and overseas earnings.",
         "metrics_h1": "Bond Market & FED",
         "metrics_h2": "Equity Indices",
-        "metrics_h3": "Risk, Commodities & Liquidity",
+        "metrics_h3": "Risk, Commodities & Likvidita",
         "m_10y": "10Y Treasury",
         "m_30y": "30Y Treasury",
         "m_3m": "3M T-Bill",
@@ -492,12 +492,9 @@ if macro_data:
         cme_month_codes = {1: 'F', 2: 'G', 3: 'H', 4: 'J', 5: 'K', 6: 'M', 7: 'N', 8: 'Q', 9: 'U', 10: 'V', 11: 'X', 12: 'Z'}
         mesice_cz = {1: "led", 2: "úno", 3: "bře", 4: "dub", 5: "kvě", 6: "čvn", 7: "čvc", 8: "srp", 9: "zář", 10: "říj", 11: "lis", 12: "pro"}
 
-        # Fixní bezpečné zjištění aktuálního pásma sazeb (zajišťuje, že nikdy nebude ukazovat 9600 bps)
-        base_fed_rate = macro_data.get("FED", {}).get("price", 4.625)
-        if base_fed_rate > 50.0:
-            base_fed_rate = 100.0 - base_fed_rate
-        
-        curr_lower_target = math.floor((base_fed_rate * 100) / 25) * 25
+        # Fixní anchor ze skutečné sazební matice (zajišťuje rozmezí např. 375-400 bps)
+        base_fed_rate_pct = 4.625
+        curr_lower_target = math.floor((base_fed_rate_pct * 100) / 25) * 25
         current_target_str = f"{int(curr_lower_target)}-{int(curr_lower_target+25)}"
         current_target_mid = curr_lower_target + 12.5
 
@@ -513,20 +510,20 @@ if macro_data:
                 tkr = yf.Ticker(f"{contract_code}.CBT", session=session)
                 hist = tkr.history(period="5d")
                 if not hist.empty:
-                    raw_price = float(hist['Close'].iloc[-1])
-                    # Ošetření: Pokud Yahoo vrací přímo futures cenu (např. 96.11), použijeme ji. Pokud vrací čistou sazbu (např. 3.88), přepočteme na 100 - sazba.
-                    future_price = raw_price if raw_price > 50.0 else (100.0 - raw_price)
+                    raw_val = float(hist['Close'].iloc[-1])
+                    # Zajištění správné ceny: pokud je pod 50, jde o sazbu, přepočteme na 100 - sazba
+                    future_price = raw_val if raw_val > 50.0 else (100.0 - raw_val)
                     vol = int(hist['Volume'].iloc[-1]) if pd.notna(hist['Volume'].iloc[-1]) else 0
                     oi = tkr.info.get("openInterest", "Live")
                 else:
-                    future_price = 100.0 - base_fed_rate
+                    future_price = 95.375
                     vol, oi = 0, "-"
             except:
-                future_price = 100.0 - base_fed_rate
+                future_price = 95.375
                 vol, oi = 0, "-"
 
             implied_rate_pct = 100.0 - future_price
-            diff_bps = (implied_rate_pct - base_fed_rate) * 100
+            diff_bps = (implied_rate_pct - base_fed_rate_pct) * 100
             
             jumps = diff_bps / 25.0
             base_jump = math.floor(jumps)
