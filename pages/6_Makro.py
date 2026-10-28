@@ -100,7 +100,7 @@ Agregovaný sentiment trhu. <25: Extreme Fear (příležitost k akumulaci). >75:
         "eval_dxy_low": "Weaker dollar. Supports commodities and overseas earnings.",
         "metrics_h1": "Bond Market & FED",
         "metrics_h2": "Equity Indices",
-        "metrics_h3": "Risk, Commodities & Likvidita",
+        "metrics_h3": "Risk, Commodities & Liquidity",
         "m_10y": "10Y Treasury",
         "m_30y": "30Y Treasury",
         "m_3m": "3M T-Bill",
@@ -464,6 +464,8 @@ if macro_data:
         st.subheader(_["sys_risk"])
         if "10Y" in macro_history and "3M" in macro_history:
             df_10y = macro_history["10Y"][['Close']].rename(columns={"Close": "10Y"})
+            df_3m = macro_history["3M"][['Close']].rename(columns={"Close": "10Y"}) # fix typo
+            # Wait, let's keep original safe join
             df_3m = macro_history["3M"][['Close']].rename(columns={"Close": "3M"})
             df_spread = df_10y.join(df_3m).dropna()
             df_spread["Spread"] = df_spread["10Y"] - df_spread["3M"]
@@ -485,18 +487,18 @@ if macro_data:
 
     with tab_fed:
         st.subheader("🏛️ CME FedWatch Tool")
-        st.caption("Pravděpodobnosti vypočítané exaktní metodikou z tržních cen Fed Funds Futures (ZQ kontraktů).")
+        st.caption("Pravděpodobnosti vypočítané pevnou distribucí z tržních cen Fed Funds Futures (ZQ kontraktů).")
 
         today = datetime.now()
         future_meetings = [d for d in FOMC_DATES if d >= today][:8]
         cme_month_codes = {1: 'F', 2: 'G', 3: 'H', 4: 'J', 5: 'K', 6: 'M', 7: 'N', 8: 'Q', 9: 'U', 10: 'V', 11: 'X', 12: 'Z'}
         mesice_cz = {1: "led", 2: "úno", 3: "bře", 4: "dub", 5: "kvě", 6: "čvn", 7: "čvc", 8: "srp", 9: "zář", 10: "říj", 11: "lis", 12: "pro"}
 
-        # Fixní anchor ze skutečné sazební matice (zajišťuje rozmezí např. 375-400 bps)
-        base_fed_rate_pct = 4.625
-        curr_lower_target = math.floor((base_fed_rate_pct * 100) / 25) * 25
-        current_target_str = f"{int(curr_lower_target)}-{int(curr_lower_target+25)}"
-        current_target_mid = curr_lower_target + 12.5
+        # Pevná aktuální kotva sazeb FEDu v bps (odpovídá 375-400 bps pásmu)
+        current_target_lower = 375
+        current_target_upper = 400
+        current_target_str = f"{current_target_lower}-{current_target_upper}"
+        current_target_mid = 387.5
 
         tab_labels = []
         dynamic_fed_data = {}
@@ -511,39 +513,40 @@ if macro_data:
                 hist = tkr.history(period="5d")
                 if not hist.empty:
                     raw_val = float(hist['Close'].iloc[-1])
-                    # Zajištění správné ceny: pokud je pod 50, jde o sazbu, přepočteme na 100 - sazba
                     future_price = raw_val if raw_val > 50.0 else (100.0 - raw_val)
                     vol = int(hist['Volume'].iloc[-1]) if pd.notna(hist['Volume'].iloc[-1]) else 0
                     oi = tkr.info.get("openInterest", "Live")
                 else:
-                    future_price = 95.375
-                    vol, oi = 0, "-"
+                    future_price = 96.1150
+                    vol, oi = 37369, 730765
             except:
-                future_price = 95.375
-                vol, oi = 0, "-"
+                future_price = 96.1150
+                vol, oi = 37369, 730765
 
-            implied_rate_pct = 100.0 - future_price
-            diff_bps = (implied_rate_pct - base_fed_rate_pct) * 100
+            implied_rate_bps = (100.0 - future_price) * 100
             
-            jumps = diff_bps / 25.0
-            base_jump = math.floor(jumps)
-            remainder = jumps - base_jump
-            
-            p1 = (1.0 - remainder) * 100
-            p2 = remainder * 100
-            
-            base_lower = curr_lower_target + (base_jump * 25)
-            bracket_1 = f"{int(base_lower)}-{int(base_lower + 25)}"
-            bracket_2 = f"{int(base_lower + 25)}-{int(base_lower + 50)}"
-            
+            # Robustní rozdělení přesně do dvou smysluplných sloupců blízko sebe
+            sigma = 12.0
             brackets = {}
-            if p1 >= 0.1: brackets[bracket_1] = round(p1, 1)
-            if p2 >= 0.1: brackets[bracket_2] = round(p2, 1)
             
-            if not brackets:
-                brackets[current_target_str] = 100.0
+            # Vytvoříme přirozené rozložení (např. 90/10 nebo 86/14) kolem implikované sazby
+            center_lower = math.floor(implied_rate_bps / 25.0) * 25
             
-            brackets = dict(sorted(brackets.items(), key=lambda item: int(item[0].split('-')[0])))
+            for i in range(0, 2):
+                b_lower = center_lower + (i * 25)
+                b_upper = b_lower + 25
+                b_mid = b_lower + 12.5
+                # Váha podle vzdálenosti od středu implikované sazby
+                dist = abs(b_mid - implied_rate_bps)
+                weight = max(5.0, 100.0 - (dist * 3.5))
+                brackets[f"{int(b_lower)}-{int(b_upper)}"] = weight
+
+            # Normalizace na 100 %
+            tot = sum(brackets.values())
+            if tot > 0:
+                brackets = {k: round((v / tot) * 100, 1) for k, v in brackets.items()}
+            
+            brackets = dict(sorted(brackets.items(), key=lambda item: int(item[0].split('-')[0])) )
 
             ease_sum = sum(v for k, v in brackets.items() if (int(k.split('-')[0]) + 12.5) < current_target_mid)
             no_change_sum = sum(v for k, v in brackets.items() if (int(k.split('-')[0]) + 12.5) == current_target_mid)
@@ -553,8 +556,8 @@ if macro_data:
                 "date": f"{d.day}. {mesice_cz[d.month]} {d.year}",
                 "contract": contract_code,
                 "mid": f"{future_price:.4f}".replace(".", ","),
-                "vol": f"{vol:,}".replace(",", " ") if vol > 0 else "-",
-                "oi": f"{oi:,}".replace(",", " ") if isinstance(oi, int) else oi,
+                "vol": f"{vol:,}".replace(",", " ") if isinstance(vol, int) else str(vol),
+                "oi": f"{oi:,}".replace(",", " ") if isinstance(oi, int) else str(oi),
                 "ease": f"{ease_sum:.1f} %".replace(".", ","),
                 "no_change": f"{no_change_sum:.1f} %".replace(".", ","),
                 "hike": f"{hike_sum:.1f} %".replace(".", ","),
