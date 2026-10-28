@@ -509,14 +509,16 @@ if macro_data:
                 tkr = yf.Ticker(f"{contract_code}.CBT", session=session)
                 hist = tkr.history(period="5d")
                 if not hist.empty:
-                    price = float(hist['Close'].iloc[-1])
+                    raw_price = float(hist['Close'].iloc[-1])
+                    # OPRAVA: Pokud Yahoo vrátí čistou sazbu (např. 3.885), převedeme na cenu futures. Pokud vrátí cenu (např. 96.11), necháme tak.
+                    price = (100.0 - raw_price) if raw_price < 50.0 else raw_price
                     vol = int(hist['Volume'].iloc[-1]) if pd.notna(hist['Volume'].iloc[-1]) else 0
                     oi = tkr.info.get("openInterest", "Live")
                 else:
-                    price = macro_data["FED"]["price"]
+                    price = 100.0 - macro_data["FED"]["price"]
                     vol, oi = 0, "-"
             except:
-                price = macro_data["FED"]["price"]
+                price = 100.0 - macro_data["FED"]["price"]
                 vol, oi = 0, "-"
 
             implied_rate = 100.0 - price
