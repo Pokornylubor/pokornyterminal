@@ -70,6 +70,8 @@ t = {
         "comp_period": "Časový horizont:",
         "loading": "Načítání makroekonomických dat...",
         "fed_title": "Pravděpodobnost cílové sazby (CME FedWatch Model)",
+        "chart_yc": "Spread výnosové křivky (10Y minus 3M)",
+        "chart_vix": "Index strachu (VIX)",
         "sys_risk": "Systémová rizika",
         "help_title": "NÁPOVĚDA",
         "help_text": """
@@ -128,6 +130,8 @@ Agregovaný sentiment trhu. <25: Extreme Fear (příležitost k akumulaci). >75:
         "comp_period": "Time horizon:",
         "loading": "Loading macroeconomic data...",
         "fed_title": "Target Rate Probabilities (CME FedWatch Model)",
+        "chart_yc": "Yield Curve Spread (10Y minus 3M)",
+        "chart_vix": "VIX History",
         "sys_risk": "Systemic Risks",
         "help_title": "GUIDE",
         "help_text": """
