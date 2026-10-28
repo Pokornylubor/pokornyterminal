@@ -188,8 +188,7 @@ FOMC_DATES = [
 ]
 
 def safe_iloc(df, steps_back):
-    if len(df) > steps_back:
-        return df['Close'].iloc[-(steps_back+1)]
+    if len(df) > steps_back: return df['Close'].iloc[-(steps_back+1)]
     return None
 
 @st.cache_data(ttl=3600)
@@ -198,8 +197,7 @@ def fetch_fng():
         r = requests.get('https://production.dataviz.cnn.io/index/fearandgreed/graphdata', headers=session.headers, timeout=5)
         data = r.json()
         return data['fear_and_greed']['score'], data['fear_and_greed']['rating']
-    except:
-        return None, None
+    except: return None, None
 
 @st.cache_data(ttl=3600)
 def fetch_macro_data():
@@ -215,7 +213,7 @@ def fetch_macro_data():
                 current_price = float(hist['Close'].iloc[-1])
                 prev_price = float(hist['Close'].iloc[-2]) if len(hist) > 1 else current_price
                 
-                # ZQ=F vrací cenu kontraktu. Implikovaná sazba je 100 - cena.
+                # U sazeb FEDu převádíme cenu kontraktu na reálnou úrokovou sazbu
                 if key == "FED":
                     hist['Close'] = 100 - hist['Close']
                     current_price = 100 - current_price
@@ -224,11 +222,7 @@ def fetch_macro_data():
                 abs_chg = current_price - prev_price
                 pct_chg = ((current_price / prev_price) - 1) * 100 if prev_price and key not in RATES else None
                 
-                data[key] = {
-                    "price": current_price,
-                    "abs_chg": abs_chg,
-                    "pct_chg": pct_chg
-                }
+                data[key] = {"price": current_price, "abs_chg": abs_chg, "pct_chg": pct_chg}
                 
                 perf = {}
                 perf[_["p_1w"]] = safe_iloc(hist, 5)
@@ -242,20 +236,16 @@ def fetch_macro_data():
                 calculated_perf = {}
                 for p_key, p_val in perf.items():
                     if p_val is not None:
-                        if key in RATES:
-                            calculated_perf[p_key] = f"{(current_price - p_val) * 100:+.0f} bps"
-                        else:
-                            calculated_perf[p_key] = f"{((current_price / p_val) - 1) * 100:+.2f} %"
-                    else:
-                        calculated_perf[p_key] = "-"
+                        if key in RATES: calculated_perf[p_key] = f"{(current_price - p_val) * 100:+.0f} bps"
+                        else: calculated_perf[p_key] = f"{((current_price / p_val) - 1) * 100:+.2f} %"
+                    else: calculated_perf[p_key] = "-"
                         
                 data[key]["performance"] = calculated_perf
 
                 hist['SMA50'] = hist['Close'].rolling(window=50).mean()
                 hist['SMA200'] = hist['Close'].rolling(window=200).mean()
                 history[key] = hist[['Close', 'SMA50', 'SMA200']]
-        except:
-            pass
+        except: pass
     return data, history
 
 @st.cache_data(ttl=3600)
@@ -274,9 +264,13 @@ def fetch_cbot_futures_curve(dates):
                 price = float(hist['Close'].iloc[-1])
                 vol_val = hist['Volume'].iloc[-1]
                 vol = int(vol_val) if pd.notna(vol_val) else 0
-                curve[d] = {"price": price, "vol": vol, "ticker": ticker}
-        except:
-            pass
+                
+                # Stažení Open Interestu pro absolutní 1:1 shodu (pokud je dostupný)
+                info = tkr.info
+                oi = info.get("openInterest", "Live")
+                
+                curve[d] = {"price": price, "vol": vol, "ticker": ticker, "oi": oi}
+        except: pass
     return curve
 
 with st.spinner(_["loading"]):
@@ -291,7 +285,6 @@ if macro_data:
             if key not in macro_data:
                 col.metric(MACRO_TICKERS[key][1], "N/A")
                 return
-            
             d = macro_data[key]
             val = d["price"]
             abs_chg = d["abs_chg"]
@@ -390,7 +383,6 @@ if macro_data:
 
     with tab_analysis:
         asset_options = {name: key for key, (ticker, name) in MACRO_TICKERS.items() if key in macro_data}
-        
         st.markdown(f"#### {_['perf_header']}")
         col_sel, col_chk = st.columns([3, 2])
         selected_asset_name = col_sel.selectbox("", list(asset_options.keys()), index=None, placeholder=_["perf_sel"], label_visibility="collapsed")
@@ -416,8 +408,7 @@ if macro_data:
             if show_sma200 and "SMA200" in sel_hist.columns:
                 fig_perf.add_trace(go.Scatter(x=sel_hist.index, y=sel_hist["SMA200"], mode='lines', name='SMA 200', line=dict(color='#E91E63', width=1.5, dash='dashdot')))
             
-            if sel_key == "FED":
-                fig_perf.update_yaxes(autorange="reversed")
+            if sel_key == "FED": fig_perf.update_yaxes(autorange="reversed")
             
             fig_perf.update_xaxes(
                 rangeselector=dict(
@@ -432,12 +423,10 @@ if macro_data:
                     bgcolor="#1E1E1E", activecolor="#4CAF50", font=dict(color="white")
                 )
             )
-            
             fig_perf.update_layout(template="plotly_dark", height=400, margin=dict(l=0, r=0, t=10, b=0), hovermode='x unified')
             st.plotly_chart(fig_perf, use_container_width=True, config={'displayModeBar': False})
 
         st.markdown("---")
-        
         st.markdown(f"#### {_['comp_header']}")
         selected_compare = st.multiselect("", list(asset_options.keys()), default=[], max_selections=5, placeholder=_["comp_sel"], label_visibility="collapsed")
         period = st.radio(_["comp_period"], ["1M", "6M", "YTD", "1Y", "3Y", "5Y"], horizontal=True, index=3)
@@ -459,14 +448,12 @@ if macro_data:
                     first_val = df_hist['Close'].iloc[0]
                     if first_val != 0: pct_series = ((df_hist['Close'] / first_val) - 1) * 100
                     else: pct_series = df_hist['Close'] * 0
-                        
                     fig_comp.add_trace(go.Scatter(x=df_hist.index, y=pct_series, mode='lines', name=asset_name, line=dict(width=2)))
             
             fig_comp.update_layout(template="plotly_dark", height=400, margin=dict(l=0, r=0, t=10, b=0), hovermode='x unified', yaxis_ticksuffix="%")
             st.plotly_chart(fig_comp, use_container_width=True, config={'displayModeBar': False})
 
         st.markdown("---")
-        
         st.subheader(_["sys_risk"])
         if "10Y" in macro_history and "3M" in macro_history:
             df_10y = macro_history["10Y"][['Close']].rename(columns={"Close": "10Y"})
@@ -499,7 +486,7 @@ if macro_data:
         cme_month_codes = {1: 'F', 2: 'G', 3: 'H', 4: 'J', 5: 'K', 6: 'M', 7: 'N', 8: 'Q', 9: 'U', 10: 'V', 11: 'X', 12: 'Z'}
         mesice_cz = {1: "led", 2: "úno", 3: "bře", 4: "dub", 5: "kvě", 6: "čvn", 7: "čvc", 8: "srp", 9: "zář", 10: "říj", 11: "lis", 12: "pro"}
 
-        # OPRAVA MATEMATICKÉ KOTVY: Data z YF už jsou v sazbě (např. 4.83 %), proto násobíme přímo 100
+        # Absolutní Kotva - výpočet reálného aktuálního pásma (e.g. 375-400)
         current_implied_bps = macro_data["FED"]["price"] * 100
         curr_lower = (current_implied_bps // 25) * 25
         current_target_mid = curr_lower + 12.5
@@ -510,7 +497,6 @@ if macro_data:
         tab_labels = []
 
         for d in future_meetings:
-            # CME Formátování hlavičky a expirace bez nadbytečných mezer
             tab_label = f"{d.day} {mesice_cz[d.month]}{str(d.year)[-2:]}"
             tab_labels.append(tab_label)
             
@@ -529,32 +515,38 @@ if macro_data:
                 last_known_price = price
                 vol = curve_data[d]["vol"]
                 if vol > 0: vol_str = f"{vol:,}".replace(",", " ")
+                
+                oi_val = curve_data[d].get("oi", "Live")
+                if oi_val != "Live" and pd.notna(oi_val): oi_str = f"{int(oi_val):,}".replace(",", " ")
             else:
                 price = last_known_price
                 oi_str = "-"
                 
             mid_price_str = f"{price:.4f}".replace(".", ",")
             
-            # Gaussovo rozložení s upravenou směrodatnou odchylkou pro reálnější shodu s CME (širší rozložení Fat Tails)
+            # --- DYNAMICKÝ GENERÁTOR NEOMEZENÝCH SLOUPCŮ ---
             implied_rate_bps = (100.0 - price) * 100
-            sigma = 18.0
-            brackets = {}
-            center_lower = (implied_rate_bps // 25) * 25
             
-            for i in range(-4, 5):
-                lower = center_lower + (i * 25)
+            # Zvyšujeme volatilitu (sigma) podle toho, jak daleko je zasedání
+            days_to_meeting = max(0, (d - today).days)
+            sigma = 5.0 + (days_to_meeting / 30.0) * 2.5 
+            
+            brackets = {}
+            # Iterujeme absolutně celým spektrem úroků (0 až 10 % p.a.), aplikace si sama vyzobne ty sloupce, kam spadá pravděpodobnost
+            for lower in range(0, 1000, 25):
                 upper = lower + 25
                 cdf_upper = 0.5 * (1 + math.erf((upper - implied_rate_bps) / (sigma * math.sqrt(2))))
                 cdf_lower = 0.5 * (1 + math.erf((lower - implied_rate_bps) / (sigma * math.sqrt(2))))
                 prob = (cdf_upper - cdf_lower) * 100
+                
+                # Zobrazíme všechny sloupce, které mají smysl (0.1% a více)
                 if prob >= 0.1:
                     brackets[f"{int(lower)}-{int(upper)}"] = round(prob, 1)
 
+            # Srovnání na 100 % kvůli drobnému zaokrouhlování
             tot = sum(brackets.values())
-            if tot > 0:
-                brackets = {k: round((v / tot) * 100, 1) for k, v in brackets.items()}
+            if tot > 0: brackets = {k: round((v / tot) * 100, 1) for k, v in brackets.items()}
 
-            # Výpočet metrik EASE / NO CHANGE / HIKE
             ease_sum = sum(v for k, v in brackets.items() if (int(k.split('-')[0]) + 12.5) < current_target_mid)
             no_change_sum = sum(v for k, v in brackets.items() if (int(k.split('-')[0]) + 12.5) == current_target_mid)
             hike_sum = sum(v for k, v in brackets.items() if (int(k.split('-')[0]) + 12.5) > current_target_mid)
