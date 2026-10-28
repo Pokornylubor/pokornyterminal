@@ -8,4 +8,3 @@ lxml
 cloudscraper
 plotly
 openai
-google-generativeai
