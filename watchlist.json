@@ -264,7 +264,7 @@
     },
     "settings": {
         "ai_provider": "Google Gemini",
-        "ai_model": "models/gemini-pro-latest",
+        "ai_model": "models/gemini-2.5-pro",
         "lang": "CZ"
     }
 }
