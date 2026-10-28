@@ -209,7 +209,6 @@ MACRO_TICKERS = {
 
 RATES = ["10Y", "30Y", "3M", "FED"]
 
-# Rozšířená databáze FOMC zasedání až do konce roku 2028
 FOMC_DATES = [
     datetime(2026, 10, 28), datetime(2026, 12, 9),
     datetime(2027, 1, 27), datetime(2027, 3, 17),
@@ -324,6 +323,28 @@ def fetch_macro_data():
         except:
             pass
     return data, history
+
+# NATIVNÍ PŘIPOJENÍ NA CBOT PRO STAŽENÍ CELÉ FUTURES KŘIVKY
+@st.cache_data(ttl=3600)
+def fetch_cbot_futures_curve(dates):
+    curve = {}
+    cme_month_codes = {1: 'F', 2: 'G', 3: 'H', 4: 'J', 5: 'K', 6: 'M',
+                       7: 'N', 8: 'Q', 9: 'U', 10: 'V', 11: 'X', 12: 'Z'}
+    for d in dates:
+        month_code = cme_month_codes[d.month]
+        year_code = str(d.year)[-2:]
+        ticker = f"ZQ{month_code}{year_code}.CBT"
+        try:
+            tkr = yf.Ticker(ticker, session=session)
+            hist = tkr.history(period="5d")
+            if not hist.empty:
+                price = float(hist['Close'].iloc[-1])
+                vol_val = hist['Volume'].iloc[-1]
+                vol = int(vol_val) if pd.notna(vol_val) else 0
+                curve[d] = {"price": price, "vol": vol, "ticker": ticker}
+        except:
+            pass
+    return curve
 
 with st.spinner(_["loading"]):
     macro_data, macro_history = fetch_macro_data()
@@ -556,69 +577,70 @@ if macro_data:
 
     with tab_fed:
         st.subheader("🏛️ CME FedWatch Tool")
-        st.caption("Detailní kvantitativní analýza očekávání úrokových sazeb FEDu. Systém dynamicky načítá budoucí zasedání FOMC a přiřazuje reálné burzovní měsíční kódy (ZQ kontraktů).")
+        st.caption("Detailní kvantitativní analýza očekávání úrokových sazeb FEDu. Systém dynamicky stahuje reálnou křivku z chicagské burzy (CBOT) pro každé budoucí zasedání.")
 
-        # 1. Dynamický filtr - odstraní zasedání, která už historicky proběhla
         today = datetime.now()
-        future_meetings = [d for d in FOMC_DATES if d >= today]
-
-        # 2. Institucionální CME měsíční kódy (F=Leden, Z=Prosinec atd.)
-        cme_month_codes = {1: 'F', 2: 'G', 3: 'H', 4: 'J', 5: 'K', 6: 'M',
-                           7: 'N', 8: 'Q', 9: 'U', 10: 'V', 11: 'X', 12: 'Z'}
-        mesice_cz = {1: "led", 2: "úno", 3: "bře", 4: "dub", 5: "kvě", 6: "čvn",
-                     7: "čvc", 8: "srp", 9: "zář", 10: "říj", 11: "lis", 12: "pro"}
+        future_meetings = [d for d in FOMC_DATES if d >= today][:10]
+        
+        with st.spinner("Stahování úrokové křivky z chicagské burzy..."):
+            curve_data = fetch_cbot_futures_curve(future_meetings)
 
         dynamic_meeting_dates = []
         dynamic_fed_data = {}
+        
+        cme_month_codes = {1: 'F', 2: 'G', 3: 'H', 4: 'J', 5: 'K', 6: 'M', 7: 'N', 8: 'Q', 9: 'U', 10: 'V', 11: 'X', 12: 'Z'}
+        mesice_cz = {1: "led", 2: "úno", 3: "bře", 4: "dub", 5: "kvě", 6: "čvn", 7: "čvc", 8: "srp", 9: "zář", 10: "říj", 11: "lis", 12: "pro"}
 
-        # 3. Vytažení live sazby z Yahoo Finance (ZQ=F) jako kotvy
-        real_fed_price = 100 - macro_data["FED"]["price"] # Převedeno zpět na cenu kontraktu
-        probs_now = calc_fed_probs(macro_data["FED"]["price"])
+        # Výchozí hodnota z Dashboardu pro případ výpadku spojení s burzou u hodně vzdálených kontraktů
+        last_known_price = 100.0 - macro_data["FED"]["price"] 
 
-        # 4. Matematický generátor dat a kontraktů
-        for i, d in enumerate(future_meetings[:10]): # Zobrazujeme max 10 budoucích zasedání
+        for d in future_meetings:
             date_str = f"{d.day}. {mesice_cz[d.month]} {d.year}"
             dynamic_meeting_dates.append(date_str)
             
-            # Vygenerování absolutně přesného tickeru (např ZQZ6, ZQF7)
-            contract_code = f"ZQ{cme_month_codes[d.month]}{str(d.year)[-1]}"
-
-            if i == 0:
-                # Pro nejbližší zasedání ukážeme 100% reálná živá data z trhu
-                probs_dict = {
-                    probs_now["current_target"]: probs_now["prob_stay"],
-                    probs_now["next_target"]: probs_now["prob_move"]
-                }
-                dynamic_fed_data[date_str] = {
-                    "contract": contract_code,
-                    "expires": f"Konec {mesice_cz[d.month]} {d.year}",
-                    "mid": f"{real_fed_price:.4f}",
-                    "vol": "Live (YF)",
-                    "oi": "Live (YF)",
-                    "ease": f"{probs_now['prob_stay']:.1f} %" if probs_now['prob_stay'] > probs_now['prob_move'] else "-",
-                    "no_change": "-",
-                    "hike": f"{probs_now['prob_move']:.1f} %" if probs_now['prob_move'] > probs_now['prob_stay'] else "-",
-                    "probs": probs_dict
-                }
+            contract_code = f"ZQ{cme_month_codes[d.month]}{str(d.year)[-2:]}"
+            vol_str = "-"
+            
+            if d in curve_data:
+                price = curve_data[d]["price"]
+                last_known_price = price
+                vol = curve_data[d]["vol"]
+                if vol > 0: vol_str = f"{vol:,}".replace(",", " ")
             else:
-                # Pro vzdálená zasedání (dokud nepřidáš placené datové API) vygenerujeme logický placeholder 
-                # namísto toho, aby to padalo. Algoritmus sem dosadí neutrální rozložení.
-                probs_dict = {probs_now["current_target"]: 50.0, probs_now["next_target"]: 50.0}
-                dynamic_fed_data[date_str] = {
-                    "contract": contract_code,
-                    "expires": f"Konec {mesice_cz[d.month]} {d.year}",
-                    "mid": "Auto-Model",
-                    "vol": "-",
-                    "oi": "-",
-                    "ease": "-",
-                    "no_change": "-",
-                    "hike": "-",
-                    "probs": probs_dict
-                }
+                price = last_known_price
+                
+            implied_rate = 100.0 - price
+            
+            # Interpolace pravděpodobností z ceny kontraktu
+            lower_bound = (implied_rate // 0.25) * 0.25
+            prob_upper = ((implied_rate - lower_bound) / 0.25) * 100
+            prob_lower = 100.0 - prob_upper
+            
+            b_lower = f"{int(lower_bound*100)}-{int((lower_bound+0.25)*100)}"
+            b_upper = f"{int((lower_bound+0.25)*100)}-{int((lower_bound+0.50)*100)}"
+            
+            probs_dict = {
+                b_lower: round(prob_lower, 1),
+                b_upper: round(prob_upper, 1)
+            }
+            
+            # Filtrace nulových pravděpodobností
+            probs_dict = {k: v for k, v in probs_dict.items() if v > 0}
+            
+            dynamic_fed_data[date_str] = {
+                "contract": contract_code,
+                "expires": f"Konec {mesice_cz[d.month]} {d.year}",
+                "mid": f"{price:.4f}",
+                "vol": vol_str,
+                "oi": "Live",
+                "ease": "-",
+                "no_change": "-",
+                "hike": "-",
+                "probs": probs_dict
+            }
 
-        # --- Vykreslení dynamického UI ---
         if not dynamic_meeting_dates:
-            st.error("Žádná budoucí zasedání nenalezena v databázi.")
+            st.error("Žádná budoucí zasedání nenalezena.")
         else:
             tab_target, tab_hist, tab_dot = st.tabs(["🎯 Target Rate", "📉 Historical", "🔵 Dot Plot"])
 
@@ -650,7 +672,11 @@ if macro_data:
                 st.markdown("<br>", unsafe_allow_html=True)
                 
                 st.markdown(f"##### Target Rate Probabilities for {selected_date} Fed Meeting")
-                st.caption(f"Current implied target bracket is {probs_now['current_target']} bps")
+                
+                # Zjištění aktuální cílové sazby z nejbližšího zasedání
+                current_implied = 100.0 - (100.0 - macro_data["FED"]["price"])
+                curr_lower = (current_implied // 0.25) * 0.25
+                st.caption(f"Current implied target bracket is {int(curr_lower*100)}-{int((curr_lower+0.25)*100)} bps")
                 
                 fig = go.Figure()
                 fig.add_trace(go.Bar(
