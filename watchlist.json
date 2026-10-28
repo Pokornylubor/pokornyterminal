@@ -263,8 +263,8 @@
         ]
     },
     "settings": {
-        "ai_provider": "Groq",
-        "ai_model": "qwen/qwen3.8-27b",
+        "ai_provider": "Google Gemini",
+        "ai_model": "models/gemini-robotics-er-2-streaming-preview",
         "lang": "CZ"
     }
 }
