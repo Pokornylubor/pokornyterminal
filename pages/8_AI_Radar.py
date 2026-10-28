@@ -169,7 +169,7 @@ def analyzuj_agregovane_zpravy(ticker, zpravy_text, lang):
     Do not output anything other than raw JSON.
     """
     try:
-        model = genai.GenerativeModel('models/gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.5-flash')
         response = model.generate_content(prompt, generation_config={"temperature": 0.1})
         vysledek = response.text
         if vysledek.startswith("```json"): 
@@ -185,7 +185,7 @@ def chat_s_ai(otazka, kontext_zprav, analyza_json, historie, lang):
     system_instruction = f"Jsi institucionální analytik hedgeového fondu. Odpovídej uživateli na dotazy ohledně této tržní události. Buď přímý, analytický a přesný. Zde je tvá původní syntéza: {analyza_str}. Zdrojové zprávy: {kontext_zprav}. {jazyk_vyzva}"
     
     try:
-        model = genai.GenerativeModel('models/gemini-1.5-flash', system_instruction=system_instruction)
+        model = genai.GenerativeModel('gemini-2.5-flash', system_instruction=system_instruction)
         chat = model.start_chat(history=[{"role": msg["role"] if msg["role"] != "assistant" else "model", "parts": [msg["content"]]} for msg in historie])
         response = chat.send_message(otazka)
         return response.text
