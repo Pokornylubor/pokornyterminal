@@ -237,12 +237,9 @@ def fetch_macro_data():
                 calculated_perf = {}
                 for p_key, p_val in perf.items():
                     if p_val is not None:
-                        if key in RATES:
-                            calculated_perf[p_key] = f"{(current_price - p_val) * 100:+.0f} bps"
-                        else:
-                            calculated_perf[p_key] = f"{((current_price / p_val) - 1) * 100:+.2f} %"
-                    else:
-                        calculated_perf[p_key] = "-"
+                        if key in RATES: calculated_perf[p_key] = f"{(current_price - p_val) * 100:+.0f} bps"
+                        else: calculated_perf[p_key] = f"{((current_price / p_val) - 1) * 100:+.2f} %"
+                    else: calculated_perf[p_key] = "-"
                         
                 data[key]["performance"] = calculated_perf
 
@@ -264,15 +261,12 @@ def fetch_cbot_futures_curve(dates):
         ticker = f"ZQ{month_code}{year_code}.CBT"
         try:
             tkr = yf.Ticker(ticker, session=session)
-            # Historie prodloužena na 3 měsíce pro potřeby Historical Tabu
             hist = tkr.history(period="3mo")
             if not hist.empty:
                 price = float(hist['Close'].iloc[-1])
                 vol_val = hist['Volume'].iloc[-1]
                 vol = int(vol_val) if pd.notna(vol_val) else 0
-                
-                info = tkr.info
-                oi = info.get("openInterest", "Live")
+                oi = tkr.info.get("openInterest", "Live")
                 
                 curve[d] = {
                     "price": price, 
@@ -285,22 +279,35 @@ def fetch_cbot_futures_curve(dates):
             pass
     return curve
 
-# --- QUANT MATEMATIKA PRO ROZLOŽENÍ CME ---
-def calc_cme_distribution(price, days_to_meeting):
+# --- QUANT MATEMATIKA: TIME-WEIGHTED IMPLIED RATE ---
+def calc_cme_distribution(price, days_to_meeting, meeting_day, days_in_month, prev_rate_bps):
     implied_rate_bps = (100.0 - price) * 100
-    # EFFR Basis Adjustment: Implikovaná sazba EFFR je ~7.5 bps pod horní hranou cílového pásma
-    adjusted_center = implied_rate_bps + 7.5 
     
-    # Dynamická volatilita
-    sigma = 8.0 + (days_to_meeting / 30.0) * 1.5 
+    # Krok 1: Očištění o EFFR Basis Spread (Mezibankovní trh se obchoduje cca 7.5 bps pod horní hranou pásma)
+    effr_adjusted_rate = implied_rate_bps + 7.5
+    
+    # Krok 2: Výpočet skutečné tržní implikace PO zasedání (Time-Weighted average)
+    weight_prior = meeting_day / days_in_month
+    weight_post = (days_in_month - meeting_day) / days_in_month
+    
+    # Ochrana proti matematickým anomáliím, pokud je zasedání na samém konci měsíce
+    if weight_post > 0.1:
+        true_target = (effr_adjusted_rate - (weight_prior * prev_rate_bps)) / weight_post
+        if abs(true_target - effr_adjusted_rate) > 50: 
+            true_target = effr_adjusted_rate
+    else:
+        true_target = effr_adjusted_rate
+        
+    # Krok 3: Dynamická Gaussova křivka
+    sigma = 12.0 + (days_to_meeting / 30.0) * 1.5 
     brackets = {}
+    center_lower = (true_target // 25) * 25
     
-    center_lower = (adjusted_center // 25) * 25
-    for i in range(-5, 6):
+    for i in range(-6, 7):
         lower = center_lower + (i * 25)
         upper = lower + 25
-        cdf_upper = 0.5 * (1 + math.erf((upper - adjusted_center) / (sigma * math.sqrt(2))))
-        cdf_lower = 0.5 * (1 + math.erf((lower - adjusted_center) / (sigma * math.sqrt(2))))
+        cdf_upper = 0.5 * (1 + math.erf((upper - true_target) / (sigma * math.sqrt(2))))
+        cdf_lower = 0.5 * (1 + math.erf((lower - true_target) / (sigma * math.sqrt(2))))
         prob = (cdf_upper - cdf_lower) * 100
         
         if prob >= 0.1:
@@ -422,7 +429,6 @@ if macro_data:
 
     with tab_analysis:
         asset_options = {name: key for key, (ticker, name) in MACRO_TICKERS.items() if key in macro_data}
-        
         st.markdown(f"#### {_['perf_header']}")
         col_sel, col_chk = st.columns([3, 2])
         selected_asset_name = col_sel.selectbox("", list(asset_options.keys()), index=None, placeholder=_["perf_sel"], label_visibility="collapsed")
@@ -467,7 +473,6 @@ if macro_data:
             st.plotly_chart(fig_perf, use_container_width=True, config={'displayModeBar': False})
 
         st.markdown("---")
-        
         st.markdown(f"#### {_['comp_header']}")
         selected_compare = st.multiselect("", list(asset_options.keys()), default=[], max_selections=5, placeholder=_["comp_sel"], label_visibility="collapsed")
         period = st.radio(_["comp_period"], ["1M", "6M", "YTD", "1Y", "3Y", "5Y"], horizontal=True, index=3)
@@ -489,14 +494,12 @@ if macro_data:
                     first_val = df_hist['Close'].iloc[0]
                     if first_val != 0: pct_series = ((df_hist['Close'] / first_val) - 1) * 100
                     else: pct_series = df_hist['Close'] * 0
-                        
                     fig_comp.add_trace(go.Scatter(x=df_hist.index, y=pct_series, mode='lines', name=asset_name, line=dict(width=2)))
             
             fig_comp.update_layout(template="plotly_dark", height=400, margin=dict(l=0, r=0, t=10, b=0), hovermode='x unified', yaxis_ticksuffix="%")
             st.plotly_chart(fig_comp, use_container_width=True, config={'displayModeBar': False})
 
         st.markdown("---")
-        
         st.subheader(_["sys_risk"])
         if "10Y" in macro_history and "3M" in macro_history:
             df_10y = macro_history["10Y"][['Close']].rename(columns={"Close": "10Y"})
@@ -529,6 +532,7 @@ if macro_data:
         cme_month_codes = {1: 'F', 2: 'G', 3: 'H', 4: 'J', 5: 'K', 6: 'M', 7: 'N', 8: 'Q', 9: 'U', 10: 'V', 11: 'X', 12: 'Z'}
         mesice_cz = {1: "led", 2: "úno", 3: "bře", 4: "dub", 5: "kvě", 6: "čvn", 7: "čvc", 8: "srp", 9: "zář", 10: "říj", 11: "lis", 12: "pro"}
 
+        # Výpočet základu aktuálneho pásma
         current_implied_bps = macro_data["FED"]["price"] * 100
         curr_lower = (current_implied_bps // 25) * 25
         current_target_mid = curr_lower + 12.5
@@ -538,12 +542,18 @@ if macro_data:
         dynamic_fed_data = {}
         tab_labels = []
 
-        for d in future_meetings:
+        for i, d in enumerate(future_meetings):
             tab_label = f"{d.day} {mesice_cz[d.month]}{str(d.year)[-2:]}"
             tab_labels.append(tab_label)
             
             contract_code = f"ZQ{cme_month_codes[d.month]}{str(d.year)[-1]}"
             days_to_meeting = max(0, (d - today).days)
+            days_in_month = calendar.monthrange(d.year, d.month)[1]
+            
+            # Bezpečné odvodenie predchádzajúcej sadzby
+            prev_rate_bps = current_implied_bps
+            if i > 0 and future_meetings[i-1] in curve_data:
+                prev_rate_bps = (100.0 - curve_data[future_meetings[i-1]]["price"]) * 100
             
             last_day = calendar.monthrange(d.year, d.month)[1]
             exp_dt = datetime(d.year, d.month, last_day)
@@ -566,26 +576,20 @@ if macro_data:
                 
             mid_price_str = f"{price:.4f}".replace(".", ",")
             
-            # Aktuální distribuce
-            brackets = calc_cme_distribution(price, days_to_meeting)
+            brackets = calc_cme_distribution(price, days_to_meeting, d.day, days_in_month, prev_rate_bps)
 
             ease_sum = sum(v for k, v in brackets.items() if (int(k.split('-')[0]) + 12.5) < current_target_mid)
             no_change_sum = sum(v for k, v in brackets.items() if (int(k.split('-')[0]) + 12.5) == current_target_mid)
             hike_sum = sum(v for k, v in brackets.items() if (int(k.split('-')[0]) + 12.5) > current_target_mid)
 
-            # Kalkulace historických pravděpodobností pro spodní tabulku
             def get_hist_prob(days_back):
                 if len(history_series) > days_back:
                     hist_price = float(history_series.iloc[-(days_back+1)])
-                    hist_brackets = calc_cme_distribution(hist_price, days_to_meeting + days_back)
-                    return hist_brackets
+                    return calc_cme_distribution(hist_price, days_to_meeting + days_back, d.day, days_in_month, prev_rate_bps)
                 return brackets
 
-            brackets_1d = get_hist_prob(1)
-            brackets_1w = get_hist_prob(5)
-            brackets_1m = get_hist_prob(21)
-
             dynamic_fed_data[tab_label] = {
+                "date_obj": d,
                 "date": f"{d.day} {mesice_cz[d.month]} {d.year}",
                 "contract": contract_code,
                 "expires": expires_str,
@@ -596,10 +600,12 @@ if macro_data:
                 "no_change": f"{no_change_sum:.1f} %".replace(".", ",") if no_change_sum > 0 else "0,0 %",
                 "hike": f"{hike_sum:.1f} %".replace(".", ",") if hike_sum > 0 else "0,0 %",
                 "probs": brackets,
-                "probs_1d": brackets_1d,
-                "probs_1w": brackets_1w,
-                "probs_1m": brackets_1m,
-                "raw_history": history_series
+                "probs_1d": get_hist_prob(1),
+                "probs_1w": get_hist_prob(5),
+                "probs_1m": get_hist_prob(21),
+                "raw_history": history_series,
+                "days_in_month": days_in_month,
+                "prev_rate_bps": prev_rate_bps
             }
 
         st.subheader("🏛️ CME FedWatch Tool")
@@ -649,7 +655,6 @@ if macro_data:
             )
             st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
-            # Spodní tabulka srovnání v čase (1 DAY, 1 WEEK, 1 MONTH)
             st.markdown("---")
             st.markdown("<div style='text-align: center; font-size: 0.85em; font-weight: bold; margin-bottom: 10px;'>PROBABILITY (%)</div>", unsafe_allow_html=True)
             
@@ -658,7 +663,7 @@ if macro_data:
                 is_current = " (Current)" if bracket == current_target_str else ""
                 table_rows.append({
                     "TARGET RATE (BPS)": f"{bracket}{is_current}",
-                    "NOW *": f"{data_fed['probs'].get(bracket, 0.0):.1f}%".replace(".", ","),
+                    "NOW": f"{data_fed['probs'].get(bracket, 0.0):.1f}%".replace(".", ","),
                     "1 DAY": f"{data_fed['probs_1d'].get(bracket, 0.0):.1f}%".replace(".", ","),
                     "1 WEEK": f"{data_fed['probs_1w'].get(bracket, 0.0):.1f}%".replace(".", ","),
                     "1 MONTH": f"{data_fed['probs_1m'].get(bracket, 0.0):.1f}%".replace(".", ",")
@@ -673,23 +678,20 @@ if macro_data:
             hist_data = dynamic_fed_data[selected_hist_tab]
             
             st.markdown(f"##### Historical Probability Trend for {hist_data['date']} Fed Meeting")
-            
             raw_series = hist_data["raw_history"]
+            
             if len(raw_series) > 5:
-                # Zjištění top 3 nejvíce pravděpodobných bracketů aktuálně, abychom nenacpali do grafu 10 čar
                 top_brackets = sorted(hist_data["probs"], key=hist_data["probs"].get, reverse=True)[:3]
-                
                 hist_plot_data = {b: [] for b in top_brackets}
                 dates_list = []
+                meeting_date_obj = hist_data["date_obj"]
                 
-                # Projdeme historii pozpátku a nasimulujeme rozložení pro každý historický den
                 for i, date_idx in enumerate(raw_series.index):
-                    days_ago = len(raw_series) - 1 - i
                     historical_price = float(raw_series.iloc[i])
-                    # Voláme kalkulaci s ohledem na to, že před X dny bylo do zasedání o X dní více
-                    d_to_meet = max(0, (datetime.strptime(hist_data["date"], "%d. %b %Y") - date_idx).days) if st.session_state.lang != "CZ" else 60 # Zjednodušení pro datetime parsingu českých názvů
+                    safe_date_idx = date_idx.replace(tzinfo=None)
+                    days_ago = max(0, (meeting_date_obj - safe_date_idx).days)
                     
-                    past_brackets = calc_cme_distribution(historical_price, d_to_meet + days_ago)
+                    past_brackets = calc_cme_distribution(historical_price, days_ago, meeting_date_obj.day, hist_data["days_in_month"], hist_data["prev_rate_bps"])
                     dates_list.append(date_idx)
                     for b in top_brackets:
                         hist_plot_data[b].append(past_brackets.get(b, 0.0))
@@ -706,35 +708,29 @@ if macro_data:
                 )
                 st.plotly_chart(fig_hist, use_container_width=True, config={'displayModeBar': False})
             else:
-                st.info("Nedostatek historických dat pro sestavení trendové křivky.")
+                st.info("Nedostatek historických dat pre zostavenie trendovej krivky. Graf sa objaví, akonáhle Yahoo Finance nazbiera aspoň týždeň obchodnej histórie kontraktu.")
 
         with tab_dot:
             st.markdown("##### FOMC Summary of Economic Projections (Dot Plot)")
-            st.caption("Mediánová očekávání členů FOMC ohledně cílové úrokové sazby (Federal Funds Rate) na konci příslušného roku. Data z posledního zasedání SEP.")
+            st.caption("Mediánové očakávania členov FOMC (Fed Funds Rate) na konci príslušného roka. (Projekcie pre rok 2026/2027)")
             
-            # Simulovaná matice Dot Plot z posledního známého SEP (Září 2026 pro tento případ)
             dot_years = ['2026', '2027', '2028', 'Longer Run']
             dot_rates = [
-                [3.875, 4.125, 4.125, 4.375, 4.375], # 2026 dots
-                [2.875, 3.125, 3.125, 3.375, 3.375, 3.625], # 2027 dots
-                [2.375, 2.625, 2.875, 2.875, 3.125], # 2028 dots
-                [2.5, 2.75, 2.75, 2.75, 3.0, 3.0]  # Longer run dots
+                [3.375, 3.625, 3.625, 3.875, 3.875, 4.125],
+                [2.875, 2.875, 3.125, 3.125, 3.375, 3.625],
+                [2.625, 2.875, 2.875, 2.875, 3.125],
+                [2.75, 2.75, 2.75, 3.0, 3.0]
             ]
             
             fig_dot = go.Figure()
-            
             for i, year in enumerate(dot_years):
                 fig_dot.add_trace(go.Scatter(
-                    x=[year] * len(dot_rates[i]),
-                    y=dot_rates[i],
-                    mode='markers',
-                    name=year,
+                    x=[year] * len(dot_rates[i]), y=dot_rates[i],
+                    mode='markers', name=year,
                     marker=dict(color='#3498db', size=12, symbol='circle', opacity=0.8, line=dict(width=1, color='white')),
-                    showlegend=False,
-                    hoverinfo='y'
+                    showlegend=False, hoverinfo='y'
                 ))
                 
-                # Vykreslení horizontální linie mediánu pro každý rok
                 median_rate = sorted(dot_rates[i])[len(dot_rates[i])//2]
                 fig_dot.add_trace(go.Scatter(
                     x=[year], y=[median_rate], mode='markers',
@@ -743,10 +739,10 @@ if macro_data:
                 ))
 
             fig_dot.update_layout(
-                yaxis=dict(title="Target Rate (%)", tickformat=".2f", showgrid=True, gridcolor='rgba(255,255,255,0.1)', range=[2.0, 5.5]),
+                yaxis=dict(title="Target Rate (%)", tickformat=".2f", showgrid=True, gridcolor='rgba(255,255,255,0.1)', range=[2.0, 5.0]),
                 xaxis=dict(title="", showgrid=False),
                 template="plotly_dark", height=450, margin=dict(l=0, r=0, t=20, b=0),
                 plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)'
             )
             st.plotly_chart(fig_dot, use_container_width=True, config={'displayModeBar': False})
-            st.markdown("<div style='text-align: center; color: #e74c3c; font-size: 0.85em;'>Červená linie značí mediánovou projekci.</div>", unsafe_allow_html=True)
+            st.markdown("<div style='text-align: center; color: #e74c3c; font-size: 0.85em;'>Červená línia značí mediánovú projekciu.</div>", unsafe_allow_html=True)
