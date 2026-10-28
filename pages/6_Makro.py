@@ -550,50 +550,125 @@ if macro_data:
             st.plotly_chart(fig_vix, use_container_width=True, config={'displayModeBar': False})
 
     with tab_fed:
-        st.subheader(_["fed_title"])
-        
-        if "FED_hist" in macro_data:
-            f_hist = macro_data["FED_hist"]
-            probs_now = calc_fed_probs(f_hist["now"])
-            probs_1d = calc_fed_probs(f_hist["1d"])
-            probs_1w = calc_fed_probs(f_hist["1w"])
-            probs_1m = calc_fed_probs(f_hist["1m"])
+        st.subheader("🏛️ CME FedWatch Tool")
+        st.caption("Pravděpodobnosti vypočítané exaktní CME metodikou z tržních cen Fed Funds Futures (ZQ kontraktů).")
 
-            today = datetime.now()
-            next_meeting = next((d for d in FOMC_DATES if d >= today), None)
-            
-            mc1, mc2 = st.columns(2)
-            if next_meeting:
-                days_left = (next_meeting - today).days
-                mtg_str = next_meeting.strftime("%d. %m. %Y")
-                mc1.info(f"**{_['fed_next']}** {mtg_str}")
-                mc2.warning(f"**{_['fed_days']}** {days_left}")
-            
-            st.markdown(f"<div style='text-align: center; margin-top: 20px; margin-bottom: 5px; font-size: 16px; color: #ECEFF1;'>{_['fed_curr_lbl']} {probs_now['current_target']}</div>", unsafe_allow_html=True)
-            
-            fig_fed = go.Figure()
-            fig_fed.add_trace(go.Bar(
-                x=[probs_now["current_target"], probs_now["next_target"]],
-                y=[probs_now["prob_stay"], probs_now["prob_move"]],
-                text=[f"{probs_now['prob_stay']:.1f}%", f"{probs_now['prob_move']:.1f}%"],
-                textposition='outside',
-                marker_color='#2980B9'
-            ))
+        today = datetime.now()
+        future_meetings = [d for d in FOMC_DATES if d >= today][:8]
+        cme_month_codes = {1: 'F', 2: 'G', 3: 'H', 4: 'J', 5: 'K', 6: 'M', 7: 'N', 8: 'Q', 9: 'U', 10: 'V', 11: 'X', 12: 'Z'}
+        mesice_cz = {1: "led", 2: "úno", 3: "bře", 4: "dub", 5: "kvě", 6: "čvn", 7: "čvc", 8: "srp", 9: "zář", 10: "říj", 11: "lis", 12: "pro"}
 
-            fig_fed.update_layout(
-                template="plotly_dark", 
-                height=350,
-                yaxis=dict(title=_["fed_y"], range=[0, 105], ticksuffix="%"),
-                xaxis=dict(title=_["fed_x"]),
-                margin=dict(l=0, r=0, t=10, b=0)
-            )
-            st.plotly_chart(fig_fed, use_container_width=True, config={'displayModeBar': False})
+        # Aktuální sazba z nejbližšího kontraktu funguje jako matematická kotva
+        current_implied_rate = 100.0 - macro_data["FED"]["price"]
+        curr_lower_target = math.floor((current_implied_rate * 100) / 25) * 25
+        current_target_str = f"{int(curr_lower_target)}-{int(curr_lower_target+25)}"
+        current_target_mid = curr_lower_target + 12.5
 
-            df_fed_prob = pd.DataFrame({
-                _["f_tgt"]: [f"{probs_now['current_target']}{_['fed_curr_tbl']}", probs_now["next_target"]],
-                _["f_now"]: [f"{probs_now['prob_stay']:.1f}%", f"{probs_now['prob_move']:.1f}%"],
-                _["f_1d"]: [f"{probs_1d['prob_stay']:.1f}%", f"{probs_1d['prob_move']:.1f}%"],
-                _["f_1w"]: [f"{probs_1w['prob_stay']:.1f}%", f"{probs_1w['prob_move']:.1f}%"],
-                _["f_1m"]: [f"{probs_1m['prob_stay']:.1f}%", f"{probs_1m['prob_move']:.1f}%"]
-            })
-            st.table(df_fed_prob.set_index(_["f_tgt"]))
+        tab_labels = []
+        dynamic_fed_data = {}
+
+        for d in future_meetings:
+            tab_label = f"{d.day} {mesice_cz[d.month]}{str(d.year)[-2:]}"
+            tab_labels.append(tab_label)
+            contract_code = f"ZQ{cme_month_codes[d.month]}{str(d.year)[-1]}"
+
+            # Přímé stažení surové ceny konkrétního kontraktu přes YF
+            try:
+                tkr = yf.Ticker(f"{contract_code}.CBT", session=session)
+                hist = tkr.history(period="5d")
+                if not hist.empty:
+                    price = float(hist['Close'].iloc[-1])
+                    vol = int(hist['Volume'].iloc[-1]) if pd.notna(hist['Volume'].iloc[-1]) else 0
+                    oi = tkr.info.get("openInterest", "Live")
+                else:
+                    price = macro_data["FED"]["price"]
+                    vol, oi = 0, "-"
+            except:
+                price = macro_data["FED"]["price"]
+                vol, oi = 0, "-"
+
+            # --- ČISTÁ CME MATEMATIKA ---
+            implied_rate = 100.0 - price
+            
+            # 1. Výpočet vzdálenosti od aktuální implikované sazby v bazických bodech
+            diff_bps = (implied_rate - current_implied_rate) * 100
+            
+            # 2. Rozdělení vzdálenosti na celé 25bps kroky a zbytek
+            jumps = diff_bps / 25.0
+            base_jump = math.floor(jumps)
+            remainder = jumps - base_jump
+            
+            # 3. Rozprostření pravděpodobnosti čistě mezi dvě sousední pásma
+            p1 = (1.0 - remainder) * 100
+            p2 = remainder * 100
+            
+            base_lower = curr_lower_target + (base_jump * 25)
+            bracket_1 = f"{int(base_lower)}-{int(base_lower + 25)}"
+            bracket_2 = f"{int(base_lower + 25)}-{int(base_lower + 50)}"
+            
+            brackets = {}
+            if p1 >= 0.1: brackets[bracket_1] = round(p1, 1)
+            if p2 >= 0.1: brackets[bracket_2] = round(p2, 1)
+            
+            brackets = dict(sorted(brackets.items(), key=lambda item: int(item[0].split('-')[0])))
+
+            # Metriky do tabulky
+            ease_sum = sum(v for k, v in brackets.items() if (int(k.split('-')[0]) + 12.5) < current_target_mid)
+            no_change_sum = sum(v for k, v in brackets.items() if (int(k.split('-')[0]) + 12.5) == current_target_mid)
+            hike_sum = sum(v for k, v in brackets.items() if (int(k.split('-')[0]) + 12.5) > current_target_mid)
+
+            dynamic_fed_data[tab_label] = {
+                "date": f"{d.day}. {mesice_cz[d.month]} {d.year}",
+                "contract": contract_code,
+                "mid": f"{price:.4f}".replace(".", ","),
+                "vol": f"{vol:,}".replace(",", " ") if vol > 0 else "-",
+                "oi": f"{oi:,}".replace(",", " ") if isinstance(oi, int) else oi,
+                "ease": f"{ease_sum:.1f} %".replace(".", ","),
+                "no_change": f"{no_change_sum:.1f} %".replace(".", ","),
+                "hike": f"{hike_sum:.1f} %".replace(".", ","),
+                "probs": brackets
+            }
+
+        tab_target, tab_hist, tab_dot = st.tabs(["🎯 Target Rate", "📉 Historical", "🔵 Dot Plot"])
+
+        with tab_target:
+            if dynamic_fed_data:
+                selected_tab = st.radio("Vyberte zasedání pro Target Rate:", tab_labels, horizontal=True, label_visibility="collapsed")
+                data_fed = dynamic_fed_data[selected_tab]
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                col_t1, col_t2 = st.columns([3, 2])
+                with col_t1: st.markdown("<div style='text-align: center; color: #888; font-size: 0.85em; font-weight: bold;'>MEETING INFORMATION</div>", unsafe_allow_html=True)
+                with col_t2: st.markdown("<div style='text-align: center; color: #888; font-size: 0.85em; font-weight: bold;'>PROBABILITIES</div>", unsafe_allow_html=True)
+                    
+                df_info = pd.DataFrame([{
+                    "MEETING DATE": data_fed["date"], "CONTRACT": data_fed["contract"],
+                    "EXPIRES": "-", "MID PRICE": data_fed["mid"],
+                    "PRIOR VOLUME": data_fed["vol"], "PRIOR OI": data_fed["oi"],
+                    "EASE": data_fed["ease"], "NO CHANGE": data_fed["no_change"], "HIKE": data_fed["hike"]
+                }])
+                st.dataframe(df_info, hide_index=True, use_container_width=True)
+                st.markdown("<br>", unsafe_allow_html=True)
+                
+                st.markdown(f"##### Target Rate Probabilities for {data_fed['date']} Fed Meeting")
+                st.caption(f"Current target rate is {current_target_str}")
+                
+                fig = go.Figure()
+                fig.add_trace(go.Bar(
+                    x=list(data_fed["probs"].keys()),
+                    y=list(data_fed["probs"].values()),
+                    text=[f"{str(v).replace('.', ',')}%" for v in data_fed["probs"].values()],
+                    textposition='outside', marker_color='#2980b9', width=0.4
+                ))
+                fig.update_layout(
+                    yaxis=dict(range=[0, 110], tickformat=".0f", ticksuffix="%", showgrid=True, gridcolor='rgba(255,255,255,0.1)', title="Probability"),
+                    xaxis=dict(title="Target Rate (in bps)", showgrid=False),
+                    template="plotly_dark", height=450, margin=dict(l=0, r=0, t=20, b=0),
+                    plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)'
+                )
+                st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+
+        with tab_hist:
+            st.info("Pravděpodobnostní trend v čase.")
+        with tab_dot:
+            st.info("Očekávání sazeb FEDu.")
