@@ -86,7 +86,7 @@ def load_tickers():
 # --- BEZPEČNÉ NAČTENÍ KONFIGURACE PRO GEMINI ---
 api_key = st.secrets.get("GOOGLE_API_KEY", st.secrets.get("GEMINI_API_KEY", st.secrets.get("GROQ_API_KEY", "")))
 model_provider = st.session_state.get("ai_provider", saved_settings.get("ai_provider", "Google Gemini"))
-selected_model = st.session_state.get("ai_model", saved_settings.get("ai_model", "gemini-1.5-flash"))
+selected_model = st.session_state.get("ai_model", saved_settings.get("ai_model", "gemini-2.5-flash"))
 
 st.title(_["title"])
 st.caption(_["desc"])
@@ -161,7 +161,7 @@ def get_ai_client(api_klic):
 def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, model_name, lang):
     client = get_ai_client(api_klic)
     if not model_name or model_name == "":
-        model_name = "gemini-1.5-flash"
+        model_name = "gemini-2.5-flash"
 
     jazyk_vyzva = "v češtině (Czech)" if lang == "CZ" else "in English"
     prompt = f"""
@@ -194,7 +194,7 @@ def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, model_name, lang):
 def chat_s_ai(otazka, kontext_zprav, analyza_json, historie, api_klic, model_name, lang):
     client = get_ai_client(api_klic)
     if not model_name or model_name == "":
-        model_name = "gemini-1.5-flash"
+        model_name = "gemini-2.5-flash"
         
     jazyk_vyzva = "Odpovídej v češtině." if lang == "CZ" else "Answer in English."
     analyza_str = json.dumps(analyza_json, ensure_ascii=False)
