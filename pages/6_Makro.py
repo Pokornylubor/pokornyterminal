@@ -7,7 +7,6 @@ import requests
 import plotly.graph_objects as go
 import math
 import calendar
-import collections
 from datetime import datetime, timedelta
 
 # --- INITIAL SETUP ---
@@ -248,28 +247,69 @@ def fetch_macro_data():
     return data, history
 
 @st.cache_data(ttl=3600)
-def fetch_all_zq_contracts(months):
-    data = {}
+def fetch_cbot_futures_curve(dates):
+    curve = {}
     cme_month_codes = {1: 'F', 2: 'G', 3: 'H', 4: 'J', 5: 'K', 6: 'M',
                        7: 'N', 8: 'Q', 9: 'U', 10: 'V', 11: 'X', 12: 'Z'}
-    for y, m in months:
-        ticker = f"ZQ{cme_month_codes[m]}{str(y)[-2:]}.CBT"
+    for d in dates:
+        month_code = cme_month_codes[d.month]
+        year_code = str(d.year)[-2:]
+        ticker = f"ZQ{month_code}{year_code}.CBT"
         try:
             tkr = yf.Ticker(ticker, session=session)
-            hist = tkr.history(period="3mo")
+            hist = tkr.history(period="6mo")
             if not hist.empty:
                 price = float(hist['Close'].iloc[-1])
-                vol = hist['Volume'].iloc[-1]
+                vol_val = hist['Volume'].iloc[-1]
+                vol = int(vol_val) if pd.notna(vol_val) else 0
                 oi = tkr.info.get("openInterest", "Live")
-                data[(y, m)] = {
+                
+                curve[d] = {
                     "price": price, 
-                    "vol": int(vol) if pd.notna(vol) else 0, 
+                    "vol": vol, 
                     "ticker": ticker, 
                     "oi": oi,
                     "history": hist['Close'].dropna()
                 }
         except: pass
-    return data
+    return curve
+
+# --- EXAKTNÍ LINEÁRNÍ INTERPOLACE (NEPADÁ A POČÍTÁ PŘESNĚ JAKO CME) ---
+def calc_cme_linear_probs(price, prev_price, meeting_day, days_in_month, enforce_time_weighting=True):
+    implied_rate = 100.0 - price
+    prev_implied = 100.0 - prev_price
+    
+    if enforce_time_weighting:
+        w_prev = meeting_day / float(days_in_month)
+        w_new = (days_in_month - meeting_day) / float(days_in_month)
+        
+        if w_new > 0.1:
+            target_rate = (implied_rate - w_prev * prev_implied) / w_new
+            if abs(target_rate - implied_rate) > 0.5: target_rate = implied_rate
+        else:
+            target_rate = implied_rate
+    else:
+        target_rate = implied_rate
+
+    # EFFR Adjustment (trh se obchoduje 7.5 bps pod horní hranou pásma)
+    adjusted_bps = target_rate * 100 + 7.5
+
+    lower_bracket = math.floor(adjusted_bps / 25.0) * 25
+    remainder = (adjusted_bps - lower_bracket) / 25.0
+
+    p_upper = remainder * 100
+    p_lower = (1.0 - remainder) * 100
+
+    brackets = {}
+    if p_lower > 0.05:
+        brackets[f"{int(lower_bracket)}-{int(lower_bracket+25)}"] = round(p_lower, 1)
+    if p_upper > 0.05:
+        brackets[f"{int(lower_bracket+25)}-{int(lower_bracket+50)}"] = round(p_upper, 1)
+        
+    if not brackets:
+        brackets[f"{int(lower_bracket)}-{int(lower_bracket+25)}"] = 100.0
+        
+    return dict(sorted(brackets.items(), key=lambda item: int(item[0].split('-')[0])))
 
 with st.spinner(_["loading"]):
     macro_data, macro_history = fetch_macro_data()
@@ -361,6 +401,9 @@ if macro_data:
                 ))
                 fig_gauge.update_layout(template="plotly_dark", height=160, margin=dict(l=10, r=10, t=10, b=10))
                 st.plotly_chart(fig_gauge, use_container_width=True, config={'displayModeBar': False})
+            else:
+                st.markdown(f"**{_['eval_fng']}:**")
+                st.info("Data nedostupná.")
 
         with ec3:
             st.markdown(f"**{_['eval_dxy']}:**")
@@ -458,260 +501,186 @@ if macro_data:
             st.plotly_chart(fig_vix, use_container_width=True, config={'displayModeBar': False})
 
     with tab_fed:
-        # --- CME QUANT MATH: MARKOV CHAIN (PROBABILITY TREE) ---
         today = datetime.now()
         future_meetings = [d for d in FOMC_DATES if d >= today][:10]
         
+        with st.spinner("Stahování úrokové křivky a kompilace pravděpodobností..."):
+            curve_data = fetch_cbot_futures_curve(future_meetings)
+
         cme_month_codes = {1: 'F', 2: 'G', 3: 'H', 4: 'J', 5: 'K', 6: 'M', 7: 'N', 8: 'Q', 9: 'U', 10: 'V', 11: 'X', 12: 'Z'}
         mesice_cz = {1: "led", 2: "úno", 3: "bře", 4: "dub", 5: "kvě", 6: "čvn", 7: "čvc", 8: "srp", 9: "zář", 10: "říj", 11: "lis", 12: "pro"}
 
-        # Spočítáme aktuální absolutní pásmo FEDu z prvního kontraktu (Anchor)
-        front_implied_bps = macro_data["FED"]["price"] * 100
-        current_lower_bps = math.floor(front_implied_bps / 25) * 25
-        current_target_str = f"{int(current_lower_bps)}-{int(current_lower_bps+25)}"
-        
-        def state_to_bracket(state):
-            lower = int(current_lower_bps + state * 25)
-            return f"{lower}-{lower+25}"
-        
-        def simplified_hist_probs(hist_price):
-            impl_rate = (100.0 - hist_price) * 100
-            effr_adj = impl_rate + 7.5
-            hikes = (effr_adj - (current_lower_bps + 12.5)) / 25.0
-            base_hikes = math.floor(hikes)
-            remainder = hikes - base_hikes
-            
-            b = {}
-            p1 = round((1.0 - remainder) * 100, 1)
-            p2 = round(remainder * 100, 1)
-            if p1 >= 0.1: b[state_to_bracket(base_hikes)] = p1
-            if p2 >= 0.1: b[state_to_bracket(base_hikes + 1)] = p2
-            return b
+        # Určení výchozí sazby FEDu (Anchor) pro výpočty EASE/HIKE
+        current_implied_bps = macro_data["FED"]["price"] * 100
+        curr_lower = math.floor(current_implied_bps / 25) * 25
+        current_target_mid = curr_lower + 12.5
+        current_target_str = f"{int(curr_lower)}-{int(curr_lower+25)}"
 
         dynamic_fed_data = {}
         tab_labels = []
         
-        if future_meetings:
-            start_date = datetime(today.year, today.month, 1)
-            end_date = future_meetings[-1]
-            num_months = (end_date.year - start_date.year) * 12 + (end_date.month - start_date.month) + 1
-            months_to_simulate = []
-            y, m = start_date.year, start_date.month
-            for _ in range(num_months):
-                months_to_simulate.append((y, m))
-                m += 1
-                if m > 12: m = 1; y += 1
-                    
-            with st.spinner("Stahování úrokové křivky z chicagské burzy a provádění Markovova řetězce..."):
-                curve_data = fetch_all_zq_contracts(months_to_simulate)
-                
-            last_valid_price = 100.0 - macro_data["FED"]["price"]
-            effr_start = None
-            prob_tree = {0: 1.0} # 100% aktuálně na stavu nula
-            meeting_results = {}
+        # Uchování předchozí ceny pro výpočet Time-Weighting
+        prev_loop_price = 100.0 - macro_data["FED"]["price"] 
+
+        for i, d in enumerate(future_meetings):
+            tab_label = f"{d.day} {mesice_cz[d.month]}{str(d.year)[-2:]}"
+            tab_labels.append(tab_label)
             
-            meeting_days = {(d.year, d.month): d.day for d in FOMC_DATES}
+            contract_code = f"ZQ{cme_month_codes[d.month]}{str(d.year)[-1]}"
+            days_in_month = calendar.monthrange(d.year, d.month)[1]
             
-            for y, m in months_to_simulate:
-                if (y, m) in curve_data:
-                    price = curve_data[(y, m)]['price']
-                    last_valid_price = price
-                else: price = last_valid_price
-                    
-                r_avg = 100.0 - price
-                Days = calendar.monthrange(y, m)[1]
-                meeting_day = meeting_days.get((y, m))
+            last_day = calendar.monthrange(d.year, d.month)[1]
+            exp_dt = datetime(d.year, d.month, last_day)
+            while exp_dt.weekday() > 4: exp_dt -= timedelta(days=1)
+            expires_str = f"{exp_dt.day} {mesice_cz[d.month]} {d.year}"
+            
+            if d in curve_data:
+                price = curve_data[d]["price"]
+                vol = curve_data[d]["vol"]
+                vol_str = f"{vol:,}".replace(",", " ") if vol > 0 else "-"
+                oi_val = curve_data[d].get("oi", "Live")
+                oi_str = f"{int(oi_val):,}".replace(",", " ") if oi_val != "Live" and pd.notna(oi_val) else "Live"
+                history_series = curve_data[d]["history"]
+            else:
+                price = prev_loop_price
+                vol_str = "-"
+                oi_str = "-"
+                history_series = pd.Series([price], index=[today])
                 
-                if effr_start is None: effr_start = r_avg
-                    
-                if meeting_day:
-                    N = meeting_day
-                    M = Days - N
-                    if M == 0: effr_end = r_avg
-                    else: effr_end = (r_avg * Days - effr_start * N) / M
-                        
-                    # Eliminace extrémních výkyvů vzadu v křivce
-                    if abs(effr_end - effr_start) > 1.5: effr_end = r_avg
-                        
-                    delta = effr_end - effr_start
-                    hikes = delta / 0.25
-                    base_hikes = math.floor(hikes)
-                    remainder = hikes - base_hikes
-                    
-                    # Provedení matematického posunu ve stromu
-                    new_prob = collections.defaultdict(float)
-                    for state, p in prob_tree.items():
-                        if p > 0.0001:
-                            new_prob[state + base_hikes] += p * (1.0 - remainder)
-                            new_prob[state + base_hikes + 1] += p * remainder
-                            
-                    prob_tree = dict(new_prob)
-                    meeting_results[(y, m)] = {"effr_end": effr_end, "probs": prob_tree}
-                    effr_start = effr_end
-                else:
-                    effr_start = r_avg
+            mid_price_str = f"{price:.4f}".replace(".", ",")
+            
+            # MATEMATIKA CME: Provede bezchybné rozdělení přesně do 2 sloupců
+            brackets = calc_cme_linear_probs(price, prev_loop_price, d.day, days_in_month, enforce_time_weighting=True)
 
-            for d in future_meetings:
-                y, m = d.year, d.month
-                tab_label = f"{d.day} {mesice_cz[m]}{str(y)[-2:]}"
-                tab_labels.append(tab_label)
-                
-                contract_code = f"ZQ{cme_month_codes[m]}{str(y)[-1]}"
-                last_day = calendar.monthrange(y, m)[1]
-                exp_dt = datetime(y, m, last_day)
-                while exp_dt.weekday() > 4: exp_dt -= timedelta(days=1)
-                expires_str = f"{exp_dt.day} {mesice_cz[m]} {y}"
-                
-                if (y, m) in curve_data:
-                    c_data = curve_data[(y, m)]
-                    mid_price_str = f"{c_data['price']:.4f}".replace(".", ",")
-                    vol = c_data['vol']
-                    vol_str = f"{vol:,}".replace(",", " ") if vol > 0 else "-"
-                    oi_val = c_data.get("oi", "Live")
-                    oi_str = f"{int(oi_val):,}".replace(",", " ") if oi_val != "Live" and pd.notna(oi_val) else "Live"
-                    history_series = c_data["history"]
-                else:
-                    mid_price_str = "-"
-                    vol_str = "-"
-                    oi_str = "-"
-                    history_series = pd.Series([100.0 - (current_lower_bps/100)], index=[today])
+            ease_sum = sum(v for k, v in brackets.items() if (int(k.split('-')[0]) + 12.5) < current_target_mid)
+            no_change_sum = sum(v for k, v in brackets.items() if (int(k.split('-')[0]) + 12.5) == current_target_mid)
+            hike_sum = sum(v for k, v in brackets.items() if (int(k.split('-')[0]) + 12.5) > current_target_mid)
 
-                # Překlad matematických stavů (States) z Markovova řetězce zpět do reálných 25bps bracketů
-                if (y, m) in meeting_results:
-                    raw_probs = meeting_results[(y, m)]["probs"]
-                    brackets = {}
-                    for state, p in raw_probs.items():
-                        pct = round(p * 100, 1)
-                        if pct >= 0.1:
-                            brackets[state_to_bracket(state)] = pct
-                else: brackets = {current_target_str: 100.0}
+            # Historická data se neváží časem (aby nepadala na anomáliích), jen se interpolují
+            def get_hist_prob(days_back):
+                if len(history_series) > days_back:
+                    hist_price = float(history_series.iloc[-(days_back+1)])
+                    return calc_cme_linear_probs(hist_price, hist_price, d.day, days_in_month, enforce_time_weighting=False)
+                return brackets
 
-                tot = sum(brackets.values())
-                if tot > 0: brackets = {k: round((v / tot) * 100, 1) for k, v in brackets.items()}
-
-                ease_sum = sum(v for k, v in brackets.items() if int(k.split('-')[0]) < current_lower_bps)
-                no_change_sum = brackets.get(current_target_str, 0.0)
-                hike_sum = sum(v for k, v in brackets.items() if int(k.split('-')[0]) > current_lower_bps)
-
-                def get_hist_prob(days_back):
-                    if len(history_series) > days_back:
-                        hist_price = float(history_series.iloc[-(days_back+1)])
-                        return simplified_hist_probs(hist_price)
-                    return brackets
-
-                dynamic_fed_data[tab_label] = {
-                    "date_obj": d, "date": f"{d.day} {mesice_cz[m]} {y}",
-                    "contract": contract_code, "expires": expires_str,
-                    "mid": mid_price_str, "vol": vol_str, "oi": oi_str,
-                    "ease": f"{ease_sum:.1f} %".replace(".", ",") if ease_sum > 0 else "0,0 %",
-                    "no_change": f"{no_change_sum:.1f} %".replace(".", ",") if no_change_sum > 0 else "0,0 %",
-                    "hike": f"{hike_sum:.1f} %".replace(".", ",") if hike_sum > 0 else "0,0 %",
-                    "probs": dict(sorted(brackets.items(), key=lambda item: int(item[0].split('-')[0]))),
-                    "probs_1d": get_hist_prob(1), "probs_1w": get_hist_prob(5), "probs_1m": get_hist_prob(21),
-                    "raw_history": history_series
-                }
+            dynamic_fed_data[tab_label] = {
+                "date_obj": d,
+                "date": f"{d.day} {mesice_cz[d.month]} {d.year}",
+                "contract": contract_code,
+                "expires": expires_str,
+                "mid": mid_price_str,
+                "vol": vol_str,
+                "oi": oi_str,
+                "ease": f"{ease_sum:.1f} %".replace(".", ",") if ease_sum > 0 else "0,0 %",
+                "no_change": f"{no_change_sum:.1f} %".replace(".", ",") if no_change_sum > 0 else "0,0 %",
+                "hike": f"{hike_sum:.1f} %".replace(".", ",") if hike_sum > 0 else "0,0 %",
+                "probs": brackets,
+                "probs_1d": get_hist_prob(1),
+                "probs_1w": get_hist_prob(5),
+                "probs_1m": get_hist_prob(21),
+                "raw_history": history_series
+            }
+            prev_loop_price = price
 
         st.subheader("🏛️ CME FedWatch Tool")
         tab_target, tab_hist, tab_dot = st.tabs(["🎯 Target Rate", "📉 Historical", "🔵 Dot Plot"])
 
         with tab_target:
-            if not dynamic_fed_data:
-                st.info("Načítání tržních dat FEDu...")
-            else:
-                selected_tab = st.radio("Vyberte zasedání pro Target Rate:", tab_labels, horizontal=True, label_visibility="collapsed")
-                data_fed = dynamic_fed_data[selected_tab]
+            selected_tab = st.radio("Vyberte zasedání pro Target Rate:", tab_labels, horizontal=True, label_visibility="collapsed")
+            data_fed = dynamic_fed_data[selected_tab]
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            col_t1, col_t2 = st.columns([3, 2])
+            with col_t1: st.markdown("<div style='text-align: center; color: #888; font-size: 0.85em; font-weight: bold;'>MEETING INFORMATION</div>", unsafe_allow_html=True)
+            with col_t2: st.markdown("<div style='text-align: center; color: #888; font-size: 0.85em; font-weight: bold;'>PROBABILITIES</div>", unsafe_allow_html=True)
                 
-                st.markdown("<br>", unsafe_allow_html=True)
-                col_t1, col_t2 = st.columns([3, 2])
-                with col_t1: st.markdown("<div style='text-align: center; color: #888; font-size: 0.85em; font-weight: bold;'>MEETING INFORMATION</div>", unsafe_allow_html=True)
-                with col_t2: st.markdown("<div style='text-align: center; color: #888; font-size: 0.85em; font-weight: bold;'>PROBABILITIES</div>", unsafe_allow_html=True)
-                    
-                df_info = pd.DataFrame([{
-                    "MEETING DATE": data_fed["date"],
-                    "CONTRACT": data_fed["contract"],
-                    "EXPIRES": data_fed["expires"],
-                    "MID PRICE": data_fed["mid"],
-                    "PRIOR VOLUME": data_fed["vol"],
-                    "PRIOR OI": data_fed["oi"],
-                    "EASE": data_fed["ease"],
-                    "NO CHANGE": data_fed["no_change"],
-                    "HIKE": data_fed["hike"]
-                }])
-                st.dataframe(df_info, hide_index=True, use_container_width=True)
-                st.markdown("<br>", unsafe_allow_html=True)
-                
-                st.markdown(f"##### Target Rate Probabilities for {data_fed['date']} Fed Meeting")
-                st.caption(f"Current target rate is {current_target_str}")
-                
-                fig = go.Figure()
-                fig.add_trace(go.Bar(
-                    x=list(data_fed["probs"].keys()), y=list(data_fed["probs"].values()),
-                    text=[f"{str(v).replace('.', ',')}%" for v in data_fed["probs"].values()],
-                    textposition='outside', marker_color='#2980b9', width=0.4
-                ))
-                fig.update_layout(
-                    yaxis=dict(range=[0, 105], tickformat=".0f", ticksuffix="%", showgrid=True, gridcolor='rgba(255,255,255,0.1)', title="Probability"),
-                    xaxis=dict(title="Target Rate (in bps)", showgrid=False),
-                    template="plotly_dark", height=450, margin=dict(l=0, r=0, t=20, b=0),
-                    plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)'
-                )
-                st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+            df_info = pd.DataFrame([{
+                "MEETING DATE": data_fed["date"],
+                "CONTRACT": data_fed["contract"],
+                "EXPIRES": data_fed["expires"],
+                "MID PRICE": data_fed["mid"],
+                "PRIOR VOLUME": data_fed["vol"],
+                "PRIOR OI": data_fed["oi"],
+                "EASE": data_fed["ease"],
+                "NO CHANGE": data_fed["no_change"],
+                "HIKE": data_fed["hike"]
+            }])
+            st.dataframe(df_info, hide_index=True, use_container_width=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            st.markdown(f"##### Target Rate Probabilities for {data_fed['date']} Fed Meeting")
+            st.caption(f"Current target rate is {current_target_str}")
+            
+            fig = go.Figure()
+            fig.add_trace(go.Bar(
+                x=list(data_fed["probs"].keys()),
+                y=list(data_fed["probs"].values()),
+                text=[f"{str(v).replace('.', ',')}%" for v in data_fed["probs"].values()],
+                textposition='outside',
+                marker_color='#2980b9',
+                width=0.4
+            ))
+            fig.update_layout(
+                yaxis=dict(range=[0, 105], tickformat=".0f", ticksuffix="%", showgrid=True, gridcolor='rgba(255,255,255,0.1)', title="Probability"),
+                xaxis=dict(title="Target Rate (in bps)", showgrid=False),
+                template="plotly_dark", height=450, margin=dict(l=0, r=0, t=20, b=0),
+                plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)'
+            )
+            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
-                st.markdown("---")
-                st.markdown("<div style='text-align: center; font-size: 0.85em; font-weight: bold; margin-bottom: 10px;'>PROBABILITY (%)</div>", unsafe_allow_html=True)
-                
-                table_rows = []
-                for bracket in data_fed["probs"].keys():
-                    is_current = " (Current)" if bracket == current_target_str else ""
-                    table_rows.append({
-                        "TARGET RATE (BPS)": f"{bracket}{is_current}",
-                        "NOW": f"{data_fed['probs'].get(bracket, 0.0):.1f}%".replace(".", ","),
-                        "1 DAY": f"{data_fed['probs_1d'].get(bracket, 0.0):.1f}%".replace(".", ","),
-                        "1 WEEK": f"{data_fed['probs_1w'].get(bracket, 0.0):.1f}%".replace(".", ","),
-                        "1 MONTH": f"{data_fed['probs_1m'].get(bracket, 0.0):.1f}%".replace(".", ",")
-                    })
-                if table_rows: st.dataframe(pd.DataFrame(table_rows), hide_index=True, use_container_width=True)
+            st.markdown("---")
+            st.markdown("<div style='text-align: center; font-size: 0.85em; font-weight: bold; margin-bottom: 10px;'>PROBABILITY (%)</div>", unsafe_allow_html=True)
+            
+            table_rows = []
+            for bracket in data_fed["probs"].keys():
+                is_current = " (Current)" if bracket == current_target_str else ""
+                table_rows.append({
+                    "TARGET RATE (BPS)": f"{bracket}{is_current}",
+                    "NOW": f"{data_fed['probs'].get(bracket, 0.0):.1f}%".replace(".", ","),
+                    "1 DAY": f"{data_fed['probs_1d'].get(bracket, 0.0):.1f}%".replace(".", ","),
+                    "1 WEEK": f"{data_fed['probs_1w'].get(bracket, 0.0):.1f}%".replace(".", ","),
+                    "1 MONTH": f"{data_fed['probs_1m'].get(bracket, 0.0):.1f}%".replace(".", ",")
+                })
+            if table_rows: st.dataframe(pd.DataFrame(table_rows), hide_index=True, use_container_width=True)
 
         with tab_hist:
-            if dynamic_fed_data:
-                selected_hist_tab = st.radio("Vyberte zasedání pro Historical Trend:", tab_labels, horizontal=True, label_visibility="collapsed", key="hist_radio")
-                hist_data = dynamic_fed_data[selected_hist_tab]
+            selected_hist_tab = st.radio("Vyberte zasedání pro Historical Trend:", tab_labels, horizontal=True, label_visibility="collapsed", key="hist_radio")
+            hist_data = dynamic_fed_data[selected_hist_tab]
+            
+            st.markdown(f"##### Historical Probability Trend for {hist_data['date']} Fed Meeting")
+            raw_series = hist_data["raw_history"]
+            
+            if len(raw_series) > 2:
+                top_brackets = sorted(hist_data["probs"], key=hist_data["probs"].get, reverse=True)[:3]
+                hist_plot_data = {b: [] for b in top_brackets}
+                dates_list = []
                 
-                st.markdown(f"##### Historical Probability Trend for {hist_data['date']} Fed Meeting")
-                raw_series = hist_data["raw_history"]
+                for i, date_idx in enumerate(raw_series.index):
+                    historical_price = float(raw_series.iloc[i])
+                    # Historie je interpolována čistě z ceny pro zamezení pádů
+                    past_brackets = calc_cme_linear_probs(historical_price, historical_price, hist_data["date_obj"].day, calendar.monthrange(hist_data["date_obj"].year, hist_data["date_obj"].month)[1], enforce_time_weighting=False)
+                    dates_list.append(date_idx)
+                    for b in top_brackets:
+                        hist_plot_data[b].append(past_brackets.get(b, 0.0))
                 
-                # Zabezpečení proti pádu, vykreslí se už i jen ze 2 datových bodů
-                if len(raw_series) > 1:
-                    top_brackets = sorted(hist_data["probs"], key=hist_data["probs"].get, reverse=True)[:3]
-                    hist_plot_data = {b: [] for b in top_brackets}
-                    dates_list = []
-                    
-                    for i, date_idx in enumerate(raw_series.index):
-                        historical_price = float(raw_series.iloc[i])
-                        past_brackets = simplified_hist_probs(historical_price)
-                        dates_list.append(date_idx)
-                        for b in top_brackets:
-                            hist_plot_data[b].append(past_brackets.get(b, 0.0))
-                    
-                    fig_hist = go.Figure()
-                    colors = ['#2980b9', '#27ae60', '#e67e22']
-                    for idx, b in enumerate(top_brackets):
-                        fig_hist.add_trace(go.Scatter(x=dates_list, y=hist_plot_data[b], mode='lines', name=f"{b} bps", line=dict(width=2.5, color=colors[idx % len(colors)])))
-                    
-                    fig_hist.update_layout(
-                        yaxis=dict(range=[0, 105], tickformat=".0f", ticksuffix="%", showgrid=True, gridcolor='rgba(255,255,255,0.1)', title="Probability"),
-                        template="plotly_dark", height=450, margin=dict(l=0, r=0, t=20, b=0),
-                        plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', hovermode='x unified'
-                    )
-                    st.plotly_chart(fig_hist, use_container_width=True, config={'displayModeBar': False})
-                else:
-                    st.info("Nedostatek historických dat pro sestavení trendové křivky. Zobrazí se po nasbírání alespoň dvou dnů historie.")
+                fig_hist = go.Figure()
+                colors = ['#2980b9', '#27ae60', '#e67e22']
+                for idx, b in enumerate(top_brackets):
+                    fig_hist.add_trace(go.Scatter(x=dates_list, y=hist_plot_data[b], mode='lines', name=f"{b} bps", line=dict(width=2.5, color=colors[idx % len(colors)])))
+                
+                fig_hist.update_layout(
+                    yaxis=dict(range=[0, 105], tickformat=".0f", ticksuffix="%", showgrid=True, gridcolor='rgba(255,255,255,0.1)', title="Probability"),
+                    template="plotly_dark", height=450, margin=dict(l=0, r=0, t=20, b=0),
+                    plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', hovermode='x unified'
+                )
+                st.plotly_chart(fig_hist, use_container_width=True, config={'displayModeBar': False})
+            else:
+                st.info("Nedostatek historických dat pro sestavení trendové křivky. Zobrazí se po nasbírání alespoň několika dnů historie.")
 
         with tab_dot:
             st.markdown("##### FOMC Summary of Economic Projections (Dot Plot)")
-            st.caption("Mediánová očekávání členů FOMC (Fed Funds Rate) na konci příslušného roku. (Projekce fixně ukotveny z posledního SEP zamezují pádu při výpadcích API).")
+            st.caption("Mediánová očekávání členů FOMC (Fed Funds Rate) na konci příslušného roku. (Projekce z posledního SEP)")
             
-            # Bezpečné, natvrdo nakódované hodnoty
             dot_years = ['2026', '2027', '2028', 'Longer Run']
             dot_rates = [
                 [3.375, 3.625, 3.625, 3.875, 3.875, 4.125],
