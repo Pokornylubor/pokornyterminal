@@ -9,7 +9,6 @@ from datetime import datetime
 from openai import OpenAI
 import google.generativeai as genai
 
-# --- INITIAL SETUP ---
 st.set_page_config(page_title="POKORNY TERMINAL | AI RADAR", layout="wide", initial_sidebar_state="collapsed")
 
 aktualni_slozka = os.path.dirname(os.path.abspath(__file__))
@@ -21,7 +20,6 @@ menu.vykresli_menu()
 
 current_lang = st.session_state.get("lang", "CZ")
 
-# --- DICTIONARY ---
 t = {
     "CZ": {
         "title": "AI SENTIMENT & NEWS RADAR",
@@ -66,31 +64,27 @@ saved_settings = app_data.get("settings", {})
 def load_tickers():
     return list(set(app_data.get("portfolio", []) + app_data.get("watchlist", [])))
 
-# --- BEZPEČNÉ NAČTENÍ KONFIGURACE ---
 model_provider = st.session_state.get("ai_provider", saved_settings.get("ai_provider", "Groq"))
 raw_model = st.session_state.get("ai_model", saved_settings.get("ai_model", ""))
 
-# ========================================================
-# AUTO-KOREKCE PAMĚTI (TOHLE ŘEŠÍ TEN ZASEKNUTÝ PROBLÉM)
-# ========================================================
+# AKTUALIZOVANÁ AUTO-KOREKCE
 if model_provider == "Groq":
-    platne_groq_modely = ["llama-3.1-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"]
+    platne_groq_modely = ["llama-3.3-70b-versatile", "mixtral-8x7b-32768"]
     if raw_model not in platne_groq_modely:
-        selected_model = "llama-3.1-70b-versatile" # Natvrdo přepíše mrtvý Llama3-70b
+        selected_model = "llama-3.3-70b-versatile" # Přepíše smazanou 3.1 na aktuální 3.3
     else:
         selected_model = raw_model
     api_key = st.secrets.get("GROQ_API_KEY", "")
 else:
     platne_gemini_modely = ["gemini-1.5-flash", "gemini-1.5-pro"]
     if raw_model not in platne_gemini_modely:
-        selected_model = "gemini-1.5-flash" # Natvrdo přepíše chybné názvy Gemini
+        selected_model = "gemini-1.5-flash"
     else:
         selected_model = raw_model
     api_key = st.secrets.get("GEMINI_API_KEY", "")
 
 st.title(_["title"])
 st.caption(_["desc"])
-# Info panel, abys přesně věděl, co kód doopravdy vybral
 st.info(f"🔧 **Aktivní AI Engine:** {model_provider} | **Použitý model:** {selected_model}")
 st.markdown("---")
 
@@ -185,7 +179,6 @@ def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, provider, model_na
     else:
         try:
             client = OpenAI(api_key=api_klic, base_url="https://api.groq.com/openai/v1", max_retries=3)
-            # max_tokens chrání před chybou na Groqu
             response = client.chat.completions.create(model=model_name, messages=[{"role": "user", "content": prompt}], temperature=0.1, max_tokens=800, timeout=20.0)
             vysledek = response.choices[0].message.content
             if vysledek.startswith("```json"): vysledek = vysledek.strip("`").replace("json\n", "")

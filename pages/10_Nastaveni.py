@@ -43,10 +43,9 @@ with c2:
     provider = st.selectbox("AI Provider", ["Groq", "Gemini"], index=0 if saved_settings.get("ai_provider", "Groq") == "Groq" else 1)
     
     if provider == "Groq":
-        # Opravené a aktuálně platné modely od Groqu (Llama 3.1)
-        models = ["llama-3.1-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"]
+        # Nasazen nejnovější aktivní model Llama 3.3
+        models = ["llama-3.3-70b-versatile", "mixtral-8x7b-32768"]
     else:
-        # Opravené modely pro Gemini (bez problémového -latest)
         models = ["gemini-1.5-flash", "gemini-1.5-pro"]
         
     default_model = saved_settings.get("ai_model", "")
