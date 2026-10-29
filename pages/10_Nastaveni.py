@@ -40,13 +40,13 @@ with c1:
     
 with c2:
     st.subheader("AI Engine")
-    # Přepnuto pouze na Groq a Gemini
     provider = st.selectbox("AI Provider", ["Groq", "Gemini"], index=0 if saved_settings.get("ai_provider", "Groq") == "Groq" else 1)
     
     if provider == "Groq":
         models = ["llama3-70b-8192", "llama3-8b-8192", "mixtral-8x7b-32768"]
     else:
-        models = ["gemini-1.5-flash", "gemini-1.5-pro"]
+        # Opravené a bezpečnější názvy pro Gemini API
+        models = ["gemini-1.5-flash-latest", "gemini-1.5-pro-latest", "gemini-pro"]
         
     default_model = saved_settings.get("ai_model", "")
     m_index = models.index(default_model) if default_model in models else 0

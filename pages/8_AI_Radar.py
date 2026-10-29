@@ -84,7 +84,7 @@ saved_settings = app_data.get("settings", {})
 def load_tickers():
     return list(set(app_data.get("portfolio", []) + app_data.get("watchlist", [])))
 
-# --- BEZPEČNÉ NAČTENÍ KONFIGURACE (GROQ + GEMINI) ---
+# --- BEZPEČNÉ NAČTENÍ KONFIGURACE ---
 model_provider = st.session_state.get("ai_provider", saved_settings.get("ai_provider", "Groq"))
 selected_model = st.session_state.get("ai_model", saved_settings.get("ai_model", ""))
 
@@ -188,7 +188,8 @@ def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, provider, model_na
     else:
         try:
             client = OpenAI(api_key=api_klic, base_url="https://api.groq.com/openai/v1", max_retries=3)
-            response = client.chat.completions.create(model=model_name, messages=[{"role": "user", "content": prompt}], temperature=0.1, timeout=20.0)
+            # Přidán parametr max_tokens=800 pro splnění přísných limitů na Groq účtech zdarma
+            response = client.chat.completions.create(model=model_name, messages=[{"role": "user", "content": prompt}], temperature=0.1, max_tokens=800, timeout=20.0)
             vysledek = response.choices[0].message.content
             if vysledek.startswith("```json"): vysledek = vysledek.strip("`").replace("json\n", "")
             elif vysledek.startswith("```"): vysledek = vysledek.strip("`")
@@ -223,7 +224,8 @@ def chat_s_ai(otazka, kontext_zprav, analyza_json, historie, api_klic, provider,
             for msg in historie: messages.append({"role": msg["role"], "content": msg["content"]})
             messages.append({"role": "user", "content": otazka})
             
-            response = client.chat.completions.create(model=model_name, messages=messages, temperature=0.3, timeout=15.0)
+            # Přidán parametr max_tokens=800 i pro chatování s Groqem
+            response = client.chat.completions.create(model=model_name, messages=messages, temperature=0.3, max_tokens=800, timeout=15.0)
             return response.choices[0].message.content
         except Exception as e:
             return f"⚠️ Došlo k výpadku spojení s Groq ({e}). Zkuste to prosím znovu."
