@@ -96,13 +96,6 @@ st.title(_["title"])
 st.caption(_["desc"])
 st.markdown("---")
 
-# --- DEBUG BOXY ---
-st.warning(f"DEBUG INFO: Vybraný provider je: {model_provider}")
-st.warning(f"DEBUG INFO: Streamlit pod OPENAI_API_KEY vidí klíč začínající na: {st.secrets.get('OPENAI_API_KEY', 'NIC NENALEZENO')[:6]}")
-st.warning(f"DEBUG INFO: Streamlit pod GROQ_API_KEY vidí klíč začínající na: {st.secrets.get('GROQ_API_KEY', 'NIC NENALEZENO')[:6]}")
-st.warning(f"DEBUG INFO: Aktuálně použitý klíč pro API začíná na: {api_key[:6] if api_key else 'PRÁZDNÝ'}")
-# ------------------
-
 if not api_key or not selected_model:
     st.warning(_["err_api"])
     st.stop()
