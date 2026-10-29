@@ -30,7 +30,7 @@ t = {
         "btn_ai": "📊 Analyzovat datový tok",
         "spin_search": "Stahování datového toku...",
         "spin_ai": "AI analyzuje agregovaný datový tok a počítá sentiment...",
-        "err_api": "⚠️ AI API klíč nebyl nalezen. Ujistěte se, že je GROQ_API_KEY uložen ve Streamlit Secrets.",
+        "err_api": "⚠️ AI API klíč nebyl nalezen. Ujistěte se, že je klíč uložen ve Streamlit Secrets.",
         "err_ai": "Chyba AI enginu:",
         "err_news": "Žádné aktuální zprávy nebyly nalezeny.",
         "sources": "🗄️ Zdrojové zprávy použité pro syntézu",
@@ -51,7 +51,7 @@ t = {
         "btn_ai": "📊 Analyze Data Feed",
         "spin_search": "Downloading data feed...",
         "spin_ai": "AI is analyzing aggregated data feed and calculating sentiment...",
-        "err_api": "⚠️ AI API key not found. Ensure GROQ_API_KEY is saved in Streamlit Secrets.",
+        "err_api": "⚠️ AI API key not found. Ensure API key is saved in Streamlit Secrets.",
         "err_ai": "AI Engine Error:",
         "err_news": "No current news found.",
         "sources": "🗄️ Source news used for synthesis",
@@ -84,13 +84,24 @@ def load_tickers():
     return list(set(app_data.get("portfolio", []) + app_data.get("watchlist", [])))
 
 # --- BEZPEČNÉ NAČTENÍ KONFIGURACE ---
-api_key = st.secrets.get("GROQ_API_KEY", "")
 model_provider = st.session_state.get("ai_provider", saved_settings.get("ai_provider", "Groq"))
 selected_model = st.session_state.get("ai_model", saved_settings.get("ai_model", ""))
+
+if model_provider == "OpenAI":
+    api_key = st.secrets.get("OPENAI_API_KEY", "")
+else:
+    api_key = st.secrets.get("GROQ_API_KEY", "")
 
 st.title(_["title"])
 st.caption(_["desc"])
 st.markdown("---")
+
+# --- DEBUG BOXY ---
+st.warning(f"DEBUG INFO: Vybraný provider je: {model_provider}")
+st.warning(f"DEBUG INFO: Streamlit pod OPENAI_API_KEY vidí klíč začínající na: {st.secrets.get('OPENAI_API_KEY', 'NIC NENALEZENO')[:6]}")
+st.warning(f"DEBUG INFO: Streamlit pod GROQ_API_KEY vidí klíč začínající na: {st.secrets.get('GROQ_API_KEY', 'NIC NENALEZENO')[:6]}")
+st.warning(f"DEBUG INFO: Aktuálně použitý klíč pro API začíná na: {api_key[:6] if api_key else 'PRÁZDNÝ'}")
+# ------------------
 
 if not api_key or not selected_model:
     st.warning(_["err_api"])
