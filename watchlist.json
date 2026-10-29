@@ -264,6 +264,7 @@
     },
     "settings": {
         "ai_provider": "Groq",
-        "ai_model": "qwen/qwen3.8-27b"
+        "ai_model": "qwen/qwen3.8-27b",
+        "lang": "CZ"
     }
 }
