@@ -9,6 +9,7 @@ from datetime import datetime
 from openai import OpenAI
 import google.generativeai as genai
 
+# --- INITIAL SETUP ---
 st.set_page_config(page_title="POKORNY TERMINAL | AI RADAR", layout="wide", initial_sidebar_state="collapsed")
 
 aktualni_slozka = os.path.dirname(os.path.abspath(__file__))
@@ -32,60 +33,21 @@ t = {
         "err_api": "⚠️ AI API klíč nebyl nalezen. Ujistěte se, že je klíč uložen ve Streamlit Secrets.",
         "err_ai": "Chyba AI enginu:",
         "err_news": "Žádné aktuální zprávy nebyly nalezeny."
-    },
-    "EN": {
-        "title": "AI SENTIMENT & NEWS RADAR",
-        "desc": "QUANTITATIVE AND FUNDAMENTAL ANALYSIS OF MARKET CATALYSTS.",
-        "tick_db": "DATABASE",
-        "tick_cust": "CUSTOM TICKER",
-        "btn_ai": "📊 Analyze Data Feed",
-        "spin_search": "Downloading data feed...",
-        "spin_ai": "AI is analyzing aggregated data feed and calculating sentiment...",
-        "err_api": "⚠️ AI API key not found. Ensure API key is saved in Streamlit Secrets.",
-        "err_ai": "AI Engine Error:",
-        "err_news": "No current news found."
     }
 }
 _ = t.get(current_lang, t["CZ"])
 
-WATCHLIST_FILE = os.path.join(hlavni_slozka, "watchlist.json")
-
-def load_app_data():
-    if os.path.exists(WATCHLIST_FILE):
-        try:
-            with open(WATCHLIST_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except: pass
-    return {"portfolio": [], "watchlist": [], "settings": {}}
-
-app_data = load_app_data()
-saved_settings = app_data.get("settings", {})
-
-def load_tickers():
-    return list(set(app_data.get("portfolio", []) + app_data.get("watchlist", [])))
-
-model_provider = st.session_state.get("ai_provider", saved_settings.get("ai_provider", "Groq"))
-raw_model = st.session_state.get("ai_model", saved_settings.get("ai_model", ""))
-
-# AKTUALIZOVANÁ AUTO-KOREKCE
-if model_provider == "Groq":
-    platne_groq_modely = ["llama-3.3-70b-versatile", "mixtral-8x7b-32768"]
-    if raw_model not in platne_groq_modely:
-        selected_model = "llama-3.3-70b-versatile" # Přepíše smazanou 3.1 na aktuální 3.3
-    else:
-        selected_model = raw_model
-    api_key = st.secrets.get("GROQ_API_KEY", "")
-else:
-    platne_gemini_modely = ["gemini-1.5-flash", "gemini-1.5-pro"]
-    if raw_model not in platne_gemini_modely:
-        selected_model = "gemini-1.5-flash"
-    else:
-        selected_model = raw_model
-    api_key = st.secrets.get("GEMINI_API_KEY", "")
+# ========================================================
+# ABSOLUTNÍ OVERRIDE (IGNORUJEME ZASEKNUTÝ WATCHLIST)
+# ========================================================
+# Natvrdo nastavujeme Groq a jeho nejstabilnější dostupný model
+model_provider = "Groq"
+selected_model = "llama3-8b-8192" 
+api_key = st.secrets.get("GROQ_API_KEY", "")
 
 st.title(_["title"])
 st.caption(_["desc"])
-st.info(f"🔧 **Aktivní AI Engine:** {model_provider} | **Použitý model:** {selected_model}")
+st.info(f"🔧 **Natvrdo vynucený engine:** {model_provider} | **Model:** {selected_model}")
 st.markdown("---")
 
 if not api_key:
@@ -98,12 +60,12 @@ if "radar_zpravy_text" not in st.session_state: st.session_state.radar_zpravy_te
 if "radar_zpravy_list" not in st.session_state: st.session_state.radar_zpravy_list = []
 if "radar_chat" not in st.session_state: st.session_state.radar_chat = []
 
-tickers = load_tickers()
+tickers = [] # Zjednodušeno pro test
 tickers.sort()
 
 c1, c2, c3 = st.columns([1, 1, 2])
-dropdown_val = c1.selectbox(_["tick_db"], tickers, index=None, placeholder="Choose an option")
-custom_val = c2.text_input(_["tick_cust"], placeholder="")
+dropdown_val = c1.selectbox("DATABÁZE", tickers, index=None, placeholder="Choose an option")
+custom_val = c2.text_input("VLASTNÍ TICKER", placeholder="")
 
 vybrany_ticker = custom_val.strip().upper() if custom_val.strip() else dropdown_val
 
@@ -149,7 +111,7 @@ def fetch_news(ticker):
     return news_list
 
 def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, provider, model_name, lang):
-    jazyk_vyzva = "v češtině (Czech)" if lang == "CZ" else "in English"
+    jazyk_vyzva = "v češtině (Czech)"
     prompt = f"""
     You are an elite quantitative hedge fund analyst. Read the following recent news headlines for ticker {ticker}.
     Synthesize them into one unified, professional market update. Return the output STRICTLY as valid JSON.
@@ -165,56 +127,30 @@ def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, provider, model_na
     Do not output anything other than raw JSON.
     """
     
-    if provider == "Gemini":
-        try:
-            genai.configure(api_key=api_klic)
-            model = genai.GenerativeModel(model_name)
-            response = model.generate_content(prompt)
-            vysledek = response.text
-            if vysledek.startswith("```json"): vysledek = vysledek.strip("`").replace("json\n", "")
-            elif vysledek.startswith("```"): vysledek = vysledek.strip("`")
-            return json.loads(vysledek)
-        except Exception as e:
-            return {"error": f"Gemini API chyba: {str(e)}"}
-    else:
-        try:
-            client = OpenAI(api_key=api_klic, base_url="https://api.groq.com/openai/v1", max_retries=3)
-            response = client.chat.completions.create(model=model_name, messages=[{"role": "user", "content": prompt}], temperature=0.1, max_tokens=800, timeout=20.0)
-            vysledek = response.choices[0].message.content
-            if vysledek.startswith("```json"): vysledek = vysledek.strip("`").replace("json\n", "")
-            elif vysledek.startswith("```"): vysledek = vysledek.strip("`")
-            return json.loads(vysledek)
-        except Exception as e:
-            return {"error": f"Groq API chyba: {str(e)}"}
+    try:
+        client = OpenAI(api_key=api_klic, base_url="https://api.groq.com/openai/v1", max_retries=3)
+        response = client.chat.completions.create(model=model_name, messages=[{"role": "user", "content": prompt}], temperature=0.1, max_tokens=800, timeout=20.0)
+        vysledek = response.choices[0].message.content
+        if vysledek.startswith("```json"): vysledek = vysledek.strip("`").replace("json\n", "")
+        elif vysledek.startswith("```"): vysledek = vysledek.strip("`")
+        return json.loads(vysledek)
+    except Exception as e:
+        return {"error": f"Groq API chyba: {str(e)}"}
 
 def chat_s_ai(otazka, kontext_zprav, analyza_json, historie, api_klic, provider, model_name, lang):
-    jazyk_vyzva = "Odpovídej v češtině." if lang == "CZ" else "Answer in English."
+    jazyk_vyzva = "Odpovídej v češtině."
     analyza_str = json.dumps(analyza_json, ensure_ascii=False)
     system_msg = f"Jsi institucionální analytik hedgeového fondu. Odpovídej uživateli na dotazy ohledně této tržní události. Buď přímý, analytický a přesný. Zde je tvá původní syntéza: {analyza_str}. Zdrojové zprávy: {kontext_zprav}. {jazyk_vyzva}"
     
-    if provider == "Gemini":
-        try:
-            genai.configure(api_key=api_klic)
-            model = genai.GenerativeModel(model_name)
-            full_prompt = f"INSTRUKCE:\n{system_msg}\n\nHISTORIE KONVERZACE:\n"
-            for msg in historie:
-                role_name = "Uživatel" if msg["role"] == "user" else "AI"
-                full_prompt += f"{role_name}: {msg['content']}\n"
-            full_prompt += f"\nNOVÝ DOTAZ UŽIVATELE:\n{otazka}"
-            response = model.generate_content(full_prompt)
-            return response.text
-        except Exception as e:
-            return f"⚠️ Došlo k výpadku spojení s Gemini ({e})."
-    else:
-        try:
-            client = OpenAI(api_key=api_klic, base_url="https://api.groq.com/openai/v1", max_retries=3)
-            messages = [{"role": "system", "content": system_msg}]
-            for msg in historie: messages.append({"role": msg["role"], "content": msg["content"]})
-            messages.append({"role": "user", "content": otazka})
-            response = client.chat.completions.create(model=model_name, messages=messages, temperature=0.3, max_tokens=800, timeout=15.0)
-            return response.choices[0].message.content
-        except Exception as e:
-            return f"⚠️ Došlo k výpadku spojení s Groq ({e})."
+    try:
+        client = OpenAI(api_key=api_klic, base_url="https://api.groq.com/openai/v1", max_retries=3)
+        messages = [{"role": "system", "content": system_msg}]
+        for msg in historie: messages.append({"role": msg["role"], "content": msg["content"]})
+        messages.append({"role": "user", "content": otazka})
+        response = client.chat.completions.create(model=model_name, messages=messages, temperature=0.3, max_tokens=800, timeout=15.0)
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"⚠️ Došlo k výpadku spojení s Groq ({e})."
 
 if vybrany_ticker:
     st.markdown("<br>", unsafe_allow_html=True)
