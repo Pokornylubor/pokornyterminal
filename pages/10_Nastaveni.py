@@ -40,12 +40,13 @@ with c1:
     
 with c2:
     st.subheader("AI Engine")
-    provider = st.selectbox("AI Provider", ["Groq", "OpenAI"], index=0 if saved_settings.get("ai_provider", "Groq") == "Groq" else 1)
+    # Přepnuto pouze na Groq a Gemini
+    provider = st.selectbox("AI Provider", ["Groq", "Gemini"], index=0 if saved_settings.get("ai_provider", "Groq") == "Groq" else 1)
     
     if provider == "Groq":
         models = ["llama3-70b-8192", "llama3-8b-8192", "mixtral-8x7b-32768"]
     else:
-        models = ["gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"]
+        models = ["gemini-1.5-flash", "gemini-1.5-pro"]
         
     default_model = saved_settings.get("ai_model", "")
     m_index = models.index(default_model) if default_model in models else 0
