@@ -7,7 +7,6 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from datetime import datetime
 from openai import OpenAI
-import google.generativeai as genai
 
 # --- INITIAL SETUP ---
 st.set_page_config(page_title="POKORNY TERMINAL | AI RADAR", layout="wide", initial_sidebar_state="collapsed")
@@ -21,6 +20,7 @@ menu.vykresli_menu()
 
 current_lang = st.session_state.get("lang", "CZ")
 
+# --- DICTIONARY ---
 t = {
     "CZ": {
         "title": "AI SENTIMENT & NEWS RADAR",
@@ -30,27 +30,68 @@ t = {
         "btn_ai": "📊 Analyzovat datový tok",
         "spin_search": "Stahování datového toku...",
         "spin_ai": "AI analyzuje agregovaný datový tok a počítá sentiment...",
-        "err_api": "⚠️ AI API klíč nebyl nalezen. Ujistěte se, že je klíč uložen ve Streamlit Secrets.",
+        "err_api": "⚠️ AI API klíč nebyl nalezen. Ujistěte se, že je GROQ_API_KEY uložen ve Streamlit Secrets.",
         "err_ai": "Chyba AI enginu:",
-        "err_news": "Žádné aktuální zprávy nebyly nalezeny."
+        "err_news": "Žádné aktuální zprávy nebyly nalezeny.",
+        "sources": "🗄️ Zdrojové zprávy použité pro syntézu",
+        "ai_expl": "✨ AI vysvětlení",
+        "what_happened": "CO SE STALO",
+        "why_move": "PROČ TO HÝBE TRHEM (FUNDAMENT)",
+        "sent_desc": "Změřený dopad na tržní sentiment. Kladné hodnoty podporují Risk-On, záporné Risk-Off.",
+        "no_title": "Bez titulku",
+        "no_time": "Neznámý čas",
+        "chat_h": "💬 Vaše otázky k této zprávě",
+        "chat_ph": "Zeptejte se na detaily, valuaci nebo historický kontext..."
+    },
+    "EN": {
+        "title": "AI SENTIMENT & NEWS RADAR",
+        "desc": "QUANTITATIVE AND FUNDAMENTAL ANALYSIS OF MARKET CATALYSTS.",
+        "tick_db": "DATABASE",
+        "tick_cust": "CUSTOM TICKER",
+        "btn_ai": "📊 Analyze Data Feed",
+        "spin_search": "Downloading data feed...",
+        "spin_ai": "AI is analyzing aggregated data feed and calculating sentiment...",
+        "err_api": "⚠️ AI API key not found. Ensure GROQ_API_KEY is saved in Streamlit Secrets.",
+        "err_ai": "AI Engine Error:",
+        "err_news": "No current news found.",
+        "sources": "🗄️ Source news used for synthesis",
+        "ai_expl": "✨ AI Explanation",
+        "what_happened": "WHAT HAPPENED",
+        "why_move": "WHY IT MOVES THE MARKET (FUNDAMENTALS)",
+        "sent_desc": "Measured impact on market sentiment. Positive values support Risk-On, negative Risk-Off.",
+        "no_title": "No Title",
+        "no_time": "Unknown Time",
+        "chat_h": "💬 Your questions about this news",
+        "chat_ph": "Ask about details, valuation, or historical context..."
     }
 }
 _ = t.get(current_lang, t["CZ"])
 
-# ========================================================
-# ABSOLUTNÍ OVERRIDE (IGNORUJEME ZASEKNUTÝ WATCHLIST)
-# ========================================================
-# Natvrdo nastavujeme Groq a jeho nejstabilnější dostupný model
-model_provider = "Groq"
-selected_model = "llama3-8b-8192" 
+WATCHLIST_FILE = os.path.join(hlavni_slozka, "watchlist.json")
+
+def load_app_data():
+    if os.path.exists(WATCHLIST_FILE):
+        try:
+            with open(WATCHLIST_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except: pass
+    return {"portfolio": [], "watchlist": [], "settings": {}}
+
+app_data = load_app_data()
+saved_settings = app_data.get("settings", {})
+
+def load_tickers():
+    return list(set(app_data.get("portfolio", []) + app_data.get("watchlist", [])))
+
+# --- BEZPEČNÉ NAČTENÍ KONFIGURACE ---
 api_key = st.secrets.get("GROQ_API_KEY", "")
+selected_model = st.session_state.get("ai_model", saved_settings.get("ai_model", ""))
 
 st.title(_["title"])
 st.caption(_["desc"])
-st.info(f"🔧 **Natvrdo vynucený engine:** {model_provider} | **Model:** {selected_model}")
 st.markdown("---")
 
-if not api_key:
+if not api_key or not selected_model:
     st.warning(_["err_api"])
     st.stop()
 
@@ -60,12 +101,12 @@ if "radar_zpravy_text" not in st.session_state: st.session_state.radar_zpravy_te
 if "radar_zpravy_list" not in st.session_state: st.session_state.radar_zpravy_list = []
 if "radar_chat" not in st.session_state: st.session_state.radar_chat = []
 
-tickers = [] # Zjednodušeno pro test
+tickers = load_tickers()
 tickers.sort()
 
 c1, c2, c3 = st.columns([1, 1, 2])
-dropdown_val = c1.selectbox("DATABÁZE", tickers, index=None, placeholder="Choose an option")
-custom_val = c2.text_input("VLASTNÍ TICKER", placeholder="")
+dropdown_val = c1.selectbox(_["tick_db"], tickers, index=None, placeholder="Choose an option")
+custom_val = c2.text_input(_["tick_cust"], placeholder="")
 
 vybrany_ticker = custom_val.strip().upper() if custom_val.strip() else dropdown_val
 
@@ -81,14 +122,14 @@ def fetch_news(ticker):
     news_list = []
     try:
         url = f"https://feeds.finance.yahoo.com/rss/2.0/headline?s={ticker}&region=US&lang=en-US"
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
         with urllib.request.urlopen(req, timeout=5) as response:
             xml_data = response.read()
         root = ET.fromstring(xml_data)
         for item in root.findall('.//item')[:8]:
-            title = item.find('title').text if item.find('title') is not None else "Bez titulku"
+            title = item.find('title').text if item.find('title') is not None else _["no_title"]
             link = item.find('link').text if item.find('link') is not None else "#"
-            pubDate = item.find('pubDate').text if item.find('pubDate') is not None else "Neznámý čas"
+            pubDate = item.find('pubDate').text if item.find('pubDate') is not None else _["no_time"]
             if len(pubDate) > 22: pubDate = pubDate[:22]
             news_list.append({"title": title, "link": link, "publisher": "Yahoo Finance (RSS)", "pub_time_str": pubDate})
         if news_list: return news_list
@@ -98,20 +139,22 @@ def fetch_news(ticker):
         t = yf.Ticker(ticker)
         yf_news = t.news
         for n in yf_news[:8]:
-            title = n.get("title", "Bez titulku")
+            title = n.get("title", _["no_title"])
             link = n.get("link", "#")
             publisher = n.get("publisher", "Yahoo Finance")
             try:
                 ts = n.get("providerPublishTime", 0)
-                pubDate = datetime.fromtimestamp(ts).strftime("%d.%m.%Y %H:%M") if ts else "Neznámý čas"
+                pubDate = datetime.fromtimestamp(ts).strftime("%d.%m.%Y %H:%M") if ts else _["no_time"]
             except:
-                pubDate = "Neznámý čas"
+                pubDate = _["no_time"]
             news_list.append({"title": title, "link": link, "publisher": publisher, "pub_time_str": pubDate})
     except: pass
     return news_list
 
-def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, provider, model_name, lang):
-    jazyk_vyzva = "v češtině (Czech)"
+def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, model_name, lang):
+    client = OpenAI(api_key=api_klic, base_url="https://api.groq.com/openai/v1", max_retries=3)
+
+    jazyk_vyzva = "v češtině (Czech)" if lang == "CZ" else "in English"
     prompt = f"""
     You are an elite quantitative hedge fund analyst. Read the following recent news headlines for ticker {ticker}.
     Synthesize them into one unified, professional market update. Return the output STRICTLY as valid JSON.
@@ -126,31 +169,31 @@ def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, provider, model_na
     }}
     Do not output anything other than raw JSON.
     """
-    
     try:
-        client = OpenAI(api_key=api_klic, base_url="https://api.groq.com/openai/v1", max_retries=3)
-        response = client.chat.completions.create(model=model_name, messages=[{"role": "user", "content": prompt}], temperature=0.1, max_tokens=800, timeout=20.0)
+        response = client.chat.completions.create(model=model_name, messages=[{"role": "user", "content": prompt}], temperature=0.1, timeout=20.0)
         vysledek = response.choices[0].message.content
         if vysledek.startswith("```json"): vysledek = vysledek.strip("`").replace("json\n", "")
-        elif vysledek.startswith("```"): vysledek = vysledek.strip("`")
         return json.loads(vysledek)
     except Exception as e:
-        return {"error": f"Groq API chyba: {str(e)}"}
+        return {"error": str(e)}
 
-def chat_s_ai(otazka, kontext_zprav, analyza_json, historie, api_klic, provider, model_name, lang):
-    jazyk_vyzva = "Odpovídej v češtině."
+def chat_s_ai(otazka, kontext_zprav, analyza_json, historie, api_klic, model_name, lang):
+    client = OpenAI(api_key=api_klic, base_url="[https://api.groq.com/openai/v1](https://api.groq.com/openai/v1)", max_retries=3)
+        
+    jazyk_vyzva = "Odpovídej v češtině." if lang == "CZ" else "Answer in English."
     analyza_str = json.dumps(analyza_json, ensure_ascii=False)
-    system_msg = f"Jsi institucionální analytik hedgeového fondu. Odpovídej uživateli na dotazy ohledně této tržní události. Buď přímý, analytický a přesný. Zde je tvá původní syntéza: {analyza_str}. Zdrojové zprávy: {kontext_zprav}. {jazyk_vyzva}"
+    
+    messages = [
+        {"role": "system", "content": f"Jsi institucionální analytik hedgeového fondu. Odpovídej uživateli na dotazy ohledně této tržní události. Buď přímý, analytický a přesný. Zde je tvá původní syntéza: {analyza_str}. Zdrojové zprávy: {kontext_zprav}. {jazyk_vyzva}"}
+    ]
+    for msg in historie: messages.append({"role": msg["role"], "content": msg["content"]})
+    messages.append({"role": "user", "content": otazka})
     
     try:
-        client = OpenAI(api_key=api_klic, base_url="https://api.groq.com/openai/v1", max_retries=3)
-        messages = [{"role": "system", "content": system_msg}]
-        for msg in historie: messages.append({"role": msg["role"], "content": msg["content"]})
-        messages.append({"role": "user", "content": otazka})
-        response = client.chat.completions.create(model=model_name, messages=messages, temperature=0.3, max_tokens=800, timeout=15.0)
+        response = client.chat.completions.create(model=model_name, messages=messages, temperature=0.3, timeout=15.0)
         return response.choices[0].message.content
     except Exception as e:
-        return f"⚠️ Došlo k výpadku spojení s Groq ({e})."
+        return f"⚠️ Došlo k výpadku spojení s AI serverem ({e}). Zkuste to prosím znovu."
 
 if vybrany_ticker:
     st.markdown("<br>", unsafe_allow_html=True)
@@ -162,7 +205,7 @@ if vybrany_ticker:
         else:
             agregovany_text = "\n".join([f"- {n['pub_time_str']}: {n['title']}" for n in news_data])
             with st.spinner(_["spin_ai"]):
-                analyza = analyzuj_agregovane_zpravy(vybrany_ticker, agregovany_text, api_key, model_provider, selected_model, current_lang)
+                analyza = analyzuj_agregovane_zpravy(vybrany_ticker, agregovany_text, api_key, selected_model, current_lang)
                 if "error" not in analyza:
                     st.session_state.radar_analyza = analyza
                     st.session_state.radar_zpravy_text = agregovany_text
@@ -180,29 +223,31 @@ if vybrany_ticker:
             st.markdown(f"### 🔹 {a.get('hlavni_nadpis', 'Analýza trhu')}")
             barva = "green" if skore > 0 else "red" if skore < 0 else "grey"
             st.markdown(f"`{vybrany_ticker}` &nbsp; <span style='color:{barva}; font-weight:bold; background-color:rgba(255,255,255,0.1); padding: 2px 6px; border-radius:4px;'>{skore:+.4f}</span>", unsafe_allow_html=True)
+            st.caption(_["sent_desc"])
             st.markdown("---")
-            st.markdown("**CO SE STALO**")
+            st.markdown(f"#### {_['ai_expl']}")
+            st.markdown(f"**{_['what_happened']}**")
             st.write(a.get("co_se_stalo", ""))
-            st.markdown("**PROČ TO HÝBE TRHEM**")
+            st.markdown(f"**{_['why_move']}**")
             st.write(a.get("proc_to_hybe_trhem", ""))
             
-        with st.expander("🗄️ Zdrojové zprávy"):
+        with st.expander(_["sources"]):
             for article in st.session_state.radar_zpravy_list:
                 st.markdown(f"- **{article['pub_time_str']}** | [{article['title']}]({article['link']})")
 
         st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown("#### 💬 Vaše otázky k této zprávě")
+        st.markdown(f"#### {_['chat_h']}")
         
         for msg in st.session_state.radar_chat:
             with st.chat_message(msg["role"]): st.markdown(msg["content"])
                 
-        if prompt := st.chat_input("Zeptejte se..."):
+        if prompt := st.chat_input(_["chat_ph"]):
             st.session_state.radar_chat.append({"role": "user", "content": prompt})
             with st.chat_message("user"): st.markdown(prompt)
                 
             with st.chat_message("assistant"):
                 with st.spinner("AI formuluje odpověď..."):
-                    odpoved = chat_s_ai(prompt, st.session_state.radar_zpravy_text, st.session_state.radar_analyza, st.session_state.radar_chat[:-1], api_key, model_provider, selected_model, current_lang)
+                    odpoved = chat_s_ai(prompt, st.session_state.radar_zpravy_text, st.session_state.radar_analyza, st.session_state.radar_chat[:-1], api_key, selected_model, current_lang)
                     st.markdown(odpoved)
             if not odpoved.startswith("⚠️"):
                 st.session_state.radar_chat.append({"role": "assistant", "content": odpoved})
