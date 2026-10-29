@@ -85,6 +85,7 @@ def load_tickers():
 
 # --- BEZPEČNÉ NAČTENÍ KONFIGURACE ---
 api_key = st.secrets.get("GROQ_API_KEY", "")
+model_provider = st.session_state.get("ai_provider", saved_settings.get("ai_provider", "Groq"))
 selected_model = st.session_state.get("ai_model", saved_settings.get("ai_model", ""))
 
 st.title(_["title"])
@@ -151,8 +152,11 @@ def fetch_news(ticker):
     except: pass
     return news_list
 
-def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, model_name, lang):
-    client = OpenAI(api_key=api_klic, base_url="https://api.groq.com/openai/v1", max_retries=3)
+def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, provider, model_name, lang):
+    if provider == "Groq":
+        client = OpenAI(api_key=api_klic, base_url="https://api.groq.com/openai/v1", max_retries=3)
+    else:
+        client = OpenAI(api_key=api_klic, max_retries=3)
 
     jazyk_vyzva = "v češtině (Czech)" if lang == "CZ" else "in English"
     prompt = f"""
@@ -177,8 +181,11 @@ def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, model_name, lang):
     except Exception as e:
         return {"error": str(e)}
 
-def chat_s_ai(otazka, kontext_zprav, analyza_json, historie, api_klic, model_name, lang):
-    client = OpenAI(api_key=api_klic, base_url="[https://api.groq.com/openai/v1](https://api.groq.com/openai/v1)", max_retries=3)
+def chat_s_ai(otazka, kontext_zprav, analyza_json, historie, api_klic, provider, model_name, lang):
+    if provider == "Groq":
+        client = OpenAI(api_key=api_klic, base_url="[https://api.groq.com/openai/v1](https://api.groq.com/openai/v1)", max_retries=3)
+    else:
+        client = OpenAI(api_key=api_klic, max_retries=3)
         
     jazyk_vyzva = "Odpovídej v češtině." if lang == "CZ" else "Answer in English."
     analyza_str = json.dumps(analyza_json, ensure_ascii=False)
@@ -205,7 +212,7 @@ if vybrany_ticker:
         else:
             agregovany_text = "\n".join([f"- {n['pub_time_str']}: {n['title']}" for n in news_data])
             with st.spinner(_["spin_ai"]):
-                analyza = analyzuj_agregovane_zpravy(vybrany_ticker, agregovany_text, api_key, selected_model, current_lang)
+                analyza = analyzuj_agregovane_zpravy(vybrany_ticker, agregovany_text, api_key, model_provider, selected_model, current_lang)
                 if "error" not in analyza:
                     st.session_state.radar_analyza = analyza
                     st.session_state.radar_zpravy_text = agregovany_text
@@ -247,7 +254,7 @@ if vybrany_ticker:
                 
             with st.chat_message("assistant"):
                 with st.spinner("AI formuluje odpověď..."):
-                    odpoved = chat_s_ai(prompt, st.session_state.radar_zpravy_text, st.session_state.radar_analyza, st.session_state.radar_chat[:-1], api_key, selected_model, current_lang)
+                    odpoved = chat_s_ai(prompt, st.session_state.radar_zpravy_text, st.session_state.radar_analyza, st.session_state.radar_chat[:-1], api_key, model_provider, selected_model, current_lang)
                     st.markdown(odpoved)
             if not odpoved.startswith("⚠️"):
                 st.session_state.radar_chat.append({"role": "assistant", "content": odpoved})

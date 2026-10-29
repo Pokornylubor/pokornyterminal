@@ -29,6 +29,7 @@ def load_watchlist_data():
 def save_settings_to_json(lang, provider, model):
     data = load_watchlist_data()
     
+    # Bezpečné vytvoření bloku settings, pokud ještě neexistuje
     if "settings" not in data:
         data["settings"] = {}
         
@@ -44,7 +45,7 @@ def save_settings_to_json(lang, provider, model):
             token = st.secrets["GITHUB_TOKEN"]
             owner = st.secrets["GITHUB_OWNER"]
             repo = st.secrets["GITHUB_REPO"]
-            remote_url = f"https://{owner}:{token}@[github.com/](https://github.com/){owner}/{repo}.git"
+            remote_url = f"https://{owner}:{token}@github.com/{owner}/{repo}.git"
             
             subprocess.run(["git", "config", "--global", "user.email", "bot@pokornyterminal.cz"], capture_output=True)
             subprocess.run(["git", "config", "--global", "user.name", "Terminal Bot"], capture_output=True)
@@ -71,6 +72,7 @@ t = {
         "ai_h": "🧠 Umělá inteligence",
         "ai_desc": "Propojení aplikace s LLM servery pro datovou analýzu.",
         "api_lbl": "Dočasný API Klíč:",
+        "prov_lbl": "Poskytovatel:",
         "mod_lbl": "Výchozí model:",
         "save_btn": "💾 Uložit veškeré nastavení a synchronizovat na GitHub",
         "saved_msg": "Globální konfigurace (jazyk, modely) bezpečně uložena na GitHub.",
@@ -86,6 +88,7 @@ t = {
         "ai_h": "🧠 Artificial Intelligence",
         "ai_desc": "Connection to LLM servers for data analysis.",
         "api_lbl": "Temporary API Key:",
+        "prov_lbl": "Provider:",
         "mod_lbl": "Default Model:",
         "save_btn": "💾 Save All Settings & Sync to GitHub",
         "saved_msg": "Global configuration (language, models) safely saved to GitHub.",
@@ -101,13 +104,16 @@ st.caption(_["desc"])
 st.markdown("---")
 
 @st.cache_data(ttl=300)
-def fetch_available_models(api_klic):
+def fetch_available_models(api_klic, provider):
     if not api_klic: return []
     try:
-        client = OpenAI(api_key=api_klic, base_url="[https://api.groq.com/openai/v1](https://api.groq.com/openai/v1)")
-        models = client.models.list().data
-        llm_models = [m.id for m in models if "whisper" not in m.id and "tool-use" not in m.id]
-        return sorted(llm_models, reverse=True)
+        if provider == "Groq":
+            client = OpenAI(api_key=api_klic, base_url="https://api.groq.com/openai/v1")
+            models = client.models.list().data
+            llm_models = [m.id for m in models if "whisper" not in m.id and "tool-use" not in m.id]
+            return sorted(llm_models, reverse=True)
+        else:
+            return ["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo"]
     except:
         return []
 
@@ -118,6 +124,7 @@ with col1:
         st.markdown(f"#### {_['ui_h']}")
         new_lang = st.radio(_["lang_lbl"], ["CZ", "EN"], index=0 if current_lang == "CZ" else 1, horizontal=True)
         
+        # Plynulé přepnutí v UI hned po kliknutí
         if new_lang != st.session_state.lang:
             st.session_state.lang = new_lang
             st.rerun()
@@ -134,7 +141,7 @@ with col2:
         app_data = load_watchlist_data()
         saved_settings = app_data.get("settings", {})
         
-        if "ai_provider" not in st.session_state: st.session_state.ai_provider = "Groq"
+        if "ai_provider" not in st.session_state: st.session_state.ai_provider = saved_settings.get("ai_provider", "Groq")
         if "ai_model" not in st.session_state: st.session_state.ai_model = saved_settings.get("ai_model", "")
 
         has_secret = "GROQ_API_KEY" in st.secrets
@@ -144,7 +151,9 @@ with col2:
         else:
             temp_api = st.text_input(_["api_lbl"], type="password", placeholder="gsk_...", help="Pouze pro tuto relaci. Pro trvalé uložení vložte GROQ_API_KEY do Secrets.")
             
-        models = fetch_available_models(temp_api)
+        temp_prov = st.selectbox(_["prov_lbl"], ["Groq", "OpenAI"], index=0 if st.session_state.ai_provider == "Groq" else 1)
+        
+        models = fetch_available_models(temp_api, temp_prov)
         temp_model = None
         
         if temp_api:
@@ -158,9 +167,11 @@ with col2:
             
         if st.button(_["save_btn"], type="primary", use_container_width=True):
             with st.spinner("Ukládám a synchronizuji s GitHubem..."):
+                st.session_state.ai_provider = temp_prov
                 if temp_model:
                     st.session_state.ai_model = temp_model
                 
-                success = save_settings_to_json(st.session_state.lang, "Groq", temp_model)
+                # Zapsání jazyka i modelů natrvalo
+                success = save_settings_to_json(st.session_state.lang, temp_prov, temp_model)
                 if success:
                     st.success(_["saved_msg"])

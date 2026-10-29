@@ -263,8 +263,7 @@
         ]
     },
     "settings": {
-        "lang": "CZ",
         "ai_provider": "Groq",
-        "ai_model": "llama-3.3-70b-versatile"
+        "ai_model": "qwen/qwen3.8-27b"
     }
 }
