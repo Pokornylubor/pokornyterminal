@@ -45,8 +45,7 @@ def save_settings_to_json(lang, provider, model):
             token = st.secrets["GITHUB_TOKEN"]
             owner = st.secrets["GITHUB_OWNER"]
             repo = st.secrets["GITHUB_REPO"]
-            # Zde je opravené bezpečné formátování adresy
-            remote_url = f"https://{token}@github.com/{owner}/{repo}.git"
+            remote_url = f"https://{token}@[github.com/](https://github.com/){owner}/{repo}.git"
             
             subprocess.run(["git", "config", "--global", "user.email", "bot@pokornyterminal.cz"], capture_output=True)
             subprocess.run(["git", "config", "--global", "user.name", "Terminal Bot"], capture_output=True)
@@ -105,17 +104,18 @@ def fetch_available_models(prov, api_klic):
     if not api_klic: return []
     if prov == "Groq":
         try:
-            client = OpenAI(api_key=api_klic, base_url="https://api.groq.com/openai/v1")
+            client = OpenAI(api_key=api_klic, base_url="[https://api.groq.com/openai/v1](https://api.groq.com/openai/v1)")
             models = client.models.list()
             return sorted([m.id for m in models.data], reverse=True)
         except:
-            # Opravený seznam modelů pro Groq
             return ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"]
     else:
         try:
             client = genai.Client(api_key=api_klic)
             models = client.models.list()
-            return sorted([m.name.replace('models/', '') for m in models if 'gemini' in m.name], reverse=True)
+            # VYFILTROVÁNÍ EXPERIMENTÁLNÍCH MODELŮ (robotics, streaming, atd.)
+            platne_modely = [m.name.replace('models/', '') for m in models if 'gemini' in m.name and 'streaming' not in m.name and 'robotics' not in m.name]
+            return sorted(platne_modely, reverse=True)
         except:
             return ["gemini-3.8-flash", "gemini-3.8-pro", "gemini-2.5-flash"]
 
@@ -144,10 +144,9 @@ with col2:
         
         if "ai_provider" not in st.session_state: st.session_state.ai_provider = saved_settings.get("ai_provider", "Google Gemini")
         if "ai_model" not in st.session_state: 
-            # Aktualizovaná pojistka pro model
             st.session_state.ai_model = saved_settings.get("ai_model", "gemini-3.8-flash")
-            if st.session_state.ai_model == "llama-3.1-70b-versatile":
-                st.session_state.ai_model = "llama-3.3-70b-versatile"
+            if "llama-3.1" in st.session_state.ai_model: st.session_state.ai_model = "llama-3.3-70b-versatile"
+            if "robotics" in st.session_state.ai_model or "streaming" in st.session_state.ai_model: st.session_state.ai_model = "gemini-3.8-flash"
         
         temp_prov = st.selectbox(_["prov_lbl"], ["Google Gemini", "Groq"], index=0 if st.session_state.ai_provider != "Groq" else 1)
         
