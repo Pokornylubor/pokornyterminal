@@ -87,11 +87,6 @@ def load_tickers():
 provider = st.session_state.get("ai_provider", saved_settings.get("ai_provider", "Google Gemini"))
 selected_model = st.session_state.get("ai_model", saved_settings.get("ai_model", "gemini-3.8-flash"))
 
-# 🛑 TVRDÁ POJISTKA ZABRAŇUJÍCÍ PÁDU NA STARÝ MODEL Z PAMĚTI
-if "llama-3.1-70b" in selected_model:
-    selected_model = "llama-3.3-70b-versatile"
-    st.session_state.ai_model = selected_model
-
 if provider == "Groq":
     api_key = st.secrets.get("GROQ_API_KEY", "")
 else:
@@ -179,6 +174,10 @@ def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, lang, prov, model_
     """
     
     if prov == "Groq":
+        # ABSOLUTNÍ POJISTKA TĚSNĚ PŘED VOLÁNÍM API
+        if "llama-3.1" in model_name:
+            model_name = "llama-3.3-70b-versatile"
+            
         try:
             client = OpenAI(api_key=api_klic, base_url="https://api.groq.com/openai/v1")
             response = client.chat.completions.create(
@@ -210,6 +209,10 @@ def chat_s_ai(otazka, kontext_zprav, analyza_json, historie, api_klic, lang, pro
     system_instruction = f"Jsi institucionální analytik hedgeového fondu. Odpovídej uživateli na dotazy ohledně této tržní události. Buď přímý, analytický a přesný. Zde je tvá původní syntéza: {analyza_str}. Zdrojové zprávy: {kontext_zprav}. {jazyk_vyzva}"
     
     if prov == "Groq":
+        # ABSOLUTNÍ POJISTKA TĚSNĚ PŘED VOLÁNÍM API PRO CHAT
+        if "llama-3.1" in model_name:
+            model_name = "llama-3.3-70b-versatile"
+            
         try:
             client = OpenAI(api_key=api_klic, base_url="[https://api.groq.com/openai/v1](https://api.groq.com/openai/v1)")
             messages = [{"role": "system", "content": system_instruction}]
