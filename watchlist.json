@@ -265,7 +265,7 @@
     },
     "settings": {
         "ai_provider": "Google Gemini",
-        "ai_model": "gemini-3.8-flash",
+        "ai_model": "gemini-robotics-er-2-streaming-preview",
         "lang": "EN"
     }
 }
