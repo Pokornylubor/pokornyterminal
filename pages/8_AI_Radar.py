@@ -19,31 +19,10 @@ sys.path.append(hlavni_slozka)
 import menu
 menu.vykresli_menu()
 
-current_lang = st.session_state.get("lang", "CZ")
+current_lang = st.session_state.get("lang", "EN")
 
 # --- DICTIONARY ---
 t = {
-    "CZ": {
-        "title": "AI SENTIMENT & NEWS RADAR",
-        "desc": "KVANTITATIVNÍ A FUNDAMENTÁLNÍ ANALÝZA TRŽNÍCH KATALYZÁTORŮ.",
-        "tick_db": "DATABÁZE",
-        "tick_cust": "VLASTNÍ TICKER",
-        "btn_ai": "📊 Analyzovat datový tok",
-        "spin_search": "Stahování datového toku...",
-        "spin_ai": "AI analyzuje agregovaný datový tok a počítá sentiment...",
-        "err_api": "⚠️ AI API klíč nebyl nalezen. Zkontrolujte Nastavení.",
-        "err_ai": "Chyba AI enginu:",
-        "err_news": "Žádné aktuální zprávy nebyly nalezeny.",
-        "sources": "🗄️ Zdrojové zprávy použité pro syntézu",
-        "ai_expl": "✨ AI vysvětlení",
-        "what_happened": "CO SE STALO",
-        "why_move": "PROČ TO HÝBE TRHEM (FUNDAMENT)",
-        "sent_desc": "Změřený dopad na tržní sentiment. Kladné hodnoty podporují Risk-On, záporné Risk-Off.",
-        "no_title": "Bez titulku",
-        "no_time": "Neznámý čas",
-        "chat_h": "💬 Vaše otázky k této zprávě",
-        "chat_ph": "Zeptejte se na detaily, valuaci nebo historický kontext..."
-    },
     "EN": {
         "title": "AI SENTIMENT & NEWS RADAR",
         "desc": "QUANTITATIVE AND FUNDAMENTAL ANALYSIS OF MARKET CATALYSTS.",
@@ -64,9 +43,30 @@ t = {
         "no_time": "Unknown Time",
         "chat_h": "💬 Your questions about this news",
         "chat_ph": "Ask about details, valuation, or historical context..."
+    },
+    "CZ": {
+        "title": "AI SENTIMENT & NEWS RADAR",
+        "desc": "KVANTITATIVNÍ A FUNDAMENTÁLNÍ ANALÝZA TRŽNÍCH KATALYZÁTORŮ.",
+        "tick_db": "DATABÁZE",
+        "tick_cust": "VLASTNÍ TICKER",
+        "btn_ai": "📊 Analyzovat datový tok",
+        "spin_search": "Stahování datového toku...",
+        "spin_ai": "AI analyzuje agregovaný datový tok a počítá sentiment...",
+        "err_api": "⚠️ AI API klíč nebyl nalezen. Zkontrolujte Nastavení.",
+        "err_ai": "Chyba AI enginu:",
+        "err_news": "Žádné aktuální zprávy nebyly nalezeny.",
+        "sources": "🗄️ Zdrojové zprávy použité pro syntézu",
+        "ai_expl": "✨ AI vysvětlení",
+        "what_happened": "CO SE STALO",
+        "why_move": "PROČ TO HÝBE TRHEM (FUNDAMENT)",
+        "sent_desc": "Změřený dopad na tržní sentiment. Kladné hodnoty podporují Risk-On, záporné Risk-Off.",
+        "no_title": "Bez titulku",
+        "no_time": "Neznámý čas",
+        "chat_h": "💬 Vaše otázky k této zprávě",
+        "chat_ph": "Zeptejte se na detaily, valuaci nebo historický kontext..."
     }
 }
-_ = t.get(current_lang, t["CZ"])
+_ = t.get(current_lang, t["EN"])
 
 WATCHLIST_FILE = os.path.join(hlavni_slozka, "watchlist.json")
 
@@ -86,6 +86,11 @@ def load_tickers():
 
 provider = st.session_state.get("ai_provider", saved_settings.get("ai_provider", "Google Gemini"))
 selected_model = st.session_state.get("ai_model", saved_settings.get("ai_model", "gemini-3.8-flash"))
+
+# 🛑 TVRDÁ POJISTKA ZABRAŇUJÍCÍ PÁDU NA STARÝ MODEL Z PAMĚTI
+if "llama-3.1-70b" in selected_model:
+    selected_model = "llama-3.3-70b-versatile"
+    st.session_state.ai_model = selected_model
 
 if provider == "Groq":
     api_key = st.secrets.get("GROQ_API_KEY", "")
@@ -288,7 +293,7 @@ if vybrany_ticker:
             with st.chat_message("user"): st.markdown(prompt)
                 
             with st.chat_message("assistant"):
-                with st.spinner("AI formuluje odpověď..."):
+                with st.spinner("AI formuluje odpověď..." if current_lang == "CZ" else "AI is generating a response..."):
                     odpoved = chat_s_ai(prompt, st.session_state.radar_zpravy_text, st.session_state.radar_analyza, st.session_state.radar_chat[:-1], api_key, current_lang, provider, selected_model)
                     st.markdown(odpoved)
             if not odpoved.startswith("⚠️"):
