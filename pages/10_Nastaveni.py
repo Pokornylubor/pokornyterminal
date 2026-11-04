@@ -42,10 +42,12 @@ def save_settings_to_json(lang, provider, model):
         
     try:
         if "GITHUB_TOKEN" in st.secrets:
-            token = st.secrets["GITHUB_TOKEN"]
-            owner = st.secrets["GITHUB_OWNER"]
-            repo = st.secrets["GITHUB_REPO"]
-            remote_url = f"https://{token}@[github.com/](https://github.com/){owner}/{repo}.git"
+            # Tvrdé očištění od neviditelných mezer a zalomení
+            token = st.secrets["GITHUB_TOKEN"].strip()
+            owner = st.secrets["GITHUB_OWNER"].strip()
+            repo = st.secrets["GITHUB_REPO"].strip()
+            
+            remote_url = f"https://{owner}:{token}@github.com/{owner}/{repo}.git"
             
             subprocess.run(["git", "config", "--global", "user.email", "bot@pokornyterminal.cz"], capture_output=True)
             subprocess.run(["git", "config", "--global", "user.name", "Terminal Bot"], capture_output=True)
