@@ -29,7 +29,7 @@ t = {
         "tick_cust": "VLASTNÍ TICKER",
         "btn_ai": "📊 Analyzovat datový tok",
         "spin_search": "Stahování datového toku...",
-        "spin_ai": "AI (Gemini 2.5 Flash) analyzuje agregovaný datový tok a počítá sentiment...",
+        "spin_ai": "AI (Gemini 3.8 Flash) analyzuje agregovaný datový tok a počítá sentiment...",
         "err_api": "⚠️ AI API klíč nebyl nalezen. Ujistěte se, že je GOOGLE_API_KEY uložen ve Streamlit Secrets.",
         "err_ai": "Chyba AI enginu:",
         "err_news": "Žádné aktuální zprávy nebyly nalezeny.",
@@ -50,7 +50,7 @@ t = {
         "tick_cust": "CUSTOM TICKER",
         "btn_ai": "📊 Analyze Data Feed",
         "spin_search": "Downloading data feed...",
-        "spin_ai": "AI (Gemini 2.5 Flash) is analyzing aggregated data feed and calculating sentiment...",
+        "spin_ai": "AI (Gemini 3.8 Flash) is analyzing aggregated data feed and calculating sentiment...",
         "err_api": "⚠️ AI API key not found. Ensure GOOGLE_API_KEY is saved in Streamlit Secrets.",
         "err_ai": "AI Engine Error:",
         "err_news": "No current news found.",
@@ -170,7 +170,7 @@ def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, lang):
     """
     try:
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3.8-flash",
             contents=prompt,
             config={
                 "temperature": 0.1,
@@ -189,7 +189,6 @@ def chat_s_ai(otazka, kontext_zprav, analyza_json, historie, api_klic, lang):
     
     system_instruction = f"Jsi institucionální analytik hedgeového fondu. Odpovídej uživateli na dotazy ohledně této tržní události. Buď přímý, analytický a přesný. Zde je tvá původní syntéza: {analyza_str}. Zdrojové zprávy: {kontext_zprav}. {jazyk_vyzva}"
     
-    # Formátování historie pro nový genai klient
     contents = []
     for msg in historie:
         role = "model" if msg["role"] == "assistant" else "user"
@@ -198,7 +197,7 @@ def chat_s_ai(otazka, kontext_zprav, analyza_json, historie, api_klic, lang):
     
     try:
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3.8-flash",
             contents=contents,
             config={
                 "temperature": 0.3,

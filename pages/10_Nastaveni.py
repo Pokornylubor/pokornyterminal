@@ -110,7 +110,7 @@ def fetch_available_models(api_klic):
         models = client.models.list()
         return sorted([m.name.replace('models/', '') for m in models if 'gemini' in m.name], reverse=True)
     except:
-        return ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-1.5-flash", "gemini-1.5-pro"]
+        return ["gemini-3.8-flash", "gemini-3.8-pro"]
 
 col1, col2 = st.columns(2, gap="large")
 
@@ -136,7 +136,7 @@ with col2:
         saved_settings = app_data.get("settings", {})
         
         if "ai_provider" not in st.session_state: st.session_state.ai_provider = saved_settings.get("ai_provider", "Google Gemini")
-        if "ai_model" not in st.session_state: st.session_state.ai_model = saved_settings.get("ai_model", "gemini-2.5-flash")
+        if "ai_model" not in st.session_state: st.session_state.ai_model = saved_settings.get("ai_model", "gemini-3.8-flash")
 
         has_secret = "GOOGLE_API_KEY" in st.secrets or "GEMINI_API_KEY" in st.secrets
         if has_secret:
