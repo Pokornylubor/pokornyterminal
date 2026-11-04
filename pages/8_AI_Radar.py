@@ -7,6 +7,7 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from datetime import datetime
 from google import genai
+from openai import OpenAI
 
 # --- INITIAL SETUP ---
 st.set_page_config(page_title="POKORNY TERMINAL | AI RADAR", layout="wide", initial_sidebar_state="collapsed")
@@ -29,8 +30,8 @@ t = {
         "tick_cust": "VLASTNÍ TICKER",
         "btn_ai": "📊 Analyzovat datový tok",
         "spin_search": "Stahování datového toku...",
-        "spin_ai": "AI (Gemini 3.8 Flash) analyzuje agregovaný datový tok a počítá sentiment...",
-        "err_api": "⚠️ AI API klíč nebyl nalezen. Ujistěte se, že je GOOGLE_API_KEY uložen ve Streamlit Secrets.",
+        "spin_ai": "AI analyzuje agregovaný datový tok a počítá sentiment...",
+        "err_api": "⚠️ AI API klíč nebyl nalezen. Zkontrolujte Nastavení.",
         "err_ai": "Chyba AI enginu:",
         "err_news": "Žádné aktuální zprávy nebyly nalezeny.",
         "sources": "🗄️ Zdrojové zprávy použité pro syntézu",
@@ -50,8 +51,8 @@ t = {
         "tick_cust": "CUSTOM TICKER",
         "btn_ai": "📊 Analyze Data Feed",
         "spin_search": "Downloading data feed...",
-        "spin_ai": "AI (Gemini 3.8 Flash) is analyzing aggregated data feed and calculating sentiment...",
-        "err_api": "⚠️ AI API key not found. Ensure GOOGLE_API_KEY is saved in Streamlit Secrets.",
+        "spin_ai": "AI is analyzing aggregated data feed and calculating sentiment...",
+        "err_api": "⚠️ AI API key not found. Check Settings.",
         "err_ai": "AI Engine Error:",
         "err_news": "No current news found.",
         "sources": "🗄️ Source news used for synthesis",
@@ -83,11 +84,16 @@ saved_settings = app_data.get("settings", {})
 def load_tickers():
     return list(set(app_data.get("portfolio", []) + app_data.get("watchlist", [])))
 
-# --- NAČTENÍ GOOGLE API KLÍČE ---
-api_key = st.secrets.get("GOOGLE_API_KEY", st.secrets.get("GEMINI_API_KEY", ""))
+provider = st.session_state.get("ai_provider", saved_settings.get("ai_provider", "Google Gemini"))
+selected_model = st.session_state.get("ai_model", saved_settings.get("ai_model", "gemini-3.8-flash"))
+
+if provider == "Groq":
+    api_key = st.secrets.get("GROQ_API_KEY", "")
+else:
+    api_key = st.secrets.get("GOOGLE_API_KEY", st.secrets.get("GEMINI_API_KEY", ""))
 
 st.title(_["title"])
-st.caption(_["desc"])
+st.caption(f"{_['desc']} | Aktuální engine: **{provider}** ({selected_model})")
 st.markdown("---")
 
 if not api_key:
@@ -150,10 +156,8 @@ def fetch_news(ticker):
     except: pass
     return news_list
 
-def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, lang):
-    client = genai.Client(api_key=api_klic)
+def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, lang, prov, model_name):
     jazyk_vyzva = "v češtině (Czech)" if lang == "CZ" else "in English"
-    
     prompt = f"""
     You are an elite quantitative hedge fund analyst. Read the following recent news headlines for ticker {ticker}.
     Synthesize them into one unified, professional market update. Return the output STRICTLY as valid JSON.
@@ -168,45 +172,70 @@ def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, lang):
     }}
     Do not output anything other than raw JSON.
     """
-    try:
-        response = client.models.generate_content(
-            model="gemini-3.8-flash",
-            contents=prompt,
-            config={
-                "temperature": 0.1,
-                "response_mime_type": "application/json"
-            }
-        )
-        vysledek = response.text
-        return json.loads(vysledek)
-    except Exception as e:
-        return {"error": str(e)}
+    
+    if prov == "Groq":
+        try:
+            client = OpenAI(api_key=api_klic, base_url="https://api.groq.com/openai/v1")
+            response = client.chat.completions.create(
+                model=model_name,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.1,
+                response_format={"type": "json_object"}
+            )
+            vysledek = response.choices[0].message.content
+            if vysledek.startswith("```json"): vysledek = vysledek.replace("```json", "").replace("```", "").strip()
+            return json.loads(vysledek)
+        except Exception as e:
+            return {"error": str(e)}
+    else:
+        try:
+            client = genai.Client(api_key=api_klic)
+            response = client.models.generate_content(
+                model=model_name,
+                contents=prompt,
+                config={"temperature": 0.1, "response_mime_type": "application/json"}
+            )
+            return json.loads(response.text)
+        except Exception as e:
+            return {"error": str(e)}
 
-def chat_s_ai(otazka, kontext_zprav, analyza_json, historie, api_klic, lang):
-    client = genai.Client(api_key=api_klic)
+def chat_s_ai(otazka, kontext_zprav, analyza_json, historie, api_klic, lang, prov, model_name):
     jazyk_vyzva = "Odpovídej v češtině." if lang == "CZ" else "Answer in English."
     analyza_str = json.dumps(analyza_json, ensure_ascii=False)
-    
     system_instruction = f"Jsi institucionální analytik hedgeového fondu. Odpovídej uživateli na dotazy ohledně této tržní události. Buď přímý, analytický a přesný. Zde je tvá původní syntéza: {analyza_str}. Zdrojové zprávy: {kontext_zprav}. {jazyk_vyzva}"
     
-    contents = []
-    for msg in historie:
-        role = "model" if msg["role"] == "assistant" else "user"
-        contents.append({'role': role, 'parts': [{'text': msg["content"]}]})
-    contents.append({'role': 'user', 'parts': [{'text': otazka}]})
-    
-    try:
-        response = client.models.generate_content(
-            model="gemini-3.8-flash",
-            contents=contents,
-            config={
-                "temperature": 0.3,
-                "system_instruction": system_instruction
-            }
-        )
-        return response.text
-    except Exception as e:
-        return f"⚠️ Došlo k výpadku spojení s AI serverem ({e}). Zkuste to prosím znovu."
+    if prov == "Groq":
+        try:
+            client = OpenAI(api_key=api_klic, base_url="[https://api.groq.com/openai/v1](https://api.groq.com/openai/v1)")
+            messages = [{"role": "system", "content": system_instruction}]
+            for msg in historie: messages.append({"role": msg["role"], "content": msg["content"]})
+            messages.append({"role": "user", "content": otazka})
+            
+            response = client.chat.completions.create(
+                model=model_name,
+                messages=messages,
+                temperature=0.3
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            return f"⚠️ Došlo k výpadku spojení s AI serverem ({e}). Zkuste to prosím znovu."
+    else:
+        try:
+            client = genai.Client(api_key=api_klic)
+            contents = []
+            for msg in historie:
+                role = "model" if msg["role"] == "assistant" else "user"
+                contents.append({'role': role, 'parts': [{'text': msg["content"]}]})
+            contents.append({'role': 'user', 'parts': [{'text': otazka}]})
+            
+            response = client.models.generate_content(
+                model=model_name,
+                contents=contents,
+                config={"temperature": 0.3, "system_instruction": system_instruction}
+            )
+            return response.text
+        except Exception as e:
+            return f"⚠️ Došlo k výpadku spojení s AI serverem ({e}). Zkuste to prosím znovu."
 
 if vybrany_ticker:
     st.markdown("<br>", unsafe_allow_html=True)
@@ -218,7 +247,7 @@ if vybrany_ticker:
         else:
             agregovany_text = "\n".join([f"- {n['pub_time_str']}: {n['title']}" for n in news_data])
             with st.spinner(_["spin_ai"]):
-                analyza = analyzuj_agregovane_zpravy(vybrany_ticker, agregovany_text, api_key, current_lang)
+                analyza = analyzuj_agregovane_zpravy(vybrany_ticker, agregovany_text, api_key, current_lang, provider, selected_model)
                 if "error" not in analyza:
                     st.session_state.radar_analyza = analyza
                     st.session_state.radar_zpravy_text = agregovany_text
@@ -260,7 +289,7 @@ if vybrany_ticker:
                 
             with st.chat_message("assistant"):
                 with st.spinner("AI formuluje odpověď..."):
-                    odpoved = chat_s_ai(prompt, st.session_state.radar_zpravy_text, st.session_state.radar_analyza, st.session_state.radar_chat[:-1], api_key, current_lang)
+                    odpoved = chat_s_ai(prompt, st.session_state.radar_zpravy_text, st.session_state.radar_analyza, st.session_state.radar_chat[:-1], api_key, current_lang, provider, selected_model)
                     st.markdown(odpoved)
             if not odpoved.startswith("⚠️"):
                 st.session_state.radar_chat.append({"role": "assistant", "content": odpoved})

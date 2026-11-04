@@ -4,6 +4,7 @@ import sys
 import json
 import subprocess
 from google import genai
+from openai import OpenAI
 
 # --- INITIAL SETUP ---
 st.set_page_config(page_title="POKORNY TERMINAL | SETTINGS", layout="wide", initial_sidebar_state="collapsed")
@@ -44,7 +45,7 @@ def save_settings_to_json(lang, provider, model):
             token = st.secrets["GITHUB_TOKEN"]
             owner = st.secrets["GITHUB_OWNER"]
             repo = st.secrets["GITHUB_REPO"]
-            remote_url = f"https://{owner}:{token}@github.com/{owner}/{repo}.git"
+            remote_url = f"https://{owner}:{token}@[github.com/](https://github.com/){owner}/{repo}.git"
             
             subprocess.run(["git", "config", "--global", "user.email", "bot@pokornyterminal.cz"], capture_output=True)
             subprocess.run(["git", "config", "--global", "user.name", "Terminal Bot"], capture_output=True)
@@ -68,14 +69,12 @@ t = {
         "desc": "SPRÁVA ROZHRANÍ A INFRASTRUKTURY TERMINÁLU.",
         "ui_h": "🎨 Uživatelské rozhraní",
         "lang_lbl": "Jazyk aplikace (Language):",
-        "ai_h": "🧠 Umělá inteligence (Google Gemini)",
-        "ai_desc": "Propojení aplikace s Google AI Studio pro datovou analýzu.",
-        "api_lbl": "Dočasný API Klíč:",
-        "prov_lbl": "Poskytovatel:",
+        "ai_h": "🧠 Umělá inteligence",
+        "ai_desc": "Propojení aplikace s Google AI Studio nebo Groq pro datovou analýzu.",
+        "prov_lbl": "Poskytovatel (Provider):",
         "mod_lbl": "Výchozí model:",
         "save_btn": "💾 Uložit veškeré nastavení a synchronizovat na GitHub",
         "saved_msg": "Globální konfigurace bezpečně uložena na GitHub.",
-        "no_models": "Klíč nenalezen. Vložte GOOGLE_API_KEY do Streamlit Secrets.",
         "future_h": "🔧 Budoucí moduly",
         "future_desc": "Připraveno pro napojení na brokery a webhooky."
     },
@@ -84,14 +83,12 @@ t = {
         "desc": "TERMINAL INTERFACE AND INFRASTRUCTURE MANAGEMENT.",
         "ui_h": "🎨 User Interface",
         "lang_lbl": "App Language:",
-        "ai_h": "🧠 Artificial Intelligence (Google Gemini)",
-        "ai_desc": "Connection to Google AI Studio for data analysis.",
-        "api_lbl": "Temporary API Key:",
+        "ai_h": "🧠 Artificial Intelligence",
+        "ai_desc": "Connection to Google AI Studio or Groq for data analysis.",
         "prov_lbl": "Provider:",
         "mod_lbl": "Default Model:",
         "save_btn": "💾 Save All Settings & Sync to GitHub",
         "saved_msg": "Global configuration safely saved to GitHub.",
-        "no_models": "Key not found. Add GOOGLE_API_KEY to Streamlit Secrets.",
         "future_h": "🔧 Future Modules",
         "future_desc": "Prepared for broker integration and webhooks."
     }
@@ -103,14 +100,22 @@ st.caption(_["desc"])
 st.markdown("---")
 
 @st.cache_data(ttl=300)
-def fetch_available_models(api_klic):
+def fetch_available_models(prov, api_klic):
     if not api_klic: return []
-    try:
-        client = genai.Client(api_key=api_klic)
-        models = client.models.list()
-        return sorted([m.name.replace('models/', '') for m in models if 'gemini' in m.name], reverse=True)
-    except:
-        return ["gemini-3.8-flash", "gemini-3.8-pro"]
+    if prov == "Groq":
+        try:
+            client = OpenAI(api_key=api_klic, base_url="[https://api.groq.com/openai/v1](https://api.groq.com/openai/v1)")
+            models = client.models.list()
+            return sorted([m.id for m in models.data], reverse=True)
+        except:
+            return ["llama-3.1-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"]
+    else:
+        try:
+            client = genai.Client(api_key=api_klic)
+            models = client.models.list()
+            return sorted([m.name.replace('models/', '') for m in models if 'gemini' in m.name], reverse=True)
+        except:
+            return ["gemini-3.8-flash", "gemini-3.8-pro", "gemini-2.5-flash"]
 
 col1, col2 = st.columns(2, gap="large")
 
@@ -137,27 +142,30 @@ with col2:
         
         if "ai_provider" not in st.session_state: st.session_state.ai_provider = saved_settings.get("ai_provider", "Google Gemini")
         if "ai_model" not in st.session_state: st.session_state.ai_model = saved_settings.get("ai_model", "gemini-3.8-flash")
-
-        has_secret = "GOOGLE_API_KEY" in st.secrets or "GEMINI_API_KEY" in st.secrets
-        if has_secret:
-            st.success("✅ Google API Klíč je bezpečně načten z tajného trezoru Streamlit Cloud.")
-            temp_api = st.secrets.get("GOOGLE_API_KEY", st.secrets.get("GEMINI_API_KEY", ""))
-        else:
-            temp_api = st.text_input(_["api_lbl"], type="password", placeholder="AIza...", help="Pouze pro tuto relaci. Pro trvalé uložení vložte GOOGLE_API_KEY do Secrets.")
-            
-        temp_prov = st.selectbox(_["prov_lbl"], ["Google Gemini"], index=0)
         
-        models = fetch_available_models(temp_api)
+        # Volba providera
+        temp_prov = st.selectbox(_["prov_lbl"], ["Google Gemini", "Groq"], index=0 if st.session_state.ai_provider != "Groq" else 1)
+        
+        # Získání správného klíče podle providera
+        if temp_prov == "Groq":
+            has_secret = "GROQ_API_KEY" in st.secrets
+            temp_api = st.secrets.get("GROQ_API_KEY", "")
+        else:
+            has_secret = "GOOGLE_API_KEY" in st.secrets or "GEMINI_API_KEY" in st.secrets
+            temp_api = st.secrets.get("GOOGLE_API_KEY", st.secrets.get("GEMINI_API_KEY", ""))
+
+        if has_secret:
+            st.success(f"✅ {temp_prov} API Klíč je bezpečně načten ze Streamlit Secrets.")
+        else:
+            st.error(f"⚠️ Klíč pro {temp_prov} nebyl nalezen v lokálních ani cloudových secrets.")
+
+        # Volba modelu
+        models = fetch_available_models(temp_prov, temp_api)
         temp_model = None
         
-        if temp_api:
-            if models:
-                idx = models.index(st.session_state.ai_model) if st.session_state.ai_model in models else 0
-                temp_model = st.selectbox(_["mod_lbl"], models, index=idx)
-            else:
-                st.error("Neplatný klíč nebo výpadek Google API.")
-        else:
-            st.warning(_["no_models"])
+        if temp_api and models:
+            idx = models.index(st.session_state.ai_model) if st.session_state.ai_model in models else 0
+            temp_model = st.selectbox(_["mod_lbl"], models, index=idx)
             
         if st.button(_["save_btn"], type="primary", use_container_width=True):
             with st.spinner("Ukládám a synchronizuji s GitHubem..."):
