@@ -265,7 +265,7 @@
     },
     "settings": {
         "ai_provider": "Groq",
-        "ai_model": "llama-3.1-8b-instant",
+        "ai_model": "mixtral-8x7b-32768",
         "lang": "EN"
     }
 }
