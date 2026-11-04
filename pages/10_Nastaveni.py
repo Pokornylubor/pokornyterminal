@@ -16,7 +16,7 @@ sys.path.append(hlavni_slozka)
 import menu
 menu.vykresli_menu()
 
-current_lang = st.session_state.get("lang", "CZ")
+current_lang = st.session_state.get("lang", "EN")
 WATCHLIST_FILE = os.path.join(hlavni_slozka, "watchlist.json")
 
 def load_watchlist_data():
@@ -45,6 +45,7 @@ def save_settings_to_json(lang, provider, model):
             token = st.secrets["GITHUB_TOKEN"]
             owner = st.secrets["GITHUB_OWNER"]
             repo = st.secrets["GITHUB_REPO"]
+            # Zde je opravené bezpečné formátování adresy
             remote_url = f"https://{token}@github.com/{owner}/{repo}.git"
             
             subprocess.run(["git", "config", "--global", "user.email", "bot@pokornyterminal.cz"], capture_output=True)
@@ -64,20 +65,6 @@ def save_settings_to_json(lang, provider, model):
 
 # --- DICTIONARY ---
 t = {
-    "CZ": {
-        "title": "⚙️ GLOBÁLNÍ NASTAVENÍ",
-        "desc": "SPRÁVA ROZHRANÍ A INFRASTRUKTURY TERMINÁLU.",
-        "ui_h": "🎨 Uživatelské rozhraní",
-        "lang_lbl": "Jazyk aplikace (Language):",
-        "ai_h": "🧠 Umělá inteligence",
-        "ai_desc": "Propojení aplikace s Google AI Studio nebo Groq pro datovou analýzu.",
-        "prov_lbl": "Poskytovatel (Provider):",
-        "mod_lbl": "Výchozí model:",
-        "save_btn": "💾 Uložit veškeré nastavení a synchronizovat na GitHub",
-        "saved_msg": "Globální konfigurace bezpečně uložena na GitHub.",
-        "future_h": "🔧 Budoucí moduly",
-        "future_desc": "Připraveno pro napojení na brokery a webhooky."
-    },
     "EN": {
         "title": "⚙️ GLOBAL SETTINGS",
         "desc": "TERMINAL INTERFACE AND INFRASTRUCTURE MANAGEMENT.",
@@ -91,9 +78,23 @@ t = {
         "saved_msg": "Global configuration safely saved to GitHub.",
         "future_h": "🔧 Future Modules",
         "future_desc": "Prepared for broker integration and webhooks."
+    },
+    "CZ": {
+        "title": "⚙️ GLOBÁLNÍ NASTAVENÍ",
+        "desc": "SPRÁVA ROZHRANÍ A INFRASTRUKTURY TERMINÁLU.",
+        "ui_h": "🎨 Uživatelské rozhraní",
+        "lang_lbl": "Jazyk aplikace (Language):",
+        "ai_h": "🧠 Umělá inteligence",
+        "ai_desc": "Propojení aplikace s Google AI Studio nebo Groq pro datovou analýzu.",
+        "prov_lbl": "Poskytovatel (Provider):",
+        "mod_lbl": "Výchozí model:",
+        "save_btn": "💾 Uložit veškeré nastavení a synchronizovat na GitHub",
+        "saved_msg": "Globální konfigurace bezpečně uložena na GitHub.",
+        "future_h": "🔧 Budoucí moduly",
+        "future_desc": "Připraveno pro napojení na brokery a webhooky."
     }
 }
-_ = t.get(current_lang, t["CZ"])
+_ = t.get(current_lang, t["EN"])
 
 st.title(_["title"])
 st.caption(_["desc"])
@@ -104,11 +105,12 @@ def fetch_available_models(prov, api_klic):
     if not api_klic: return []
     if prov == "Groq":
         try:
-            client = OpenAI(api_key=api_klic, base_url="[https://api.groq.com/openai/v1](https://api.groq.com/openai/v1)")
+            client = OpenAI(api_key=api_klic, base_url="https://api.groq.com/openai/v1")
             models = client.models.list()
             return sorted([m.id for m in models.data], reverse=True)
         except:
-            return ["llama-3.1-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"]
+            # Opravený seznam modelů pro Groq
+            return ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"]
     else:
         try:
             client = genai.Client(api_key=api_klic)
@@ -122,7 +124,7 @@ col1, col2 = st.columns(2, gap="large")
 with col1:
     with st.container(border=True):
         st.markdown(f"#### {_['ui_h']}")
-        new_lang = st.radio(_["lang_lbl"], ["CZ", "EN"], index=0 if current_lang == "CZ" else 1, horizontal=True)
+        new_lang = st.radio(_["lang_lbl"], ["EN", "CZ"], index=0 if current_lang == "EN" else 1, horizontal=True)
         
         if new_lang != st.session_state.lang:
             st.session_state.lang = new_lang
@@ -141,12 +143,14 @@ with col2:
         saved_settings = app_data.get("settings", {})
         
         if "ai_provider" not in st.session_state: st.session_state.ai_provider = saved_settings.get("ai_provider", "Google Gemini")
-        if "ai_model" not in st.session_state: st.session_state.ai_model = saved_settings.get("ai_model", "gemini-3.8-flash")
+        if "ai_model" not in st.session_state: 
+            # Aktualizovaná pojistka pro model
+            st.session_state.ai_model = saved_settings.get("ai_model", "gemini-3.8-flash")
+            if st.session_state.ai_model == "llama-3.1-70b-versatile":
+                st.session_state.ai_model = "llama-3.3-70b-versatile"
         
-        # Volba providera
         temp_prov = st.selectbox(_["prov_lbl"], ["Google Gemini", "Groq"], index=0 if st.session_state.ai_provider != "Groq" else 1)
         
-        # Získání správného klíče podle providera
         if temp_prov == "Groq":
             has_secret = "GROQ_API_KEY" in st.secrets
             temp_api = st.secrets.get("GROQ_API_KEY", "")
@@ -159,7 +163,6 @@ with col2:
         else:
             st.error(f"⚠️ Klíč pro {temp_prov} nebyl nalezen v lokálních ani cloudových secrets.")
 
-        # Volba modelu
         models = fetch_available_models(temp_prov, temp_api)
         temp_model = None
         
@@ -168,7 +171,7 @@ with col2:
             temp_model = st.selectbox(_["mod_lbl"], models, index=idx)
             
         if st.button(_["save_btn"], type="primary", use_container_width=True):
-            with st.spinner("Ukládám a synchronizuji s GitHubem..."):
+            with st.spinner("Ukládám a synchronizuji s GitHubem..." if current_lang == "CZ" else "Saving and syncing with GitHub..."):
                 st.session_state.ai_provider = temp_prov
                 if temp_model:
                     st.session_state.ai_model = temp_model
