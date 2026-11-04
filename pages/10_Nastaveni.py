@@ -42,12 +42,11 @@ def save_settings_to_json(lang, provider, model):
         
     try:
         if "GITHUB_TOKEN" in st.secrets:
-            # Tvrdé očištění od neviditelných mezer a zalomení
             token = st.secrets["GITHUB_TOKEN"].strip()
             owner = st.secrets["GITHUB_OWNER"].strip()
             repo = st.secrets["GITHUB_REPO"].strip()
             
-            remote_url = f"https://{owner}:{token}@github.com/{owner}/{repo}.git"
+            remote_url = f"https://{owner}:{token}@[github.com/](https://github.com/){owner}/{repo}.git"
             
             subprocess.run(["git", "config", "--global", "user.email", "bot@pokornyterminal.cz"], capture_output=True)
             subprocess.run(["git", "config", "--global", "user.name", "Terminal Bot"], capture_output=True)
@@ -110,12 +109,11 @@ def fetch_available_models(prov, api_klic):
             models = client.models.list()
             return sorted([m.id for m in models.data], reverse=True)
         except:
-            return ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"]
+            return ["llama3-70b-8192", "llama3-8b-8192", "mixtral-8x7b-32768"]
     else:
         try:
             client = genai.Client(api_key=api_klic)
             models = client.models.list()
-            # VYFILTROVÁNÍ EXPERIMENTÁLNÍCH MODELŮ (robotics, streaming, atd.)
             platne_modely = [m.name.replace('models/', '') for m in models if 'gemini' in m.name and 'streaming' not in m.name and 'robotics' not in m.name]
             return sorted(platne_modely, reverse=True)
         except:
@@ -147,7 +145,7 @@ with col2:
         if "ai_provider" not in st.session_state: st.session_state.ai_provider = saved_settings.get("ai_provider", "Google Gemini")
         if "ai_model" not in st.session_state: 
             st.session_state.ai_model = saved_settings.get("ai_model", "gemini-3.8-flash")
-            if "llama-3.1" in st.session_state.ai_model: st.session_state.ai_model = "llama-3.3-70b-versatile"
+            if "llama" in st.session_state.ai_model: st.session_state.ai_model = "llama3-70b-8192"
             if "robotics" in st.session_state.ai_model or "streaming" in st.session_state.ai_model: st.session_state.ai_model = "gemini-3.8-flash"
         
         temp_prov = st.selectbox(_["prov_lbl"], ["Google Gemini", "Groq"], index=0 if st.session_state.ai_provider != "Groq" else 1)
