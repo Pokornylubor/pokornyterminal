@@ -1,0 +1,17 @@
+name: Keep Streamlit Alive
+
+on:
+  schedule:
+    # Automatické spuštění každé 4 hodiny (6x denně)
+    - cron: '0 */4 * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Streamlit App
+        run: |
+          # ZDE NAHRAĎ URL ZA ODKAZ NA TVŮJ POKORNY TERMINAL
+          curl -sL "https://pokornyterminal.streamlit.app/" > /dev/null
+          echo "Aplikace byla úspěšně probuzena!"
