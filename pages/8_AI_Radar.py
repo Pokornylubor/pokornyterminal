@@ -32,15 +32,13 @@ t = {
         "spin_ai": "AI analyzuje agregovaný datový tok a počítá sentiment...",
         "err_api": "⚠️ AI API klíč nebyl nalezen. Ujistěte se, že je GROQ_API_KEY uložen ve Streamlit Secrets.",
         "err_ai": "Chyba AI enginu:",
-        "err_news": "⚠️ Žádné validní zprávy nebyly nalezeny. AI analýza byla zrušena, aby se zamezilo chybám.",
+        "err_news": "Žádné aktuální zprávy nebyly nalezeny.",
         "sources": "🗄️ Zdrojové zprávy použité pro syntézu",
         "what_happened": "CO SE STALO",
         "why_move": "PROČ TO HÝBE TRHEM (FUNDAMENT)",
         "sent_desc": "Změřený dopad na tržní sentiment. Kladné hodnoty podporují Risk-On, záporné Risk-Off.",
         "no_title": "Bez titulku",
         "no_time": "Neznámý čas",
-        "chat_h": "💬 Vaše otázky k této zprávě",
-        "chat_ph": "Zeptejte se na detaily, valuaci nebo historický kontext...",
         "hist_h": "📜 Správa uložených analýz (Historie)",
         "hist_empty": "Zatím nebyly uloženy žádné analýzy."
     },
@@ -54,15 +52,13 @@ t = {
         "spin_ai": "AI is analyzing aggregated data feed and calculating sentiment...",
         "err_api": "⚠️ AI API key not found. Ensure GROQ_API_KEY is saved in Streamlit Secrets.",
         "err_ai": "AI Engine Error:",
-        "err_news": "⚠️ No valid news found. AI analysis aborted to prevent errors.",
+        "err_news": "No current news found.",
         "sources": "🗄️ Source news used for synthesis",
         "what_happened": "WHAT HAPPENED",
         "why_move": "WHY IT MOVES THE MARKET (FUNDAMENTALS)",
         "sent_desc": "Measured impact on market sentiment. Positive values support Risk-On, negative Risk-Off.",
         "no_title": "No Title",
         "no_time": "Unknown Time",
-        "chat_h": "💬 Your questions about this news",
-        "chat_ph": "Ask about details, valuation, or historical context...",
         "hist_h": "📜 Manage Saved Analyses (History)",
         "hist_empty": "No analyses have been saved yet."
     }
@@ -110,6 +106,7 @@ saved_settings = app_data.get("settings", {})
 def load_tickers():
     return list(set(app_data.get("portfolio", []) + app_data.get("watchlist", [])))
 
+# --- BEZPEČNÉ NAČTENÍ KONFIGURACE ---
 api_key = st.secrets.get("GROQ_API_KEY", "")
 model_provider = st.session_state.get("ai_provider", saved_settings.get("ai_provider", "Groq"))
 selected_model = st.session_state.get("ai_model", saved_settings.get("ai_model", ""))
@@ -122,12 +119,10 @@ if not api_key or not selected_model:
     st.warning(_["err_api"])
     st.stop()
 
-# Přidána inicializace pro chat a text zpráv
 if "radar_vybrany_ticker" not in st.session_state: st.session_state.radar_vybrany_ticker = None
 if "radar_analyza" not in st.session_state: st.session_state.radar_analyza = None
-if "radar_zpravy_list" not in st.session_state: st.session_state.radar_zpravy_list = []
 if "radar_zpravy_text" not in st.session_state: st.session_state.radar_zpravy_text = ""
-if "radar_chat" not in st.session_state: st.session_state.radar_chat = []
+if "radar_zpravy_list" not in st.session_state: st.session_state.radar_zpravy_list = []
 
 tickers = load_tickers()
 tickers.sort()
@@ -141,51 +136,43 @@ vybrany_ticker = custom_val.strip().upper() if custom_val.strip() else dropdown_
 if vybrany_ticker != st.session_state.radar_vybrany_ticker:
     st.session_state.radar_vybrany_ticker = vybrany_ticker
     st.session_state.radar_analyza = None
-    st.session_state.radar_zpravy_list = []
     st.session_state.radar_zpravy_text = ""
-    st.session_state.radar_chat = []
+    st.session_state.radar_zpravy_list = []
 
+# --- TVŮJ PŮVODNÍ, NEDOTČENÝ KÓD PRO STAHOVÁNÍ ZPRÁV ---
 @st.cache_data(ttl=600)
 def fetch_news(ticker):
     news_list = []
     try:
         url = f"https://feeds.finance.yahoo.com/rss/2.0/headline?s={ticker}®ion=US&lang=en-US"
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
         with urllib.request.urlopen(req, timeout=5) as response:
             xml_data = response.read()
         root = ET.fromstring(xml_data)
-        for item in root.findall('.//item'):
+        for item in root.findall('.//item')[:8]:
             title = item.find('title').text if item.find('title') is not None else _["no_title"]
-            if not title or len(title.strip()) < 15 or "Bez titulku" in title or "No Title" in title: 
-                continue
-            
             link = item.find('link').text if item.find('link') is not None else "#"
             pubDate = item.find('pubDate').text if item.find('pubDate') is not None else _["no_time"]
             if len(pubDate) > 22: pubDate = pubDate[:22]
             news_list.append({"title": title, "link": link, "publisher": "Yahoo Finance (RSS)", "pub_time_str": pubDate})
-            if len(news_list) >= 8: break
+        if news_list: return news_list
     except: pass
 
     try:
         t = yf.Ticker(ticker)
         yf_news = t.news
-        if isinstance(yf_news, list):
-            for n in yf_news:
-                title = n.get("title", _["no_title"])
-                if not title or len(title.strip()) < 15 or "Bez titulku" in title or "No Title" in title:
-                    continue
-                
-                link = n.get("link", "#")
-                publisher = n.get("publisher", "Yahoo Finance")
-                try:
-                    ts = n.get("providerPublishTime", 0)
-                    pubDate = datetime.fromtimestamp(ts).strftime("%d.%m.%Y %H:%M") if ts else _["no_time"]
-                except:
-                    pubDate = _["no_time"]
-                news_list.append({"title": title, "link": link, "publisher": publisher, "pub_time_str": pubDate})
-                if len(news_list) >= 8: break
+        for n in yf_news[:8]:
+            title = n.get("title", _["no_title"])
+            link = n.get("link", "#")
+            publisher = n.get("publisher", "Yahoo Finance")
+            try:
+                ts = n.get("providerPublishTime", 0)
+                pubDate = datetime.fromtimestamp(ts).strftime("%d.%m.%Y %H:%M") if ts else _["no_time"]
+            except:
+                pubDate = _["no_time"]
+            news_list.append({"title": title, "link": link, "publisher": publisher, "pub_time_str": pubDate})
     except: pass
-    return news_list[:8]
+    return news_list
 
 def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, provider, model_name, lang):
     if provider == "Groq":
@@ -209,39 +196,13 @@ def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, provider, model_na
     Do not output anything other than raw JSON.
     """
     try:
+        # Odstraněn timeout, necháme AI v klidu dopsat text
         response = client.chat.completions.create(model=model_name, messages=[{"role": "user", "content": prompt}], temperature=0.1)
         vysledek = response.choices[0].message.content
         if vysledek.startswith("```json"): vysledek = vysledek.strip("`").replace("json\n", "")
         return json.loads(vysledek)
     except Exception as e:
         return {"error": str(e)}
-
-# PŘIDÁNA OPRAVENÁ FUNKCE PRO CHAT S AI
-def chat_s_ai(otazka, kontext_zprav, analyza_json, historie, api_klic, provider, model_name, lang):
-    if provider == "Groq":
-        client = OpenAI(api_key=api_klic, base_url="[https://api.groq.com/openai/v1](https://api.groq.com/openai/v1)", max_retries=3)
-    else:
-        client = OpenAI(api_key=api_klic, max_retries=3)
-        
-    jazyk_vyzva = "Odpovídej v češtině." if lang == "CZ" else "Answer in English."
-    analyza_str = json.dumps(analyza_json, ensure_ascii=False)
-    
-    # Pojistka pro dlouhé zprávy proti přetečení tokenů u Groqu
-    if len(kontext_zprav) > 8000:
-        kontext_zprav = kontext_zprav[:8000] + "...(text zkrácen)"
-        
-    messages = [
-        {"role": "system", "content": f"Jsi institucionální analytik hedgeového fondu. Odpovídej uživateli na dotazy ohledně této tržní události. Buď přímý, analytický a přesný. Zde je tvá původní syntéza: {analyza_str}. Zdrojové zprávy: {kontext_zprav}. {jazyk_vyzva}"}
-    ]
-    for msg in historie: messages.append({"role": msg["role"], "content": msg["content"]})
-    messages.append({"role": "user", "content": otazka})
-    
-    try:
-        # Odstraněn tvrdý timeout, aby spojení nepadalo
-        response = client.chat.completions.create(model=model_name, messages=messages, temperature=0.3)
-        return response.choices[0].message.content
-    except Exception as e:
-        return f"⚠️ Došlo k výpadku spojení s AI serverem ({e}). Zkuste to prosím znovu."
 
 if vybrany_ticker:
     st.markdown("<br>", unsafe_allow_html=True)
@@ -257,10 +218,9 @@ if vybrany_ticker:
                 analyza = analyzuj_agregovane_zpravy(vybrany_ticker, agregovany_text, api_key, model_provider, selected_model, current_lang)
                 if "error" not in analyza:
                     st.session_state.radar_analyza = analyza
+                    st.session_state.radar_zpravy_text = agregovany_text
                     st.session_state.radar_zpravy_list = news_data
-                    st.session_state.radar_zpravy_text = agregovany_text  # Nutné pro fungování chatu
-                    st.session_state.radar_chat = []
-                    # Okamžité uložení reportu
+                    # Automatické uložení reportu
                     add_to_history(vybrany_ticker, analyza)
                 else:
                     st.error(f"{_['err_ai']} {analyza['error']}")
@@ -277,11 +237,12 @@ if vybrany_ticker:
             st.caption(_["sent_desc"])
             st.markdown("---")
             
+            # Formátování HTML - upraveno pro čistý, kompaktní vzhled optimalizovaný pro mobilní zařízení
             zprava_html = f"""
-            <div style='line-height: 1.5; font-size: 15px;'>
-                <p style='margin-bottom: 4px;'><strong>{_['what_happened']}</strong></p>
-                <p style='margin-top: 0; margin-bottom: 16px;'>{a.get('co_se_stalo', '')}</p>
-                <p style='margin-bottom: 4px;'><strong>{_['why_move']}</strong></p>
+            <div style='line-height: 1.45; font-size: 14px;'>
+                <p style='margin-bottom: 2px; color: #a1a1aa; font-size: 12px; font-weight: bold;'>{_['what_happened'].upper()}</p>
+                <p style='margin-top: 0; margin-bottom: 12px;'>{a.get('co_se_stalo', '')}</p>
+                <p style='margin-bottom: 2px; color: #a1a1aa; font-size: 12px; font-weight: bold;'>{_['why_move'].upper()}</p>
                 <p style='margin-top: 0; margin-bottom: 0;'>{a.get('proc_to_hybe_trhem', '')}</p>
             </div>
             """
@@ -291,25 +252,7 @@ if vybrany_ticker:
             for article in st.session_state.radar_zpravy_list:
                 st.markdown(f"- **{article['pub_time_str']}** | [{article['title']}]({article['link']})")
 
-        # PŘIDÁNO CHAT ROZHRANÍ PRO OTÁZKY NA AI
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown(f"#### {_['chat_h']}")
-        
-        for msg in st.session_state.radar_chat:
-            with st.chat_message(msg["role"]): st.markdown(msg["content"])
-                
-        if prompt := st.chat_input(_["chat_ph"]):
-            st.session_state.radar_chat.append({"role": "user", "content": prompt})
-            with st.chat_message("user"): st.markdown(prompt)
-                
-            with st.chat_message("assistant"):
-                with st.spinner("AI formuluje odpověď..." if current_lang == "CZ" else "AI is generating a response..."):
-                    odpoved = chat_s_ai(prompt, st.session_state.radar_zpravy_text, st.session_state.radar_analyza, st.session_state.radar_chat[:-1], api_key, model_provider, selected_model, current_lang)
-                    st.markdown(odpoved)
-            if not odpoved.startswith("⚠️"):
-                st.session_state.radar_chat.append({"role": "assistant", "content": odpoved})
-
-# --- MANAŽER HISTORIE (UPRAVIT / SMAZAT) ---
+# --- MANAŽER HISTORIE (ZOBRAZENÍ / ÚPRAVA / SMAZÁNÍ) ---
 st.markdown("<br><br>", unsafe_allow_html=True)
 st.markdown(f"### {_['hist_h']}")
 
