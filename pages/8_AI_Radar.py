@@ -41,9 +41,7 @@ t = {
         "no_title": "Bez titulku",
         "no_time": "Neznámý čas",
         "chat_h": "💬 Vaše otázky k této zprávě",
-        "chat_ph": "Zeptejte se na detaily, valuaci nebo historický kontext...",
-        "hist_h": "📜 Správa uložených analýz (Historie)",
-        "hist_empty": "Zatím nebyly uloženy žádné analýzy."
+        "chat_ph": "Zeptejte se na detaily, valuaci nebo historický kontext..."
     },
     "EN": {
         "title": "AI SENTIMENT & NEWS RADAR",
@@ -64,15 +62,12 @@ t = {
         "no_title": "No Title",
         "no_time": "Unknown Time",
         "chat_h": "💬 Your questions about this news",
-        "chat_ph": "Ask about details, valuation, or historical context...",
-        "hist_h": "📜 Manage Saved Analyses (History)",
-        "hist_empty": "No analyses have been saved yet."
+        "chat_ph": "Ask about details, valuation, or historical context..."
     }
 }
 _ = t.get(current_lang, t["CZ"])
 
 WATCHLIST_FILE = os.path.join(hlavni_slozka, "watchlist.json")
-HISTORY_FILE = os.path.join(hlavni_slozka, "radar_history.json")
 
 def load_app_data():
     if os.path.exists(WATCHLIST_FILE):
@@ -81,30 +76,6 @@ def load_app_data():
                 return json.load(f)
         except: pass
     return {"portfolio": [], "watchlist": [], "settings": {}}
-
-def load_history():
-    if os.path.exists(HISTORY_FILE):
-        try:
-            with open(HISTORY_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except: pass
-    return []
-
-def save_all_history(history_list):
-    try:
-        with open(HISTORY_FILE, "w", encoding="utf-8") as f:
-            json.dump(history_list, f, indent=4, ensure_ascii=False)
-    except: pass
-
-def add_to_history(ticker, analyza):
-    history = load_history()
-    zaznam = {
-        "timestamp": datetime.now().strftime("%d.%m.%Y %H:%M"),
-        "ticker": ticker.upper(),
-        "analyza": analyza
-    }
-    history.insert(0, zaznam)
-    save_all_history(history)
 
 app_data = load_app_data()
 saved_settings = app_data.get("settings", {})
@@ -151,7 +122,7 @@ if vybrany_ticker != st.session_state.radar_vybrany_ticker:
 def fetch_news(ticker):
     news_list = []
     try:
-        url = f"https://feeds.finance.yahoo.com/rss/2.0/headline?s={ticker}®ion=US&lang=en-US"
+        url = f"https://feeds.finance.yahoo.com/rss/2.0/headline?s={ticker}&region=US&lang=en-US"
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
         with urllib.request.urlopen(req, timeout=5) as response:
             xml_data = response.read()
@@ -247,8 +218,6 @@ if vybrany_ticker:
                     st.session_state.radar_zpravy_text = agregovany_text
                     st.session_state.radar_zpravy_list = news_data
                     st.session_state.radar_chat = []
-                    # Automatické uložení do historie
-                    add_to_history(vybrany_ticker, analyza)
                 else:
                     st.error(f"{_['err_ai']} {analyza['error']}")
 
@@ -260,7 +229,7 @@ if vybrany_ticker:
         with st.container(border=True):
             st.markdown(f"### 🔹 {a.get('hlavni_nadpis', 'Analýza trhu')}")
             barva = "green" if skore > 0 else "red" if skore < 0 else "grey"
-            st.markdown(f"`{vybrany_ticker}`   <span style='color:{barva}; font-weight:bold; background-color:rgba(255,255,255,0.1); padding: 2px 6px; border-radius:4px;'>{skore:+.4f}</span>", unsafe_allow_html=True)
+            st.markdown(f"`{vybrany_ticker}` &nbsp; <span style='color:{barva}; font-weight:bold; background-color:rgba(255,255,255,0.1); padding: 2px 6px; border-radius:4px;'>{skore:+.4f}</span>", unsafe_allow_html=True)
             st.caption(_["sent_desc"])
             st.markdown("---")
             st.markdown(f"#### {_['ai_expl']}")
@@ -289,36 +258,3 @@ if vybrany_ticker:
                     st.markdown(odpoved)
             if not odpoved.startswith("⚠️"):
                 st.session_state.radar_chat.append({"role": "assistant", "content": odpoved})
-
-# --- MANAŽER HISTORIE (UPRAVIT / SMAZAT) ---
-st.markdown("<br><br>", unsafe_allow_html=True)
-st.markdown(f"### {_['hist_h']}")
-
-history_data = load_history()
-
-if not history_data:
-    st.info(_["hist_empty"])
-else:
-    for i, item in enumerate(history_data):
-        a = item.get("analyza", {})
-        sk = float(a.get("sentiment_skore", 0))
-        ikona = "🟢" if sk > 0 else "🔴" if sk < 0 else "⚪"
-        
-        with st.expander(f"{item.get('timestamp')} | {item.get('ticker')} {ikona}"):
-            new_title = st.text_input("Nadpis reportu:", value=a.get('hlavni_nadpis', ''), key=f"title_{i}")
-            new_co = st.text_area("Co se stalo:", value=a.get('co_se_stalo', ''), key=f"co_{i}", height=120)
-            new_proc = st.text_area("Proč to hýbe trhem:", value=a.get('proc_to_hybe_trhem', ''), key=f"proc_{i}", height=120)
-            
-            c1, c2, c3 = st.columns([1, 1, 3])
-            
-            if c1.button("💾 Uložit úpravy", key=f"save_{i}", use_container_width=True):
-                history_data[i]["analyza"]["hlavni_nadpis"] = new_title
-                history_data[i]["analyza"]["co_se_stalo"] = new_co
-                history_data[i]["analyza"]["proc_to_hybe_trhem"] = new_proc
-                save_all_history(history_data)
-                st.rerun()
-                
-            if c2.button("🗑️ Smazat report", key=f"del_{i}", use_container_width=True):
-                history_data.pop(i)
-                save_all_history(history_data)
-                st.rerun()
