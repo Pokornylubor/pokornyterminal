@@ -40,7 +40,9 @@ t = {
         "no_title": "Bez titulku",
         "no_time": "Neznámý čas",
         "chat_h": "💬 Vaše otázky k této zprávě",
-        "chat_ph": "Zeptejte se na detaily, valuaci nebo historický kontext..."
+        "chat_ph": "Zeptejte se na detaily, valuaci nebo historický kontext...",
+        "hist_h": "📜 Historie uložených analýz",
+        "hist_empty": "Zatím nebyly uloženy žádné analýzy."
     },
     "EN": {
         "title": "AI SENTIMENT & NEWS RADAR",
@@ -60,12 +62,15 @@ t = {
         "no_title": "No Title",
         "no_time": "Unknown Time",
         "chat_h": "💬 Your questions about this news",
-        "chat_ph": "Ask about details, valuation, or historical context..."
+        "chat_ph": "Ask about details, valuation, or historical context...",
+        "hist_h": "📜 History of Saved Analyses",
+        "hist_empty": "No analyses have been saved yet."
     }
 }
 _ = t.get(current_lang, t["CZ"])
 
 WATCHLIST_FILE = os.path.join(hlavni_slozka, "watchlist.json")
+HISTORY_FILE = os.path.join(hlavni_slozka, "radar_history.json")
 
 def load_app_data():
     if os.path.exists(WATCHLIST_FILE):
@@ -75,13 +80,35 @@ def load_app_data():
         except: pass
     return {"portfolio": [], "watchlist": [], "settings": {}}
 
+def load_history():
+    if os.path.exists(HISTORY_FILE):
+        try:
+            with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except: pass
+    return []
+
+def save_to_history(ticker, analyza):
+    history = load_history()
+    zaznam = {
+        "timestamp": datetime.now().strftime("%d.%m.%Y %H:%M"),
+        "ticker": ticker.upper(),
+        "analyza": analyza
+    }
+    history.insert(0, zaznam)
+    history = history[:20] # Udržíme jen posledních 20 záznamů, aby se soubor nenafoukl
+    
+    try:
+        with open(HISTORY_FILE, "w", encoding="utf-8") as f:
+            json.dump(history, f, indent=4, ensure_ascii=False)
+    except: pass
+
 app_data = load_app_data()
 saved_settings = app_data.get("settings", {})
 
 def load_tickers():
     return list(set(app_data.get("portfolio", []) + app_data.get("watchlist", [])))
 
-# --- BEZPEČNÉ NAČTENÍ KONFIGURACE ---
 api_key = st.secrets.get("GROQ_API_KEY", "").strip()
 selected_model = st.session_state.get("ai_model", saved_settings.get("ai_model", "llama3-70b-8192"))
 
@@ -155,7 +182,6 @@ def fetch_news(ticker):
     except: pass
     return news_list[:8]
 
-# --- NATIVNÍ A ROBUSTNÍ HTTP VOLÁNÍ GROQ API ---
 def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, model_name, lang):
     jazyk_vyzva = "v češtině (Czech)" if lang == "CZ" else "in English"
     prompt = f"""
@@ -197,7 +223,6 @@ def chat_s_ai(otazka, kontext_zprav, analyza_json, historie, api_klic, model_nam
     jazyk_vyzva = "Odpovídej v češtině." if lang == "CZ" else "Answer in English."
     analyza_str = json.dumps(analyza_json, ensure_ascii=False)
     
-    # Pojistka pro chránění max limitu tokenů Groqu
     if len(kontext_zprav) > 10000:
         kontext_zprav = kontext_zprav[:10000] + "...(text zkrácen)"
         
@@ -239,6 +264,8 @@ if vybrany_ticker:
                     st.session_state.radar_zpravy_text = agregovany_text
                     st.session_state.radar_zpravy_list = news_data
                     st.session_state.radar_chat = []
+                    # Zapsání do historie po úspěšné analýze
+                    save_to_history(vybrany_ticker, analyza)
                 else:
                     st.error(f"{_['err_ai']} {analyza['error']}")
 
@@ -253,7 +280,6 @@ if vybrany_ticker:
             st.caption(_["sent_desc"])
             st.markdown("---")
             
-            # Slučujeme odstavce do jednoho bloku – tím definitivně zmizí obrovské mezery
             zprava_formatovana = f"**{_['what_happened']}**\n\n{a.get('co_se_stalo', '')}\n\n**{_['why_move']}**\n\n{a.get('proc_to_hybe_trhem', '')}"
             st.markdown(zprava_formatovana)
             
@@ -276,3 +302,19 @@ if vybrany_ticker:
                     st.markdown(odpoved)
             if not odpoved.startswith("⚠️"):
                 st.session_state.radar_chat.append({"role": "assistant", "content": odpoved})
+
+# --- SEKCE HISTORIE ---
+st.markdown("<br><br>", unsafe_allow_html=True)
+with st.expander(_["hist_h"]):
+    history_data = load_history()
+    if not history_data:
+        st.info(_["hist_empty"])
+    else:
+        for item in history_data:
+            a = item.get("analyza", {})
+            sk = float(a.get("sentiment_skore", 0))
+            barva = "green" if sk > 0 else "red" if sk < 0 else "grey"
+            st.markdown(f"**{item.get('timestamp')} | {item.get('ticker')}**   <span style='color:{barva}; font-weight:bold;'>{sk:+.4f}</span>", unsafe_allow_html=True)
+            st.markdown(f"*{a.get('hlavni_nadpis', '')}*")
+            st.write(a.get('co_se_stalo', ''))
+            st.markdown("---")
