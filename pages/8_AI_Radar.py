@@ -39,8 +39,6 @@ t = {
         "sent_desc": "Změřený dopad na tržní sentiment. Kladné hodnoty podporují Risk-On, záporné Risk-Off.",
         "no_title": "Bez titulku",
         "no_time": "Neznámý čas",
-        "chat_h": "💬 Vaše otázky k této zprávě",
-        "chat_ph": "Zeptejte se na detaily, valuaci nebo historický kontext...",
         "hist_h": "📜 Historie uložených analýz",
         "hist_empty": "Zatím nebyly uloženy žádné analýzy."
     },
@@ -61,8 +59,6 @@ t = {
         "sent_desc": "Measured impact on market sentiment. Positive values support Risk-On, negative Risk-Off.",
         "no_title": "No Title",
         "no_time": "Unknown Time",
-        "chat_h": "💬 Your questions about this news",
-        "chat_ph": "Ask about details, valuation, or historical context...",
         "hist_h": "📜 History of Saved Analyses",
         "hist_empty": "No analyses have been saved yet."
     }
@@ -96,7 +92,7 @@ def save_to_history(ticker, analyza):
         "analyza": analyza
     }
     history.insert(0, zaznam)
-    history = history[:30] # Udržíme posledních 30 záznamů
+    # Ukládají se úplně všechny reporty
     
     try:
         with open(HISTORY_FILE, "w", encoding="utf-8") as f:
@@ -126,7 +122,6 @@ if "radar_vybrany_ticker" not in st.session_state: st.session_state.radar_vybran
 if "radar_analyza" not in st.session_state: st.session_state.radar_analyza = None
 if "radar_zpravy_text" not in st.session_state: st.session_state.radar_zpravy_text = ""
 if "radar_zpravy_list" not in st.session_state: st.session_state.radar_zpravy_list = []
-if "radar_chat" not in st.session_state: st.session_state.radar_chat = []
 
 tickers = load_tickers()
 tickers.sort()
@@ -140,7 +135,6 @@ vybrany_ticker = custom_val.strip().upper() if custom_val.strip() else dropdown_
 if vybrany_ticker != st.session_state.radar_vybrany_ticker:
     st.session_state.radar_vybrany_ticker = vybrany_ticker
     st.session_state.radar_analyza = None
-    st.session_state.radar_chat = []
     st.session_state.radar_zpravy_text = ""
     st.session_state.radar_zpravy_list = []
 
@@ -155,7 +149,8 @@ def fetch_news(ticker):
         root = ET.fromstring(xml_data)
         for item in root.findall('.//item')[:8]:
             title = item.find('title').text if item.find('title') is not None else _["no_title"]
-            if not title or len(title.strip()) < 5: continue # Odstraní skryté prázdné zprávy bez nadpisu
+            if not title or len(title.strip()) < 5: continue
+            
             link = item.find('link').text if item.find('link') is not None else "#"
             pubDate = item.find('pubDate').text if item.find('pubDate') is not None else _["no_time"]
             if len(pubDate) > 22: pubDate = pubDate[:22]
@@ -169,6 +164,7 @@ def fetch_news(ticker):
         for n in yf_news[:8]:
             title = n.get("title", _["no_title"])
             if not title or len(title.strip()) < 5: continue
+            
             link = n.get("link", "#")
             publisher = n.get("publisher", "Yahoo Finance")
             try:
@@ -202,40 +198,12 @@ def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, provider, model_na
     Do not output anything other than raw JSON.
     """
     try:
-        # Odstraněn tvrdý timeout, aby to nepadalo
         response = client.chat.completions.create(model=model_name, messages=[{"role": "user", "content": prompt}], temperature=0.1)
         vysledek = response.choices[0].message.content
         if vysledek.startswith("```json"): vysledek = vysledek.strip("`").replace("json\n", "")
         return json.loads(vysledek)
     except Exception as e:
         return {"error": str(e)}
-
-def chat_s_ai(otazka, kontext_zprav, analyza_json, historie, api_klic, provider, model_name, lang):
-    if provider == "Groq":
-        # Zde byla ta kritická chyba s markdownem v URL, opraveno
-        client = OpenAI(api_key=api_klic, base_url="[https://api.groq.com/openai/v1](https://api.groq.com/openai/v1)", max_retries=3)
-    else:
-        client = OpenAI(api_key=api_klic, max_retries=3)
-        
-    jazyk_vyzva = "Odpovídej v češtině." if lang == "CZ" else "Answer in English."
-    analyza_str = json.dumps(analyza_json, ensure_ascii=False)
-    
-    # Pojistka pro max kontext
-    if len(kontext_zprav) > 8000:
-        kontext_zprav = kontext_zprav[:8000] + "...(text zkrácen)"
-        
-    messages = [
-        {"role": "system", "content": f"Jsi institucionální analytik hedgeového fondu. Odpovídej uživateli na dotazy ohledně této tržní události. Buď přímý, analytický a přesný. Zde je tvá původní syntéza: {analyza_str}. Zdrojové zprávy: {kontext_zprav}. {jazyk_vyzva}"}
-    ]
-    for msg in historie: messages.append({"role": msg["role"], "content": msg["content"]})
-    messages.append({"role": "user", "content": otazka})
-    
-    try:
-        # Odstraněn tvrdý timeout, aby to nepadalo
-        response = client.chat.completions.create(model=model_name, messages=messages, temperature=0.3)
-        return response.choices[0].message.content
-    except Exception as e:
-        return f"⚠️ Došlo k výpadku spojení s AI serverem ({e}). Zkuste to prosím znovu."
 
 if vybrany_ticker:
     st.markdown("<br>", unsafe_allow_html=True)
@@ -252,8 +220,8 @@ if vybrany_ticker:
                     st.session_state.radar_analyza = analyza
                     st.session_state.radar_zpravy_text = agregovany_text
                     st.session_state.radar_zpravy_list = news_data
-                    st.session_state.radar_chat = []
-                    # Zapsání do historie
+                    
+                    # Uložení do historie ihned po vygenerování
                     save_to_history(vybrany_ticker, analyza)
                 else:
                     st.error(f"{_['err_ai']} {analyza['error']}")
@@ -270,7 +238,7 @@ if vybrany_ticker:
             st.caption(_["sent_desc"])
             st.markdown("---")
             
-            # Slučujeme odstavce do jednoho bloku, aby zmizely obří mezery
+            # Formátování bez obřích mezer
             zprava_formatovana = f"**{_['what_happened']}**\n\n{a.get('co_se_stalo', '')}\n\n**{_['why_move']}**\n\n{a.get('proc_to_hybe_trhem', '')}"
             st.markdown(zprava_formatovana)
             
@@ -278,24 +246,7 @@ if vybrany_ticker:
             for article in st.session_state.radar_zpravy_list:
                 st.markdown(f"- **{article['pub_time_str']}** | [{article['title']}]({article['link']})")
 
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown(f"#### {_['chat_h']}")
-        
-        for msg in st.session_state.radar_chat:
-            with st.chat_message(msg["role"]): st.markdown(msg["content"])
-                
-        if prompt := st.chat_input(_["chat_ph"]):
-            st.session_state.radar_chat.append({"role": "user", "content": prompt})
-            with st.chat_message("user"): st.markdown(prompt)
-                
-            with st.chat_message("assistant"):
-                with st.spinner("AI formuluje odpověď..."):
-                    odpoved = chat_s_ai(prompt, st.session_state.radar_zpravy_text, st.session_state.radar_analyza, st.session_state.radar_chat[:-1], api_key, model_provider, selected_model, current_lang)
-                    st.markdown(odpoved)
-            if not odpoved.startswith("⚠️"):
-                st.session_state.radar_chat.append({"role": "assistant", "content": odpoved})
-
-# --- SEKCE HISTORIE NA KONCI STRÁNKY ---
+# --- HISTORIE (ZOBRAZENÍ VŠECH ULOŽENÝCH REPORTŮ) ---
 st.markdown("<br><br>", unsafe_allow_html=True)
 with st.expander(_["hist_h"]):
     history_data = load_history()
