@@ -5,8 +5,8 @@ import os
 import sys
 import urllib.request
 import xml.etree.ElementTree as ET
+import requests
 from datetime import datetime
-from openai import OpenAI
 
 # --- INITIAL SETUP ---
 st.set_page_config(page_title="POKORNY TERMINAL | AI RADAR", layout="wide", initial_sidebar_state="collapsed")
@@ -30,7 +30,7 @@ t = {
         "btn_ai": "📊 Analyzovat datový tok",
         "spin_search": "Stahování datového toku...",
         "spin_ai": "AI analyzuje agregovaný datový tok a počítá sentiment...",
-        "err_api": "⚠️ AI API klíč nebyl nalezen. Ujistěte se, že je GROQ_API_KEY uložen ve Streamlit Secrets.",
+        "err_api": "⚠️ Groq API klíč nebyl nalezen. Ujistěte se, že je uložen ve Streamlit Secrets.",
         "err_ai": "Chyba AI enginu:",
         "err_news": "Žádné aktuální zprávy nebyly nalezeny.",
         "sources": "🗄️ Zdrojové zprávy použité pro syntézu",
@@ -50,7 +50,7 @@ t = {
         "btn_ai": "📊 Analyze Data Feed",
         "spin_search": "Downloading data feed...",
         "spin_ai": "AI is analyzing aggregated data feed and calculating sentiment...",
-        "err_api": "⚠️ AI API key not found. Ensure GROQ_API_KEY is saved in Streamlit Secrets.",
+        "err_api": "⚠️ Groq API key not found. Ensure it is saved in Streamlit Secrets.",
         "err_ai": "AI Engine Error:",
         "err_news": "No current news found.",
         "sources": "🗄️ Source news used for synthesis",
@@ -83,8 +83,7 @@ def load_tickers():
 
 # --- BEZPEČNÉ NAČTENÍ KONFIGURACE ---
 api_key = st.secrets.get("GROQ_API_KEY", "").strip()
-model_provider = st.session_state.get("ai_provider", saved_settings.get("ai_provider", "Groq"))
-selected_model = st.session_state.get("ai_model", saved_settings.get("ai_model", ""))
+selected_model = st.session_state.get("ai_model", saved_settings.get("ai_model", "llama3-70b-8192"))
 
 st.title(_["title"])
 st.caption(_["desc"])
@@ -156,12 +155,8 @@ def fetch_news(ticker):
     except: pass
     return news_list[:8]
 
-def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, provider, model_name, lang):
-    if provider == "Groq":
-        client = OpenAI(api_key=api_klic, base_url="https://api.groq.com/openai/v1", max_retries=3)
-    else:
-        client = OpenAI(api_key=api_klic, max_retries=3)
-
+# --- NATIVNÍ A ROBUSTNÍ HTTP VOLÁNÍ GROQ API ---
+def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, model_name, lang):
     jazyk_vyzva = "v češtině (Czech)" if lang == "CZ" else "in English"
     prompt = f"""
     You are an elite quantitative hedge fund analyst. Read the following recent news headlines for ticker {ticker}.
@@ -177,36 +172,57 @@ def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, provider, model_na
     }}
     Do not output anything other than raw JSON.
     """
+    
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {"Authorization": f"Bearer {api_klic}", "Content-Type": "application/json"}
+    payload = {
+        "model": model_name,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.1,
+        "response_format": {"type": "json_object"}
+    }
+    
     try:
-        # Odstraněn tvrdý timeout
-        response = client.chat.completions.create(model=model_name, messages=[{"role": "user", "content": prompt}], temperature=0.1)
-        vysledek = response.choices[0].message.content
-        if vysledek.startswith("```json"): vysledek = vysledek.strip("`").replace("json\n", "")
-        return json.loads(vysledek)
+        r = requests.post(url, headers=headers, json=payload, timeout=25)
+        if r.status_code == 200:
+            vysledek = r.json()["choices"][0]["message"]["content"]
+            if vysledek.startswith("```json"): vysledek = vysledek.strip("`").replace("json\n", "")
+            return json.loads(vysledek)
+        else:
+            return {"error": f"API Error {r.status_code}: {r.text}"}
     except Exception as e:
-        return {"error": str(e)}
+        return {"error": f"Síťová chyba: {str(e)}"}
 
-def chat_s_ai(otazka, kontext_zprav, analyza_json, historie, api_klic, provider, model_name, lang):
-    if provider == "Groq":
-        client = OpenAI(api_key=api_klic, base_url="[https://api.groq.com/openai/v1](https://api.groq.com/openai/v1)", max_retries=3)
-    else:
-        client = OpenAI(api_key=api_klic, max_retries=3)
-        
+def chat_s_ai(otazka, kontext_zprav, analyza_json, historie, api_klic, model_name, lang):
     jazyk_vyzva = "Odpovídej v češtině." if lang == "CZ" else "Answer in English."
     analyza_str = json.dumps(analyza_json, ensure_ascii=False)
     
+    # Pojistka pro chránění max limitu tokenů Groqu
+    if len(kontext_zprav) > 10000:
+        kontext_zprav = kontext_zprav[:10000] + "...(text zkrácen)"
+        
     messages = [
         {"role": "system", "content": f"Jsi institucionální analytik hedgeového fondu. Odpovídej uživateli na dotazy ohledně této tržní události. Buď přímý, analytický a přesný. Zde je tvá původní syntéza: {analyza_str}. Zdrojové zprávy: {kontext_zprav}. {jazyk_vyzva}"}
     ]
     for msg in historie: messages.append({"role": msg["role"], "content": msg["content"]})
     messages.append({"role": "user", "content": otazka})
     
+    url = "[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)"
+    headers = {"Authorization": f"Bearer {api_klic}", "Content-Type": "application/json"}
+    payload = {
+        "model": model_name,
+        "messages": messages,
+        "temperature": 0.3
+    }
+    
     try:
-        # Odstraněn tvrdý timeout
-        response = client.chat.completions.create(model=model_name, messages=messages, temperature=0.3)
-        return response.choices[0].message.content
+        r = requests.post(url, headers=headers, json=payload, timeout=25)
+        if r.status_code == 200:
+            return r.json()["choices"][0]["message"]["content"]
+        else:
+            return f"⚠️ Groq zamítl požadavek (Kód {r.status_code}): {r.text}"
     except Exception as e:
-        return f"⚠️ Došlo k výpadku spojení s AI serverem ({e}). Zkuste to prosím znovu."
+        return f"⚠️ Kritická síťová chyba spojení: {str(e)}"
 
 if vybrany_ticker:
     if st.button(_["btn_ai"], use_container_width=True):
@@ -217,7 +233,7 @@ if vybrany_ticker:
         else:
             agregovany_text = "\n".join([f"- {n['pub_time_str']}: {n['title']}" for n in news_data])
             with st.spinner(_["spin_ai"]):
-                analyza = analyzuj_agregovane_zpravy(vybrany_ticker, agregovany_text, api_key, model_provider, selected_model, current_lang)
+                analyza = analyzuj_agregovane_zpravy(vybrany_ticker, agregovany_text, api_key, selected_model, current_lang)
                 if "error" not in analyza:
                     st.session_state.radar_analyza = analyza
                     st.session_state.radar_zpravy_text = agregovany_text
@@ -237,6 +253,7 @@ if vybrany_ticker:
             st.caption(_["sent_desc"])
             st.markdown("---")
             
+            # Slučujeme odstavce do jednoho bloku – tím definitivně zmizí obrovské mezery
             zprava_formatovana = f"**{_['what_happened']}**\n\n{a.get('co_se_stalo', '')}\n\n**{_['why_move']}**\n\n{a.get('proc_to_hybe_trhem', '')}"
             st.markdown(zprava_formatovana)
             
@@ -255,7 +272,7 @@ if vybrany_ticker:
                 
             with st.chat_message("assistant"):
                 with st.spinner("AI formuluje odpověď..." if current_lang == "CZ" else "AI is generating a response..."):
-                    odpoved = chat_s_ai(prompt, st.session_state.radar_zpravy_text, st.session_state.radar_analyza, st.session_state.radar_chat[:-1], api_key, model_provider, selected_model, current_lang)
+                    odpoved = chat_s_ai(prompt, st.session_state.radar_zpravy_text, st.session_state.radar_analyza, st.session_state.radar_chat[:-1], api_key, selected_model, current_lang)
                     st.markdown(odpoved)
             if not odpoved.startswith("⚠️"):
                 st.session_state.radar_chat.append({"role": "assistant", "content": odpoved})
