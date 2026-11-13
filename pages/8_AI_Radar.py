@@ -34,6 +34,7 @@ t = {
         "err_ai": "Chyba AI enginu:",
         "err_news": "Žádné aktuální zprávy nebyly nalezeny.",
         "sources": "🗄️ Zdrojové zprávy použité pro syntézu",
+        "ai_expl": "✨ AI vysvětlení",
         "what_happened": "CO SE STALO",
         "why_move": "PROČ TO HÝBE TRHEM (FUNDAMENT)",
         "sent_desc": "Změřený dopad na tržní sentiment. Kladné hodnoty podporují Risk-On, záporné Risk-Off.",
@@ -54,6 +55,7 @@ t = {
         "err_ai": "AI Engine Error:",
         "err_news": "No current news found.",
         "sources": "🗄️ Source news used for synthesis",
+        "ai_expl": "✨ AI Explanation",
         "what_happened": "WHAT HAPPENED",
         "why_move": "WHY IT MOVES THE MARKET (FUNDAMENTALS)",
         "sent_desc": "Measured impact on market sentiment. Positive values support Risk-On, negative Risk-Off.",
@@ -120,29 +122,25 @@ if vybrany_ticker != st.session_state.radar_vybrany_ticker:
 def fetch_news(ticker):
     news_list = []
     try:
-        url = f"https://feeds.finance.yahoo.com/rss/2.0/headline?s={ticker}®ion=US&lang=en-US"
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        url = f"https://feeds.finance.yahoo.com/rss/2.0/headline?s={ticker}&region=US&lang=en-US"
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
         with urllib.request.urlopen(req, timeout=5) as response:
             xml_data = response.read()
         root = ET.fromstring(xml_data)
-        for item in root.findall('.//item'):
+        for item in root.findall('.//item')[:8]:
             title = item.find('title').text if item.find('title') is not None else _["no_title"]
-            if not title or len(title.strip()) < 5: continue # Pojistka proti prázdným zprávám z Yahoo
-            
             link = item.find('link').text if item.find('link') is not None else "#"
             pubDate = item.find('pubDate').text if item.find('pubDate') is not None else _["no_time"]
             if len(pubDate) > 22: pubDate = pubDate[:22]
             news_list.append({"title": title, "link": link, "publisher": "Yahoo Finance (RSS)", "pub_time_str": pubDate})
-            if len(news_list) >= 8: break
+        if news_list: return news_list
     except: pass
 
     try:
         t = yf.Ticker(ticker)
         yf_news = t.news
-        for n in yf_news:
+        for n in yf_news[:8]:
             title = n.get("title", _["no_title"])
-            if not title or len(title.strip()) < 5: continue # Pojistka proti prázdným zprávám z Yahoo
-            
             link = n.get("link", "#")
             publisher = n.get("publisher", "Yahoo Finance")
             try:
@@ -151,9 +149,8 @@ def fetch_news(ticker):
             except:
                 pubDate = _["no_time"]
             news_list.append({"title": title, "link": link, "publisher": publisher, "pub_time_str": pubDate})
-            if len(news_list) >= 8: break
     except: pass
-    return news_list[:8]
+    return news_list
 
 def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, provider, model_name, lang):
     if provider == "Groq":
@@ -186,7 +183,6 @@ def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, provider, model_na
 
 def chat_s_ai(otazka, kontext_zprav, analyza_json, historie, api_klic, provider, model_name, lang):
     if provider == "Groq":
-        # Opravena URL adresa (odstraněn markdown)
         client = OpenAI(api_key=api_klic, base_url="[https://api.groq.com/openai/v1](https://api.groq.com/openai/v1)", max_retries=3)
     else:
         client = OpenAI(api_key=api_klic, max_retries=3)
@@ -207,6 +203,7 @@ def chat_s_ai(otazka, kontext_zprav, analyza_json, historie, api_klic, provider,
         return f"⚠️ Došlo k výpadku spojení s AI serverem ({e}). Zkuste to prosím znovu."
 
 if vybrany_ticker:
+    st.markdown("<br>", unsafe_allow_html=True)
     if st.button(_["btn_ai"], use_container_width=True):
         with st.spinner(_["spin_search"]):
             news_data = fetch_news(vybrany_ticker)
@@ -228,21 +225,24 @@ if vybrany_ticker:
         a = st.session_state.radar_analyza
         skore = float(a.get('sentiment_skore', 0))
         
+        st.markdown("<br>", unsafe_allow_html=True)
         with st.container(border=True):
             st.markdown(f"### 🔹 {a.get('hlavni_nadpis', 'Analýza trhu')}")
             barva = "green" if skore > 0 else "red" if skore < 0 else "grey"
-            st.markdown(f"`{vybrany_ticker}`   <span style='color:{barva}; font-weight:bold; background-color:rgba(255,255,255,0.1); padding: 2px 6px; border-radius:4px;'>{skore:+.4f}</span>", unsafe_allow_html=True)
+            st.markdown(f"`{vybrany_ticker}` &nbsp; <span style='color:{barva}; font-weight:bold; background-color:rgba(255,255,255,0.1); padding: 2px 6px; border-radius:4px;'>{skore:+.4f}</span>", unsafe_allow_html=True)
             st.caption(_["sent_desc"])
             st.markdown("---")
-            
-            # Spojení textu do jednoho st.markdown bloku odstraní obrovské mezery
-            zprava_formatovana = f"**{_['what_happened']}**\n\n{a.get('co_se_stalo', '')}\n\n**{_['why_move']}**\n\n{a.get('proc_to_hybe_trhem', '')}"
-            st.markdown(zprava_formatovana)
+            st.markdown(f"#### {_['ai_expl']}")
+            st.markdown(f"**{_['what_happened']}**")
+            st.write(a.get("co_se_stalo", ""))
+            st.markdown(f"**{_['why_move']}**")
+            st.write(a.get("proc_to_hybe_trhem", ""))
             
         with st.expander(_["sources"]):
             for article in st.session_state.radar_zpravy_list:
                 st.markdown(f"- **{article['pub_time_str']}** | [{article['title']}]({article['link']})")
 
+        st.markdown("<br>", unsafe_allow_html=True)
         st.markdown(f"#### {_['chat_h']}")
         
         for msg in st.session_state.radar_chat:
@@ -253,7 +253,7 @@ if vybrany_ticker:
             with st.chat_message("user"): st.markdown(prompt)
                 
             with st.chat_message("assistant"):
-                with st.spinner("AI formuluje odpověď..." if current_lang == "CZ" else "AI is generating a response..."):
+                with st.spinner("AI formuluje odpověď..."):
                     odpoved = chat_s_ai(prompt, st.session_state.radar_zpravy_text, st.session_state.radar_analyza, st.session_state.radar_chat[:-1], api_key, model_provider, selected_model, current_lang)
                     st.markdown(odpoved)
             if not odpoved.startswith("⚠️"):
