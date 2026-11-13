@@ -6,7 +6,6 @@ import sys
 import urllib.request
 import xml.etree.ElementTree as ET
 from datetime import datetime
-from google import genai
 from openai import OpenAI
 
 # --- INITIAL SETUP ---
@@ -31,11 +30,10 @@ t = {
         "btn_ai": "📊 Analyze Data Feed",
         "spin_search": "Downloading data feed...",
         "spin_ai": "AI is analyzing aggregated data feed and calculating sentiment...",
-        "err_api": "⚠️ AI API key not found. Check Settings.",
+        "err_api": "⚠️ Groq API key not found. Check Settings.",
         "err_ai": "AI Engine Error:",
         "err_news": "No current news found.",
         "sources": "🗄️ Source news used for synthesis",
-        "ai_expl": "✨ AI Explanation",
         "what_happened": "WHAT HAPPENED",
         "why_move": "WHY IT MOVES THE MARKET (FUNDAMENTALS)",
         "sent_desc": "Measured impact on market sentiment. Positive values support Risk-On, negative Risk-Off.",
@@ -50,11 +48,10 @@ t = {
         "btn_ai": "📊 Analyzovat datový tok",
         "spin_search": "Stahování datového toku...",
         "spin_ai": "AI analyzuje agregovaný datový tok a počítá sentiment...",
-        "err_api": "⚠️ AI API klíč nebyl nalezen. Zkontrolujte Nastavení.",
+        "err_api": "⚠️ Groq API klíč nebyl nalezen. Zkontrolujte Nastavení.",
         "err_ai": "Chyba AI enginu:",
         "err_news": "Žádné aktuální zprávy nebyly nalezeny.",
         "sources": "🗄️ Zdrojové zprávy použité pro syntézu",
-        "ai_expl": "✨ AI vysvětlení",
         "what_happened": "CO SE STALO",
         "why_move": "PROČ TO HÝBE TRHEM (FUNDAMENT)",
         "sent_desc": "Změřený dopad na tržní sentiment. Kladné hodnoty podporují Risk-On, záporné Risk-Off.",
@@ -80,25 +77,17 @@ saved_settings = app_data.get("settings", {})
 def load_tickers():
     return list(set(app_data.get("portfolio", []) + app_data.get("watchlist", [])))
 
-provider = st.session_state.get("ai_provider", saved_settings.get("ai_provider", "Google Gemini"))
-selected_model = st.session_state.get("ai_model", saved_settings.get("ai_model", "gemini-3.8-flash"))
+provider = st.session_state.get("ai_provider", saved_settings.get("ai_provider", "Groq"))
+selected_model = st.session_state.get("ai_model", saved_settings.get("ai_model", "llama3-70b-8192"))
 
-# 🛑 TVRDÉ POJISTKY ZABRAŇUJÍCÍ PÁDU
-if "llama" in selected_model:
+# Pokud se tam nějakou záhadou dostal starý název modelu, fixneme to
+if "llama" in selected_model and "3.1" in selected_model:
     selected_model = "llama3-70b-8192"
-    st.session_state.ai_model = selected_model
-    
-if "robotics" in selected_model or "streaming" in selected_model:
-    selected_model = "gemini-3.8-flash"
-    st.session_state.ai_model = selected_model
 
-if provider == "Groq":
-    api_key = st.secrets.get("GROQ_API_KEY", "")
-else:
-    api_key = st.secrets.get("GOOGLE_API_KEY", st.secrets.get("GEMINI_API_KEY", ""))
+api_key = st.secrets.get("GROQ_API_KEY", "")
 
 st.title(_["title"])
-st.caption(f"{_['desc']} | Aktuální engine: **{provider}** ({selected_model})")
+st.caption(f"{_['desc']} | Aktuální engine: **Groq** ({selected_model})")
 st.markdown("---")
 
 if not api_key:
@@ -159,7 +148,7 @@ def fetch_news(ticker):
     except: pass
     return news_list
 
-def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, lang, prov, model_name):
+def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, lang, model_name):
     jazyk_vyzva = "v češtině (Czech)" if lang == "CZ" else "in English"
     prompt = f"""
     You are an elite quantitative hedge fund analyst. Read the following recent news headlines for ticker {ticker}.
@@ -176,33 +165,19 @@ def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, lang, prov, model_
     Do not output anything other than raw JSON.
     """
     
-    if prov == "Groq":
-        if "llama" in model_name: model_name = "llama3-70b-8192"
-        try:
-            client = OpenAI(api_key=api_klic, base_url="https://api.groq.com/openai/v1")
-            response = client.chat.completions.create(
-                model=model_name,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.1,
-                response_format={"type": "json_object"}
-            )
-            vysledek = response.choices[0].message.content
-            if vysledek.startswith("```json"): vysledek = vysledek.replace("```json", "").replace("```", "").strip()
-            return json.loads(vysledek)
-        except Exception as e:
-            return {"error": str(e)}
-    else:
-        if "robotics" in model_name or "streaming" in model_name: model_name = "gemini-3.8-flash"
-        try:
-            client = genai.Client(api_key=api_klic)
-            response = client.models.generate_content(
-                model=model_name,
-                contents=prompt,
-                config={"temperature": 0.1, "response_mime_type": "application/json"}
-            )
-            return json.loads(response.text)
-        except Exception as e:
-            return {"error": str(e)}
+    try:
+        client = OpenAI(api_key=api_klic, base_url="https://api.groq.com/openai/v1")
+        response = client.chat.completions.create(
+            model=model_name,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.1,
+            response_format={"type": "json_object"}
+        )
+        vysledek = response.choices[0].message.content
+        if vysledek.startswith("```json"): vysledek = vysledek.replace("```json", "").replace("```", "").strip()
+        return json.loads(vysledek)
+    except Exception as e:
+        return {"error": str(e)}
 
 if vybrany_ticker:
     st.markdown("<br>", unsafe_allow_html=True)
@@ -214,7 +189,7 @@ if vybrany_ticker:
         else:
             agregovany_text = "\n".join([f"- {n['pub_time_str']}: {n['title']}" for n in news_data])
             with st.spinner(_["spin_ai"]):
-                analyza = analyzuj_agregovane_zpravy(vybrany_ticker, agregovany_text, api_key, current_lang, provider, selected_model)
+                analyza = analyzuj_agregovane_zpravy(vybrany_ticker, agregovany_text, api_key, current_lang, selected_model)
                 if "error" not in analyza:
                     st.session_state.radar_analyza = analyza
                     st.session_state.radar_zpravy_text = agregovany_text
@@ -232,7 +207,6 @@ if vybrany_ticker:
             st.markdown(f"`{vybrany_ticker}`   <span style='color:{barva}; font-weight:bold; background-color:rgba(255,255,255,0.1); padding: 2px 6px; border-radius:4px;'>{skore:+.4f}</span>", unsafe_allow_html=True)
             st.caption(_["sent_desc"])
             st.markdown("---")
-            st.markdown(f"#### {_['ai_expl']}")
             st.markdown(f"**{_['what_happened']}**")
             st.write(a.get("co_se_stalo", ""))
             st.markdown(f"**{_['why_move']}**")
