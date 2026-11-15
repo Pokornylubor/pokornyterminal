@@ -32,7 +32,13 @@ t = {
         "p3_done": "VŠECHNY PROCESY ÚSPĚŠNĚ DOKONČENY.",
         "p3_same": "DATA SE NEZMĚNILA (REPOZITÁŘ JE AKTUÁLNÍ).",
         "p3_nofile": "SYS ERR: SOUBOR SEC_UPDATER.PY NENALEZEN.",
-        "p3_err": "CHYBA PŘI ZPRACOVÁNÍ. DETAIL:"
+        "p3_err": "CHYBA PŘI ZPRACOVÁNÍ. DETAIL:",
+        
+        # CHYBĚJÍCÍ TEXTY PRO CLOUD VÝZVY:
+        "cloud_spin": "Spouštím cloudový engine...",
+        "cloud_ok": "✅ Požadavek úspěšně odeslán. Cloud nyní stahuje data na pozadí.",
+        "cloud_err1": "Chyba při odesílání na GitHub:",
+        "cloud_err2": "Kritická chyba spojení:"
     },
     "EN": {
         "title": "DATA UPDATE CENTER",
@@ -54,7 +60,13 @@ t = {
         "p3_done": "ALL PROCESSES SUCCESSFULLY COMPLETED.",
         "p3_same": "NO DATA CHANGES (REPOSITORY IS UP TO DATE).",
         "p3_nofile": "SYS ERR: FILE SEC_UPDATER.PY NOT FOUND.",
-        "p3_err": "PROCESSING ERROR. DETAIL:"
+        "p3_err": "PROCESSING ERROR. DETAIL:",
+        
+        # CHYBĚJÍCÍ TEXTY PRO CLOUD VÝZVY:
+        "cloud_spin": "Starting cloud engine...",
+        "cloud_ok": "✅ Request successfully sent. Cloud is processing data in the background.",
+        "cloud_err1": "Error sending to GitHub:",
+        "cloud_err2": "Critical connection error:"
     }
 }
 _ = t.get(st.session_state.get("lang", "CZ"), t["CZ"])
