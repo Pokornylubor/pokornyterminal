@@ -65,7 +65,7 @@ else:
     c1, c2, c3, c4 = st.columns([2.5, 1.5, 1, 1])
     
     ph_text = "Vyhledat..." if current_lang == "CZ" else "Search..."
-    ph_db = "Vyberte..." if current_lang == "CZ" else "Select..."
+    ph_db = "Vybrat..." if current_lang == "CZ" else "Select..."
     
     custom_tick = c1.text_input(f"🔍 {_['custom_tick']}", placeholder=ph_text)
     sel_tick = c2.selectbox(f"📂 {_['db_select']}", all_tickers, index=None, placeholder=ph_db)

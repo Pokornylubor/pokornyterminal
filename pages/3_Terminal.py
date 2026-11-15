@@ -256,7 +256,7 @@ all_tickers = list(dict.fromkeys(data.get("portfolio", []) + data.get("watchlist
 col_sel1, col_sel2, col_sel3 = st.columns([2.5, 1.5, 3])
 
 ph_text = "Vyhledat..." if current_lang == "CZ" else "Search..."
-ph_db = "Vyberte..." if current_lang == "CZ" else "Select..."
+ph_db = "Vybrat..." if current_lang == "CZ" else "Select..."
 
 custom_tick = col_sel1.text_input(f"🔍 {_['custom_tick']}", placeholder=ph_text)
 sel_tick = col_sel2.selectbox(f"📂 {_['db_select']}", all_tickers, index=None, placeholder=ph_db)
