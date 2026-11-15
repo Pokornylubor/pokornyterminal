@@ -23,6 +23,8 @@ menu.vykresli_menu()
 session = requests.Session()
 session.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
 
+current_lang = st.session_state.get("lang", "CZ")
+
 # --- DICTIONARY ---
 t = {
     "CZ": {
@@ -232,7 +234,7 @@ t = {
         "news_na": "No news currently available."
     }
 }
-_ = t.get(st.session_state.get("lang", "CZ"), t["CZ"])
+_ = t.get(current_lang, t["CZ"])
 
 st.title(_["title"])
 st.caption(_["desc"])
@@ -252,7 +254,9 @@ data = load_data()
 all_tickers = list(dict.fromkeys(data.get("portfolio", []) + data.get("watchlist", [])))
 
 col_sel1, col_sel2, col_sel3 = st.columns([2.5, 1.5, 3])
-custom_tick = col_sel1.text_input(f"🔍 {_['custom_tick']}", placeholder="Vyhledat...")
+
+ph_text = "Vyhledat..." if current_lang == "CZ" else "Search..."
+custom_tick = col_sel1.text_input(f"🔍 {_['custom_tick']}", placeholder=ph_text)
 sel_tick = col_sel2.selectbox(f"📂 {_['db_select']}", [""] + all_tickers)
 period_type = col_sel3.radio(_["periodicity"], [_["annual"], _["quarterly"]], horizontal=True)
 

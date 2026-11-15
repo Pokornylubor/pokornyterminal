@@ -17,6 +17,8 @@ FILE_PATH = os.path.join(hlavni_slozka, "insider_4f_db.csv")
 import menu
 menu.vykresli_menu()
 
+current_lang = st.session_state.get("lang", "CZ")
+
 # --- DICTIONARY ---
 t = {
     "CZ": {
@@ -40,7 +42,7 @@ t = {
         "opt": "OPTION"
     }
 }
-_ = t.get(st.session_state.get("lang", "CZ"), t["CZ"])
+_ = t.get(current_lang, t["CZ"])
 
 def load_watchlist():
     if os.path.exists(WATCHLIST_FILE):
@@ -61,7 +63,9 @@ else:
     df_all = pd.read_csv(FILE_PATH)
     
     c1, c2, c3, c4 = st.columns([2.5, 1.5, 1, 1])
-    custom_tick = c1.text_input(f"🔍 {_['custom_tick']}", placeholder="Vyhledat...")
+    
+    ph_text = "Vyhledat..." if current_lang == "CZ" else "Search..."
+    custom_tick = c1.text_input(f"🔍 {_['custom_tick']}", placeholder=ph_text)
     sel_tick = c2.selectbox(f"📂 {_['db_select']}", [""] + all_tickers)
     
     final_tick = custom_tick.upper().strip() if custom_tick.strip() else sel_tick
@@ -96,10 +100,8 @@ else:
             if 'Qty' in df_filtered.columns: format_dict['Qty'] = "{:,.0f}"
             if 'Value' in df_filtered.columns: format_dict['Value'] = "${:,.0f}"
             
-            # Formátování a skrytí indexu pro statickou tabulku
             styled_df = df_filtered.style.format(format_dict, na_rep="-").map(
                 style_trade, subset=['Trade Type'] if 'Trade Type' in df_filtered.columns else []
             ).hide(axis="index")
             
-            # Vykreslení uzamčené (statické) tabulky
             st.table(styled_df)

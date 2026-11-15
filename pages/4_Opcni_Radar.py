@@ -28,6 +28,8 @@ session.headers.update({
     'Connection': 'keep-alive'
 })
 
+current_lang = st.session_state.get("lang", "CZ")
+
 # --- DICTIONARY ---
 t = {
     "CZ": {
@@ -79,7 +81,7 @@ t = {
         "err_load": "Error loading option chain:"
     }
 }
-_ = t.get(st.session_state.get("lang", "CZ"), t["CZ"])
+_ = t.get(current_lang, t["CZ"])
 
 st.title(_["title"])
 st.caption(_["desc"])
@@ -99,7 +101,9 @@ data = load_data()
 all_tickers = list(dict.fromkeys(data.get("portfolio", []) + data.get("watchlist", [])))
 
 c1, c2 = st.columns([4, 2])
-custom_tick = c1.text_input(f"🔍 {_['custom_tick']}", placeholder="Vyhledat...")
+
+ph_text = "Vyhledat..." if current_lang == "CZ" else "Search..."
+custom_tick = c1.text_input(f"🔍 {_['custom_tick']}", placeholder=ph_text)
 sel_tick = c2.selectbox(f"📂 {_['db_select']}", [""] + all_tickers)
 
 final_tick = custom_tick.upper().strip() if custom_tick.strip() else sel_tick
@@ -148,7 +152,6 @@ if final_tick:
                 total_call_oi = calls['openInterest'].sum()
                 total_put_oi = puts['openInterest'].sum()
                 
-                # INTELIGENTNÍ FALLBACK: Pokud Yahoo vrátí OI 0, přepneme motor radaru na Volume
                 use_volume = (total_call_oi == 0 and total_put_oi == 0)
                 metric_col = 'volume' if use_volume else 'openInterest'
                 lbl_suffix = "(Volume)" if use_volume else "(OI)"
