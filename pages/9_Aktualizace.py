@@ -119,4 +119,4 @@ st.markdown("Využívá servery GitHubu. Stáhne čerstvá data přímo z americ
 
 if st.button("SPUSTIT SEC EDGAR NA CLOUDU", use_container_width=True):
     with st.spinner(_["cloud_spin"]):
-        spust_cloud_workflow("sec_edgar_faze3.yml")
+        spust_cloud_workflow("sec_edgar_faze.yml")
