@@ -105,9 +105,9 @@ if "radar_chat" not in st.session_state: st.session_state.radar_chat = []
 tickers = load_tickers()
 tickers.sort()
 
-c1, c2, c3 = st.columns([1, 1, 2])
-dropdown_val = c1.selectbox(_["tick_db"], tickers, index=None, placeholder="Choose an option")
-custom_val = c2.text_input(_["tick_cust"], placeholder="")
+c1, c2, c3 = st.columns([1.2, 1, 1.8])
+custom_val = c1.text_input(f"🔍 {_['tick_cust']}", placeholder="Vyhledat...")
+dropdown_val = c2.selectbox(f"📂 {_['tick_db']}", tickers, index=None)
 
 vybrany_ticker = custom_val.strip().upper() if custom_val.strip() else dropdown_val
 
@@ -122,7 +122,7 @@ if vybrany_ticker != st.session_state.radar_vybrany_ticker:
 def fetch_news(ticker):
     news_list = []
     try:
-        url = f"https://feeds.finance.yahoo.com/rss/2.0/headline?s={ticker}&region=US&lang=en-US"
+        url = f"https://feeds.finance.yahoo.com/rss/2.0/headline?s={ticker}®ion=US&lang=en-US"
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
         with urllib.request.urlopen(req, timeout=5) as response:
             xml_data = response.read()
@@ -229,7 +229,7 @@ if vybrany_ticker:
         with st.container(border=True):
             st.markdown(f"### 🔹 {a.get('hlavni_nadpis', 'Analýza trhu')}")
             barva = "green" if skore > 0 else "red" if skore < 0 else "grey"
-            st.markdown(f"`{vybrany_ticker}` &nbsp; <span style='color:{barva}; font-weight:bold; background-color:rgba(255,255,255,0.1); padding: 2px 6px; border-radius:4px;'>{skore:+.4f}</span>", unsafe_allow_html=True)
+            st.markdown(f"`{vybrany_ticker}`   <span style='color:{barva}; font-weight:bold; background-color:rgba(255,255,255,0.1); padding: 2px 6px; border-radius:4px;'>{skore:+.4f}</span>", unsafe_allow_html=True)
             st.caption(_["sent_desc"])
             st.markdown("---")
             st.markdown(f"#### {_['ai_expl']}")

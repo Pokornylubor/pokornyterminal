@@ -98,9 +98,9 @@ def load_data():
 data = load_data()
 all_tickers = list(dict.fromkeys(data.get("portfolio", []) + data.get("watchlist", [])))
 
-c1, c2 = st.columns([2, 4])
-sel_tick = c1.selectbox(_["db_select"], [""] + all_tickers)
-custom_tick = c2.text_input(_["custom_tick"], value="")
+c1, c2 = st.columns([4, 2])
+custom_tick = c1.text_input(f"🔍 {_['custom_tick']}", placeholder="Vyhledat...")
+sel_tick = c2.selectbox(f"📂 {_['db_select']}", [""] + all_tickers)
 
 final_tick = custom_tick.upper().strip() if custom_tick.strip() else sel_tick
 

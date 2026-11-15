@@ -251,9 +251,9 @@ def load_data():
 data = load_data()
 all_tickers = list(dict.fromkeys(data.get("portfolio", []) + data.get("watchlist", [])))
 
-col_sel1, col_sel2, col_sel3 = st.columns([2, 2, 3])
-sel_tick = col_sel1.selectbox(_["db_select"], [""] + all_tickers)
-custom_tick = col_sel2.text_input(_["custom_tick"], value="")
+col_sel1, col_sel2, col_sel3 = st.columns([2.5, 1.5, 3])
+custom_tick = col_sel1.text_input(f"🔍 {_['custom_tick']}", placeholder="Vyhledat...")
+sel_tick = col_sel2.selectbox(f"📂 {_['db_select']}", [""] + all_tickers)
 period_type = col_sel3.radio(_["periodicity"], [_["annual"], _["quarterly"]], horizontal=True)
 
 final_tick = custom_tick.upper().strip() if custom_tick.strip() else sel_tick
@@ -666,7 +666,7 @@ if final_tick:
         with tab_news:
             st.subheader(f"{_['news_h']} {short_name} ({final_tick})")
             try:
-                rss_url = f"https://feeds.finance.yahoo.com/rss/2.0/headline?s={final_tick}&region=US&lang=en-US"
+                rss_url = f"https://feeds.finance.yahoo.com/rss/2.0/headline?s={final_tick}®ion=US&lang=en-US"
                 rss_resp = session.get(rss_url, timeout=5)
                 root = ET.fromstring(rss_resp.content)
                 

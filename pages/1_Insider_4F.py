@@ -60,9 +60,9 @@ if not os.path.exists(FILE_PATH):
 else:
     df_all = pd.read_csv(FILE_PATH)
     
-    c1, c2, c3, c4 = st.columns([2, 2, 1, 1])
-    sel_tick = c1.selectbox(_["db_select"], [""] + all_tickers)
-    custom_tick = c2.text_input(_["custom_tick"], value="")
+    c1, c2, c3, c4 = st.columns([2.5, 1.5, 1, 1])
+    custom_tick = c1.text_input(f"🔍 {_['custom_tick']}", placeholder="Vyhledat...")
+    sel_tick = c2.selectbox(f"📂 {_['db_select']}", [""] + all_tickers)
     
     final_tick = custom_tick.upper().strip() if custom_tick.strip() else sel_tick
 
