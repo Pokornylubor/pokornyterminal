@@ -108,8 +108,10 @@ tickers.sort()
 c1, c2, c3 = st.columns([1.2, 1, 1.8])
 
 ph_text = "Vyhledat..." if current_lang == "CZ" else "Search..."
+ph_db = "Vyberte..." if current_lang == "CZ" else "Select..."
+
 custom_val = c1.text_input(f"🔍 {_['tick_cust']}", placeholder=ph_text)
-dropdown_val = c2.selectbox(f"📂 {_['tick_db']}", tickers, index=None)
+dropdown_val = c2.selectbox(f"📂 {_['tick_db']}", tickers, index=None, placeholder=ph_db)
 
 vybrany_ticker = custom_val.strip().upper() if custom_val.strip() else dropdown_val
 
