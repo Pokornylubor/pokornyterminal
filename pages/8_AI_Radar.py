@@ -4,7 +4,6 @@ import requests
 import json
 import os
 import sys
-import urllib.request
 import xml.etree.ElementTree as ET
 from datetime import datetime
 from openai import OpenAI
@@ -126,55 +125,45 @@ if vybrany_ticker != st.session_state.radar_vybrany_ticker:
 @st.cache_data(ttl=600)
 def fetch_news(ticker):
     news_list = []
-    
-    # 1. Nejstabilnější cesta: Yahoo Finance RSS feed napřímo přes requests s upravenou hlavičkou
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+    }
+
+    # 1. Primární zdroj: Google News RSS (neblokuje cloudové IP adresy Streamlitu)
     try:
-        url = f"https://feeds.finance.yahoo.com/rss/2.0/headline?s={ticker}&region=US&lang=en-US"
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
-            'Connection': 'keep-alive',
-        }
-        
-        # Záměrně přidáváme timeout a obcházíme blokaci
-        response = requests.get(url, headers=headers, timeout=5)
+        url = f"https://news.google.com/rss/search?q={ticker}+stock+news&hl=en-US&gl=US&ceid=US:en"
+        response = requests.get(url, headers=headers, timeout=6)
         if response.status_code == 200:
             root = ET.fromstring(response.content)
             for item in root.findall('.//item')[:8]:
                 title = item.find('title').text if item.find('title') is not None else _["no_title"]
                 link = item.find('link').text if item.find('link') is not None else "#"
                 pubDate = item.find('pubDate').text if item.find('pubDate') is not None else _["no_time"]
-                
-                # Zkrácení na hezký formát času
-                if len(pubDate) > 22: pubDate = pubDate[:22]
-                news_list.append({"title": title, "link": link, "publisher": "Yahoo Finance (RSS)", "pub_time_str": pubDate})
-            
+                if len(pubDate) > 22:
+                    pubDate = pubDate[:22]
+                news_list.append({"title": title, "link": link, "publisher": "Google News", "pub_time_str": pubDate})
             if news_list:
                 return news_list
     except Exception:
         pass
 
-    # 2. Nouzová cesta: yfinance
+    # 2. Záložní zdroj: nová vnořená struktura yfinance (klíč 'content')
     try:
         t = yf.Ticker(ticker)
         yf_news = t.news
         if yf_news:
             for n in yf_news[:8]:
-                title = n.get("title", _["no_title"])
-                link = n.get("link", "#")
-                publisher = n.get("publisher", "Yahoo Finance")
-                try:
-                    # yfinance vrací čas jako unix timestamp
-                    ts = n.get("providerPublishTime", 0)
-                    pubDate = datetime.fromtimestamp(ts).strftime("%d.%m.%Y %H:%M") if ts else _["no_time"]
-                except:
-                    pubDate = _["no_time"]
-                
-                news_list.append({"title": title, "link": link, "publisher": publisher, "pub_time_str": pubDate})
+                content = n.get("content", n)
+                title = content.get("title", _["no_title"])
+                link = content.get("canonicalUrl", {}).get("url", n.get("link", "#"))
+                pubDate = content.get("pubDate", _["no_time"])
+                if pubDate and len(pubDate) > 16:
+                    pubDate = pubDate[:16].replace("T", " ")
+                if title != _["no_title"]:
+                    news_list.append({"title": title, "link": link, "publisher": "Yahoo Finance", "pub_time_str": pubDate})
     except Exception:
         pass
-        
+
     return news_list
 
 def analyzuj_agregovane_zpravy(ticker, zpravy_text, api_klic, provider, model_name, lang):
@@ -254,7 +243,7 @@ if vybrany_ticker:
         with st.container(border=True):
             st.markdown(f"### 🔹 {a.get('hlavni_nadpis', 'Analýza trhu')}")
             barva = "green" if skore > 0 else "red" if skore < 0 else "grey"
-            st.markdown(f"`{vybrany_ticker}`   <span style='color:{barva}; font-weight:bold; background-color:rgba(255,255,255,0.1); padding: 2px 6px; border-radius:4px;'>{skore:+.4f}</span>", unsafe_allow_html=True)
+            st.markdown(f"`{vybrany_ticker}`   <span style='color:{barva}; font-weight:bold; background-color:rgba(255,255,255,0.1); padding: 2px 6px; border-radius:4px;'>{skore:+.4f}</span>", unsafe_allow_html=True)
             st.caption(_["sent_desc"])
             st.markdown("---")
             st.markdown(f"#### {_['ai_expl']}")
