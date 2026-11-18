@@ -1,1 +1,1 @@
-# pokornyterminalv2
+# pokornyterminal
