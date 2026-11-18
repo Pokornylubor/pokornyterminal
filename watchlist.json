@@ -14,8 +14,7 @@
         "Thiel Macro LLC": "0001562087",
         "Dev Kantesaria (Valley Forge)": "0001697868",
         "NVDIA": "0001045810",
-        "INTEL": "0000050863",
-
+        "INTEL": "0000050863"
     },
     "portfolio": [
         "AMZN",
@@ -28,7 +27,7 @@
         "APP",
         "SOFI",
         "CRWV",
-        "BE",
+        "BE"
     ],
     "watchlist": [
         "SPY",
@@ -43,7 +42,7 @@
         "TSM",
         "NU",
         "META",
-        "HOOD",
+        "HOOD"
     ],
     "cot_watchlist": [
         "NASDAQ MINI - CHICAGO MERCANTILE EXCHANGE",
