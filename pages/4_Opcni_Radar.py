@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import yfinance as yf
+import requests
 import json
 import os
 import sys
@@ -28,11 +29,12 @@ t = {
         "db_select": "DATABÁZE",
         "custom_tick": "VLASTNÍ TICKER",
         "loading": "STAHOVÁNÍ OPČNÍHO ŘETĚZCE...",
-        "err_data": "OPČNÍ DATA PRO TENTO TICKER NEJSOU DOSTUPNÁ NEBO JE YAHOO FINANCE DOČASNĚ OMEZUJE.",
+        "err_data": "OPČNÍ DATA PRO TENTO TICKER NEJSOU DOSTUPNÁ.",
         "exp_lbl": "EXPIRAČNÍ DATUM:",
         "bear": "🔴 BEARISH (Trh se jistí Puts)",
         "bull": "🟢 BULLISH (Trh sází na Calls)",
         "neut": "⚪ NEUTRÁLNÍ",
+        "no_sent": "⚪ NEDOSTATEK DAT",
         "tab_dash": "📊 RADAR DASHBOARD",
         "tab_raw": "🗄️ SUROVÝ OPČNÍ ŘETĚZEC (CHAIN)",
         "wall_call": "📈 Call Wall (Rezistence)",
@@ -44,7 +46,8 @@ t = {
         "axis_y": "Objem kontraktů",
         "raw_call": "CALL OPCE (Právo nakoupit)",
         "raw_put": "PUT OPCE (Právo prodat)",
-        "err_load": "Chyba při načítání opčního řetězce:"
+        "err_load": "Chyba při načítání opčního řetězce:",
+        "src_lbl": "Zdroj dat:"
     },
     "EN": {
         "title": "OPTIONS RADAR & SENTIMENT",
@@ -52,11 +55,12 @@ t = {
         "db_select": "DATABASE",
         "custom_tick": "CUSTOM TICKER",
         "loading": "LOADING OPTION CHAIN...",
-        "err_data": "OPTIONS DATA FOR THIS TICKER NOT AVAILABLE OR TEMPORARILY LIMITED BY YAHOO FINANCE.",
+        "err_data": "OPTIONS DATA FOR THIS TICKER NOT AVAILABLE.",
         "exp_lbl": "EXPIRATION DATE:",
         "bear": "🔴 BEARISH (Market hedging with Puts)",
         "bull": "🟢 BULLISH (Market betting on Calls)",
         "neut": "⚪ NEUTRAL",
+        "no_sent": "⚪ INSUFFICIENT DATA",
         "tab_dash": "📊 RADAR DASHBOARD",
         "tab_raw": "🗄️ RAW OPTION CHAIN",
         "wall_call": "📈 Call Wall (Resistance)",
@@ -68,7 +72,8 @@ t = {
         "axis_y": "Contract Volume",
         "raw_call": "CALL OPTIONS (Right to Buy)",
         "raw_put": "PUT OPTIONS (Right to Sell)",
-        "err_load": "Error loading option chain:"
+        "err_load": "Error loading option chain:",
+        "src_lbl": "Data source:"
     }
 }
 _ = t.get(current_lang, t["CZ"])
@@ -105,56 +110,116 @@ sel_tick = c2.selectbox(f"📂 {_['db_select']}", all_tickers, index=None, place
 final_tick = custom_tick.upper().strip() if custom_tick.strip() else sel_tick
 
 @st.cache_data(ttl=300)
-def get_option_expirations(ticker):
+def fetch_cboe_options(ticker):
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept": "application/json"
+    }
+    for url in [
+        f"https://cdn.cboe.com/api/global/delayed_quotes/options/{ticker}.json",
+        f"https://cdn.cboe.com/api/global/delayed_quotes/options/_{ticker}.json"
+    ]:
+        try:
+            r = requests.get(url, headers=headers, timeout=8)
+            if r.status_code == 200:
+                payload = r.json()
+                opts = payload.get("data", {}).get("options", [])
+                if not opts:
+                    continue
+                rows = []
+                for o in opts:
+                    sym = o.get("option", "")
+                    # Formát OCC symbolu: TICKER + YYMMDD + C/P + 00000000
+                    tail = sym[-15:]
+                    if len(tail) == 15 and tail[6] in ("C", "P"):
+                        exp_raw = tail[:6]
+                        exp_str = f"20{exp_raw[:2]}-{exp_raw[2:4]}-{exp_raw[4:6]}"
+                        opt_type = tail[6]
+                        strike = int(tail[7:]) / 1000.0
+                        rows.append({
+                            "expiration": exp_str,
+                            "type": opt_type,
+                            "strike": strike,
+                            "lastPrice": o.get("last_trade_price", 0.0) or 0.0,
+                            "bid": o.get("bid", 0.0) or 0.0,
+                            "ask": o.get("ask", 0.0) or 0.0,
+                            "volume": o.get("volume", 0) or 0,
+                            "openInterest": o.get("open_interest", 0) or 0,
+                            "impliedVolatility": o.get("iv", 0.0) or 0.0
+                        })
+                if rows:
+                    return pd.DataFrame(rows)
+        except Exception:
+            continue
+    return pd.DataFrame()
+
+@st.cache_data(ttl=300)
+def get_yf_expirations(ticker):
     try:
-        tkr = yf.Ticker(ticker)
-        return list(tkr.options)
+        return list(yf.Ticker(ticker).options)
     except Exception:
         return []
 
 @st.cache_data(ttl=300)
-def get_option_chain_data(ticker, exp_date):
-    tkr = yf.Ticker(ticker)
-    chain = tkr.option_chain(exp_date)
+def get_yf_chain(ticker, exp_date):
+    chain = yf.Ticker(ticker).option_chain(exp_date)
     return chain.calls.copy(), chain.puts.copy()
 
 if final_tick:
-    expirations = get_option_expirations(final_tick)
+    df_cboe = fetch_cboe_options(final_tick)
+    source_name = "CBOE Delayed Feed"
+    
+    if not df_cboe.empty:
+        expirations = sorted(df_cboe["expiration"].unique().tolist())
+    else:
+        source_name = "Yahoo Finance"
+        expirations = get_yf_expirations(final_tick)
     
     if not expirations:
         st.error(_["err_data"])
     else:
-        selected_exp = st.selectbox(_["exp_lbl"], expirations)
+        col_exp, col_src = st.columns([4, 1])
+        selected_exp = col_exp.selectbox(_["exp_lbl"], expirations)
+        col_src.caption(f"{_['src_lbl']} **{source_name}**")
         
         with st.spinner(f"{_['loading']} {selected_exp}"):
             try:
-                calls, puts = get_option_chain_data(final_tick, selected_exp)
+                if not df_cboe.empty:
+                    sub = df_cboe[df_cboe["expiration"] == selected_exp]
+                    calls = sub[sub["type"] == "C"].sort_values("strike").reset_index(drop=True)
+                    puts = sub[sub["type"] == "P"].sort_values("strike").reset_index(drop=True)
+                else:
+                    calls, puts = get_yf_chain(final_tick, selected_exp)
                 
                 for df_opt in (calls, puts):
-                    df_opt['openInterest'] = df_opt['openInterest'].fillna(0) if 'openInterest' in df_opt.columns else 0
-                    df_opt['volume'] = df_opt['volume'].fillna(0) if 'volume' in df_opt.columns else 0
+                    df_opt['openInterest'] = pd.to_numeric(df_opt.get('openInterest', 0), errors='coerce').fillna(0)
+                    df_opt['volume'] = pd.to_numeric(df_opt.get('volume', 0), errors='coerce').fillna(0)
                 
                 total_call_oi = calls['openInterest'].sum()
                 total_put_oi = puts['openInterest'].sum()
                 
-                use_volume = (total_call_oi == 0 and total_put_oi == 0)
+                use_volume = (total_call_oi == 0 or total_put_oi == 0) and (calls['volume'].sum() > 0 or puts['volume'].sum() > 0)
                 metric_col = 'volume' if use_volume else 'openInterest'
                 lbl_suffix = "(Volume)" if use_volume else "(OI)"
                 
                 total_call_metric = calls[metric_col].sum()
                 total_put_metric = puts[metric_col].sum()
                 
-                pcr_val = total_put_metric / total_call_metric if total_call_metric > 0 else 0
+                if total_call_metric > 0 and total_put_metric > 0:
+                    pcr_val = total_put_metric / total_call_metric
+                    pcr_str = f"{pcr_val:.2f}"
+                    if pcr_val > 1.2:
+                        sentiment = _["bear"]
+                    elif pcr_val < 0.8:
+                        sentiment = _["bull"]
+                    else:
+                        sentiment = _["neut"]
+                else:
+                    pcr_str = "N/A"
+                    sentiment = _["no_sent"]
                 
                 call_wall_strike = calls.loc[calls[metric_col].idxmax()]['strike'] if not calls.empty and total_call_metric > 0 else None
                 put_wall_strike = puts.loc[puts[metric_col].idxmax()]['strike'] if not puts.empty and total_put_metric > 0 else None
-                
-                if pcr_val > 1.2:
-                    sentiment = _["bear"]
-                elif pcr_val < 0.8:
-                    sentiment = _["bull"]
-                else:
-                    sentiment = _["neut"]
 
                 tab_dash, tab_raw = st.tabs([_["tab_dash"], _["tab_raw"]])
                 
@@ -162,7 +227,7 @@ if final_tick:
                     st.subheader(f"{_['exp_lbl']} {selected_exp}")
                     
                     col1, col2, col3, col4, col5 = st.columns(5)
-                    col1.metric(f"Put/Call Ratio {lbl_suffix}", f"{pcr_val:.2f}", sentiment, delta_color="off")
+                    col1.metric(f"Put/Call Ratio {lbl_suffix}", pcr_str, sentiment, delta_color="off")
                     col2.metric(f"Call {lbl_suffix}", f"{int(total_call_metric):,}")
                     col3.metric(f"Put {lbl_suffix}", f"{int(total_put_metric):,}")
                     col4.metric(_["wall_call"], f"${call_wall_strike:,.2f}" if call_wall_strike else "N/A")
@@ -199,10 +264,11 @@ if final_tick:
                     st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
                     
                 with tab_raw:
+                    cols_show = ['strike', 'lastPrice', 'bid', 'ask', 'volume', 'openInterest', 'impliedVolatility']
                     if not calls.empty:
                         st.subheader(_["raw_call"])
                         st.dataframe(
-                            calls[['strike', 'lastPrice', 'bid', 'ask', 'volume', 'openInterest', 'impliedVolatility']].style.format(
+                            calls[cols_show].style.format(
                                 {'strike': '${:.2f}', 'lastPrice': '${:.2f}', 'bid': '${:.2f}', 'ask': '${:.2f}', 'impliedVolatility': '{:.2%}'}
                             ), use_container_width=True, hide_index=True
                         )
@@ -210,7 +276,7 @@ if final_tick:
                     if not puts.empty:
                         st.subheader(_["raw_put"])
                         st.dataframe(
-                            puts[['strike', 'lastPrice', 'bid', 'ask', 'volume', 'openInterest', 'impliedVolatility']].style.format(
+                            puts[cols_show].style.format(
                                 {'strike': '${:.2f}', 'lastPrice': '${:.2f}', 'bid': '${:.2f}', 'ask': '${:.2f}', 'impliedVolatility': '{:.2%}'}
                             ), use_container_width=True, hide_index=True
                         )
