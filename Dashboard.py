@@ -48,16 +48,16 @@ def load_data():
         try:
             with open(WATCHLIST_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                if isinstance(data, list): return {"portfolio": data, "watchlist": [], "superinvestors": []}
+                if isinstance(data, list):
+                    return {"portfolio": data, "watchlist": [], "superinvestors": []}
                 return data
         except Exception as e:
-            # Místo tichého pádu do 8 záložních akcií aplikaci zastavíme a ukážeme chybu
             st.error(f"Kritická chyba při čtení watchlist.json: {e}")
             st.stop()
-    return {"portfolio": ["GOOGL", "AMZN", "MSFT", "AMAT", "ASML", "NVDA", "UBER", "SOFI"], "watchlist": [], "superinvestors": ["Mohnish Pabrai", "Li Lu", "Michael Burry"]}
+    st.error(f"Soubor watchlist.json nebyl nalezen na cestě: {WATCHLIST_FILE}")
+    st.stop()
 
 def save_data(updated_data):
-    # 1. Načtení kompletního existujícího souboru (aby se nesmazaly košíky, COT a nastavení)
     full_data = {}
     if os.path.exists(WATCHLIST_FILE):
         try:
@@ -69,15 +69,12 @@ def save_data(updated_data):
     if not isinstance(full_data, dict):
         full_data = {}
 
-    # 2. Aktualizace pouze částí, které spravuje tento dashboard
     full_data["portfolio"] = updated_data.get("portfolio", [])
     full_data["watchlist"] = updated_data.get("watchlist", [])
 
-    # 3. Uložení sloučených dat zpět do souboru
     with open(WATCHLIST_FILE, "w", encoding="utf-8") as f: 
         json.dump(full_data, f, indent=4, ensure_ascii=False)
     
-    # 4. Odeslání na GitHub
     try:
         if "GITHUB_TOKEN" in st.secrets:
             token = st.secrets["GITHUB_TOKEN"]
