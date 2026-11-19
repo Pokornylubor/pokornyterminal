@@ -4,7 +4,6 @@ import yfinance as yf
 import json
 import os
 import sys
-import requests
 import plotly.graph_objects as go
 
 # --- INITIAL SETUP ---
@@ -19,15 +18,6 @@ WATCHLIST_FILE = os.path.join(hlavni_slozka, "watchlist.json")
 import menu
 menu.vykresli_menu()
 
-# --- BYPASS YAHOO BLOCKING ---
-session = requests.Session()
-session.headers.update({
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-    'Accept': '*/*',
-    'Accept-Encoding': 'gzip, deflate, br',
-    'Connection': 'keep-alive'
-})
-
 current_lang = st.session_state.get("lang", "CZ")
 
 # --- DICTIONARY ---
@@ -38,7 +28,7 @@ t = {
         "db_select": "DATABÁZE",
         "custom_tick": "VLASTNÍ TICKER",
         "loading": "STAHOVÁNÍ OPČNÍHO ŘETĚZCE...",
-        "err_data": "OPČNÍ DATA PRO TENTO TICKER NEJSOU DOSTUPNÁ NEBO JE YAHOO FINANCE BLOKUJE.",
+        "err_data": "OPČNÍ DATA PRO TENTO TICKER NEJSOU DOSTUPNÁ NEBO JE YAHOO FINANCE DOČASNĚ OMEZUJE.",
         "exp_lbl": "EXPIRAČNÍ DATUM:",
         "bear": "🔴 BEARISH (Trh se jistí Puts)",
         "bull": "🟢 BULLISH (Trh sází na Calls)",
@@ -62,7 +52,7 @@ t = {
         "db_select": "DATABASE",
         "custom_tick": "CUSTOM TICKER",
         "loading": "LOADING OPTION CHAIN...",
-        "err_data": "OPTIONS DATA FOR THIS TICKER NOT AVAILABLE OR BLOCKED BY YAHOO FINANCE.",
+        "err_data": "OPTIONS DATA FOR THIS TICKER NOT AVAILABLE OR TEMPORARILY LIMITED BY YAHOO FINANCE.",
         "exp_lbl": "EXPIRATION DATE:",
         "bear": "🔴 BEARISH (Market hedging with Puts)",
         "bull": "🟢 BULLISH (Market betting on Calls)",
@@ -90,12 +80,16 @@ st.markdown("---")
 def load_data():
     if os.path.exists(WATCHLIST_FILE):
         try:
-            with open(WATCHLIST_FILE, "r") as f:
+            with open(WATCHLIST_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                if isinstance(data, list): return {"portfolio": data, "watchlist": []}
+                if isinstance(data, list):
+                    return {"portfolio": data, "watchlist": []}
                 return data
-        except: pass
-    return {"portfolio": ["AAPL", "MSFT", "AMAT", "GOOGL"], "watchlist": []}
+        except Exception as e:
+            st.error(f"Kritická chyba při čtení watchlist.json: {e}")
+            st.stop()
+    st.error(f"Soubor watchlist.json nebyl nalezen na cestě: {WATCHLIST_FILE}")
+    st.stop()
 
 data = load_data()
 all_tickers = list(dict.fromkeys(data.get("portfolio", []) + data.get("watchlist", [])))
@@ -110,20 +104,22 @@ sel_tick = c2.selectbox(f"📂 {_['db_select']}", all_tickers, index=None, place
 
 final_tick = custom_tick.upper().strip() if custom_tick.strip() else sel_tick
 
-if final_tick:
-    tkr_obj = yf.Ticker(final_tick, session=session)
-    
+@st.cache_data(ttl=300)
+def get_option_expirations(ticker):
     try:
-        expirations = tkr_obj.options
+        tkr = yf.Ticker(ticker)
+        return list(tkr.options)
     except Exception:
-        expirations = []
-        
-    if not expirations:
-        tkr_obj = yf.Ticker(final_tick)
-        try:
-            expirations = tkr_obj.options
-        except:
-            expirations = []
+        return []
+
+@st.cache_data(ttl=300)
+def get_option_chain_data(ticker, exp_date):
+    tkr = yf.Ticker(ticker)
+    chain = tkr.option_chain(exp_date)
+    return chain.calls.copy(), chain.puts.copy()
+
+if final_tick:
+    expirations = get_option_expirations(final_tick)
     
     if not expirations:
         st.error(_["err_data"])
@@ -132,24 +128,11 @@ if final_tick:
         
         with st.spinner(f"{_['loading']} {selected_exp}"):
             try:
-                chain = tkr_obj.option_chain(selected_exp)
+                calls, puts = get_option_chain_data(final_tick, selected_exp)
                 
-                if chain.calls.empty and chain.puts.empty:
-                    tkr_fallback = yf.Ticker(final_tick)
-                    chain = tkr_fallback.option_chain(selected_exp)
-
-                calls = chain.calls.copy()
-                puts = chain.puts.copy()
-                
-                if 'openInterest' in calls.columns: calls['openInterest'] = calls['openInterest'].fillna(0)
-                else: calls['openInterest'] = 0
-                if 'openInterest' in puts.columns: puts['openInterest'] = puts['openInterest'].fillna(0)
-                else: puts['openInterest'] = 0
-                    
-                if 'volume' in calls.columns: calls['volume'] = calls['volume'].fillna(0)
-                else: calls['volume'] = 0
-                if 'volume' in puts.columns: puts['volume'] = puts['volume'].fillna(0)
-                else: puts['volume'] = 0
+                for df_opt in (calls, puts):
+                    df_opt['openInterest'] = df_opt['openInterest'].fillna(0) if 'openInterest' in df_opt.columns else 0
+                    df_opt['volume'] = df_opt['volume'].fillna(0) if 'volume' in df_opt.columns else 0
                 
                 total_call_oi = calls['openInterest'].sum()
                 total_put_oi = puts['openInterest'].sum()
@@ -166,9 +149,12 @@ if final_tick:
                 call_wall_strike = calls.loc[calls[metric_col].idxmax()]['strike'] if not calls.empty and total_call_metric > 0 else None
                 put_wall_strike = puts.loc[puts[metric_col].idxmax()]['strike'] if not puts.empty and total_put_metric > 0 else None
                 
-                if pcr_val > 1.2: sentiment = _["bear"]
-                elif pcr_val < 0.8: sentiment = _["bull"]
-                else: sentiment = _["neut"]
+                if pcr_val > 1.2:
+                    sentiment = _["bear"]
+                elif pcr_val < 0.8:
+                    sentiment = _["bull"]
+                else:
+                    sentiment = _["neut"]
 
                 tab_dash, tab_raw = st.tabs([_["tab_dash"], _["tab_raw"]])
                 

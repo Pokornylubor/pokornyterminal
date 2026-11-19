@@ -19,10 +19,6 @@ WATCHLIST_FILE = os.path.join(hlavni_slozka, "watchlist.json")
 import menu
 menu.vykresli_menu()
 
-# --- BYPASS YAHOO BLOCKING (SESSION USER-AGENT) ---
-session = requests.Session()
-session.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
-
 current_lang = st.session_state.get("lang", "CZ")
 
 # --- DICTIONARY ---
@@ -245,10 +241,14 @@ def load_data():
         try:
             with open(WATCHLIST_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                if isinstance(data, list): return {"portfolio": data, "watchlist": []}
+                if isinstance(data, list):
+                    return {"portfolio": data, "watchlist": []}
                 return data
-        except: pass
-    return {"portfolio": ["AAPL", "MSFT", "AMAT", "GOOGL", "ASML"], "watchlist": []}
+        except Exception as e:
+            st.error(f"Kritická chyba při čtení watchlist.json: {e}")
+            st.stop()
+    st.error(f"Soubor watchlist.json nebyl nalezen na cestě: {WATCHLIST_FILE}")
+    st.stop()
 
 data = load_data()
 all_tickers = list(dict.fromkeys(data.get("portfolio", []) + data.get("watchlist", [])))
@@ -281,30 +281,57 @@ def format_val(val, currency_code, is_pct=False, is_eps=False, force_currency=Fa
         return f"{val / 1e6:,.2f} M" + (f" {currency_code}" if force_currency else "")
     return f"{val:,.2f}" + (f" {currency_code}" if force_currency else "")
 
+@st.cache_data(ttl=600)
+def fetch_ticker_news(ticker):
+    articles = []
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+    }
+    try:
+        rss_url = f"https://news.google.com/rss/search?q={ticker}+stock+news&hl=en-US&gl=US&ceid=US:en"
+        rss_resp = requests.get(rss_url, headers=headers, timeout=6)
+        if rss_resp.status_code == 200:
+            root = ET.fromstring(rss_resp.content)
+            for item in root.findall('.//item')[:12]:
+                title = item.find('title').text if item.find('title') is not None else "N/A"
+                link = item.find('link').text if item.find('link') is not None else "#"
+                pubDate = item.find('pubDate').text if item.find('pubDate') is not None else "N/A"
+                source_el = item.find('source')
+                publisher = source_el.text if source_el is not None and source_el.text else "Google News"
+                try:
+                    dt_obj = pd.to_datetime(pubDate)
+                    dt_str = dt_obj.strftime("%d. %m. %Y %H:%M")
+                except Exception:
+                    dt_str = pubDate[:22] if len(pubDate) > 22 else pubDate
+                articles.append({"title": title, "link": link, "date": dt_str, "publisher": publisher})
+    except Exception:
+        pass
+    return articles
+
 if final_tick:
     with st.spinner(f"{_['loading']} {final_tick}..."):
-        tkr = yf.Ticker(final_tick, session=session)
+        tkr = yf.Ticker(final_tick)
         
         try:
             info = tkr.info or {}
-        except:
+        except Exception:
             info = {}
             
         is_quarterly = (period_type == _["quarterly"])
         
         try:
             financials = tkr.quarterly_financials if is_quarterly else tkr.financials
-        except:
+        except Exception:
             financials = pd.DataFrame()
             
         try:
             cashflow = tkr.quarterly_cashflow if is_quarterly else tkr.cashflow
-        except:
+        except Exception:
             cashflow = pd.DataFrame()
             
         try:
             balance_sheet = tkr.balance_sheet
-        except:
+        except Exception:
             balance_sheet = pd.DataFrame()
 
         if financials is None or financials.empty:
@@ -328,11 +355,11 @@ if final_tick:
             if convert_to_usd:
                 display_currency = "USD"
                 try:
-                    fx_tkr = yf.Ticker(f"{currency_code}USD=X", session=session)
+                    fx_tkr = yf.Ticker(f"{currency_code}USD=X")
                     fx_hist = fx_tkr.history(period="10y")
                     if not fx_hist.empty:
                         latest_fx = float(fx_hist['Close'].iloc[-1])
-                except:
+                except Exception:
                     pass
 
         def get_rate(d):
@@ -346,7 +373,7 @@ if final_tick:
                     dt = dt.tz_localize(None)
                 idx = fx_hist.index.get_indexer([dt], method='nearest')[0]
                 return float(fx_hist['Close'].iloc[idx])
-            except:
+            except Exception:
                 return latest_fx
 
         q_fin_for_kpi = tkr.quarterly_financials if not is_quarterly else financials
@@ -395,7 +422,7 @@ if final_tick:
                 invested_capital = total_debt + stockholders_eq
                 capital_employed = total_assets - current_liab
                 if stockholders_eq and stockholders_eq > 0: calc_debt_eq = total_debt / stockholders_eq
-            except:
+            except Exception:
                 invested_capital, capital_employed, total_assets = 0, 0, 0
         
         roe = info.get("returnOnEquity")
@@ -409,10 +436,11 @@ if final_tick:
         
         if net_income_ltm and 'invested_capital' in locals() and invested_capital > 0: roic = net_income_ltm / invested_capital
         if not financials.empty and 'capital_employed' in locals() and capital_employed > 0:
-             try:
-                 ebit = financials.loc['EBIT'].iloc[0] if 'EBIT' in financials.index else (financials.loc['Operating Income'].iloc[0] if 'Operating Income' in financials.index else 0)
-                 if ebit: roce = ebit / capital_employed
-             except: pass
+            try:
+                ebit = financials.loc['EBIT'].iloc[0] if 'EBIT' in financials.index else (financials.loc['Operating Income'].iloc[0] if 'Operating Income' in financials.index else 0)
+                if ebit: roce = ebit / capital_employed
+            except Exception:
+                pass
         if net_income_ltm and 'total_assets' in locals() and total_assets > 0: roi = net_income_ltm / total_assets 
 
         st.markdown("---")
@@ -493,7 +521,7 @@ if final_tick:
                     shares = info.get("sharesOutstanding")
                     matrix_dict[col_name][_["r_ni"]] = (e_val * rate * shares) if (pd.notna(e_val) and shares) else None
                     matrix_dict[col_name][_["r_fcf"]] = None
-            except:
+            except Exception:
                 pass
 
             df_matrix = pd.DataFrame(matrix_dict)
@@ -618,7 +646,7 @@ if final_tick:
                     try:
                         eps_est_val = tkr.earnings_estimate.loc["0q", "avg"]
                         rev_est_val = tkr.revenue_estimate.loc["0q", "avg"]
-                    except:
+                    except Exception:
                         pass
                         
                     ec1, ec2, ec3 = st.columns(3)
@@ -634,7 +662,7 @@ if final_tick:
                     ec3.metric(_["earn_rev_lbl"], rev_str)
                 else:
                     st.info(_["eh_na1"])
-            except:
+            except Exception:
                 st.info(_["eh_na2"])
                 
             st.markdown("---")
@@ -666,35 +694,18 @@ if final_tick:
                     st.table(df_eh)
                 else:
                     st.info(_["eh_na3"])
-            except:
+            except Exception:
                 st.info(_["eh_na4"])
 
         with tab_news:
             st.subheader(f"{_['news_h']} {short_name} ({final_tick})")
-            try:
-                rss_url = f"https://feeds.finance.yahoo.com/rss/2.0/headline?s={final_tick}®ion=US&lang=en-US"
-                rss_resp = session.get(rss_url, timeout=5)
-                root = ET.fromstring(rss_resp.content)
-                
-                items = root.findall('.//item')
-                if items:
-                    for item in items[:12]:
-                        title = item.find('title').text if item.find('title') is not None else "N/A"
-                        link = item.find('link').text if item.find('link') is not None else "#"
-                        pubDate = item.find('pubDate').text if item.find('pubDate') is not None else "N/A"
-                        
-                        try:
-                            dt_obj = pd.to_datetime(pubDate)
-                            dt_str = dt_obj.strftime("%d. %m. %Y %H:%M")
-                        except:
-                            dt_str = pubDate
-                            
-                        st.markdown(f"### [{title}]({link})")
-                        st.caption(f"🕒 {_['news_date']}: **{dt_str}** | 🏢 {_['news_pub']}: **Yahoo Finance**")
-                        st.markdown("---")
-                else:
-                    st.info(_["news_na"])
-            except:
+            news_articles = fetch_ticker_news(final_tick)
+            if news_articles:
+                for art in news_articles:
+                    st.markdown(f"### [{art['title']}]({art['link']})")
+                    st.caption(f"🕒 {_['news_date']}: **{art['date']}** | 🏢 {_['news_pub']}: **{art['publisher']}**")
+                    st.markdown("---")
+            else:
                 st.info(_["news_na"])
 
         with tab_raw:
