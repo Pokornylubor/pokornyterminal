@@ -1,10 +1,14 @@
 import streamlit as st
+import pandas as pd
 import yfinance as yf
 import requests
 import json
 import os
 import sys
+import random
 import subprocess
+import urllib.request
+import urllib.error
 import xml.etree.ElementTree as ET
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -18,6 +22,20 @@ sys.path.append(hlavni_slozka)
 
 import menu
 menu.vykresli_menu()
+
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:127.0) Gecko/20100101 Firefox/127.0",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+]
+
+def get_headers():
+    return {
+        "User-Agent": random.choice(USER_AGENTS),
+        "Accept": "application/rss+xml, application/xml, text/xml, */*",
+        "Accept-Language": "en-US,en;q=0.9"
+    }
 
 # --- FULL-WIDTH EDITORIAL CSS ---
 st.markdown("""
@@ -109,7 +127,7 @@ t = {
         "btn_save": "Uložit do Archivu (GitHub)",
         "saved_ok": "Report uložen do Archivu a synchronizován na GitHub.",
         "already_saved": "Tento report je již uložený v Archivu.",
-        "spin_search": "Stahování datového toku...",
+        "spin_search": "Stahování čerstvých zpráv...",
         "spin_ai": "AI syntetizuje datový tok...",
         "spin_chat": "AI formuluje odpověď...",
         "err_api": "AI API klíč nebo model nebyl nalezen. Zkontrolujte GROQ_API_KEY v Secrets a Nastavení.",
@@ -122,7 +140,7 @@ t = {
         "no_title": "Bez titulku",
         "no_time": "Neznámý čas",
         "chat_h": "Dotazy k tomuto reportu",
-        "chat_ph": "Zeptejte se na detaily, valuaci nebo historický kontext...",
+        "chat_ph": "Vyhledat...",
         "lib_empty": "Archiv je zatím prázdný. Vygenerujte report v záložce Generátor a uložte ho.",
         "lib_filter": "FILTR",
         "lib_all": "Vše",
@@ -136,7 +154,7 @@ t = {
         "lib_deleted": "Report byl odstraněn z Archivu.",
         "lib_back": "← Zpět do Archivu",
         "presets": {
-            "US Trh & Indexy (S&P 500, Nasdaq)": "S&P 500 Nasdaq stock market today Wall Street",
+            "US Trh & Indexy (S&P 500, Nasdaq)": "S&P 500 Nasdaq stock market Wall Street",
             "FED, Inflace & Dluhopisy": "Federal Reserve interest rates CPI inflation treasury yields",
             "AI & Polovodiče": "AI semiconductors Nvidia data center chip stocks",
             "Zlato, Ropa & Komodity": "gold price XAUUSD crude oil commodities market",
@@ -162,7 +180,7 @@ t = {
         "btn_save": "Save to Archive (GitHub)",
         "saved_ok": "Report saved to Archive and synced to GitHub.",
         "already_saved": "This report is already saved in the Archive.",
-        "spin_search": "Fetching data feed...",
+        "spin_search": "Fetching recent news...",
         "spin_ai": "AI is synthesizing data feed...",
         "spin_chat": "AI is generating response...",
         "err_api": "AI API key or model not found. Check GROQ_API_KEY in Secrets and Settings.",
@@ -175,7 +193,7 @@ t = {
         "no_title": "No Title",
         "no_time": "Unknown Time",
         "chat_h": "Questions about this report",
-        "chat_ph": "Ask about details, valuation, or historical context...",
+        "chat_ph": "Search...",
         "lib_empty": "Archive is empty. Generate a report in the Generator tab and save it.",
         "lib_filter": "FILTER",
         "lib_all": "All",
@@ -189,7 +207,7 @@ t = {
         "lib_deleted": "Report removed from Archive.",
         "lib_back": "← Back to Archive",
         "presets": {
-            "US Market & Indices (S&P 500, Nasdaq)": "S&P 500 Nasdaq stock market today Wall Street",
+            "US Market & Indices (S&P 500, Nasdaq)": "S&P 500 Nasdaq stock market Wall Street",
             "FED, Inflation & Bonds": "Federal Reserve interest rates CPI inflation treasury yields",
             "AI & Semiconductors": "AI semiconductors Nvidia data center chip stocks",
             "Gold, Oil & Commodities": "gold price XAUUSD crude oil commodities market",
@@ -247,7 +265,7 @@ app_data = load_app_data()
 saved_settings = app_data.get("settings", {})
 tickers = sorted(list(set(app_data.get("portfolio", []) + app_data.get("watchlist", []))))
 
-api_key = st.secrets.get("GROQ_API_KEY", "")
+api_key = str(st.secrets.get("GROQ_API_KEY", "")).strip()
 model_provider = st.session_state.get("ai_provider", saved_settings.get("ai_provider", "Groq"))
 selected_model = st.session_state.get("ai_model", saved_settings.get("ai_model", ""))
 
@@ -266,46 +284,96 @@ for key, default in [
     if key not in st.session_state:
         st.session_state[key] = default
 
-# --- DIRECT HTTP AI CALL ---
+@st.cache_data(ttl=3600, show_spinner=False)
+def get_groq_available_models(api_klic):
+    try:
+        req = urllib.request.Request(
+            "https://api.groq.com/openai/v1/models",
+            headers={"Authorization": f"Bearer {api_klic}", "User-Agent": random.choice(USER_AGENTS)}
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            items = json.loads(resp.read().decode("utf-8")).get("data", [])
+            skip = ("whisper", "tts", "guard", "prompt-guard", "orpheus")
+            return [m["id"] for m in items if m.get("id") and not any(s in m["id"].lower() for s in skip)]
+    except Exception:
+        return []
+
 def call_llm_api(messages, api_klic, provider, model_name, temperature=0.2, timeout=30):
     url = "https://api.groq.com/openai/v1/chat/completions" if provider == "Groq" else "https://api.openai.com/v1/chat/completions"
-    headers = {
-        "Authorization": f"Bearer {api_klic}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "model": model_name,
-        "messages": messages,
-        "temperature": temperature
-    }
-    resp = requests.post(url, headers=headers, json=payload, timeout=timeout)
-    if resp.status_code != 200:
-        raise RuntimeError(f"HTTP {resp.status_code}: {resp.text[:250]}")
-    return resp.json()["choices"][0]["message"]["content"]
+    models_to_try = [model_name]
+    if provider == "Groq":
+        for m in get_groq_available_models(api_klic):
+            if m not in models_to_try:
+                models_to_try.append(m)
 
-@st.cache_data(ttl=600)
+    last_err = ""
+    for mdl in models_to_try:
+        payload = json.dumps({
+            "model": mdl,
+            "messages": messages,
+            "temperature": temperature
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            url,
+            data=payload,
+            headers={
+                "Authorization": f"Bearer {api_klic}",
+                "Content-Type": "application/json",
+                "User-Agent": random.choice(USER_AGENTS)
+            },
+            method="POST"
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                return data["choices"][0]["message"]["content"]
+        except urllib.error.HTTPError as e:
+            err_body = e.read().decode("utf-8", errors="ignore")[:250]
+            last_err = f"HTTP {e.code}: {err_body}"
+            if e.code in (400, 404, 429) and mdl != models_to_try[-1]:
+                continue
+            raise RuntimeError(last_err)
+    raise RuntimeError(last_err)
+
+@st.cache_data(ttl=900, show_spinner=False)
 def fetch_news(query_str, is_ticker=True):
     news_list = []
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
-    }
-    search_q = f"{query_str}+stock+news" if is_ticker else query_str.replace(" ", "+")
-    try:
-        url = f"https://news.google.com/rss/search?q={search_q}&hl=en-US&gl=US&ceid=US:en"
-        response = requests.get(url, headers=headers, timeout=8)
-        if response.status_code == 200:
-            root = ET.fromstring(response.content)
-            for item in root.findall('.//item')[:10]:
-                title = item.find('title').text if item.find('title') is not None else _["no_title"]
-                link = item.find('link').text if item.find('link') is not None else "#"
-                pubDate = item.find('pubDate').text if item.find('pubDate') is not None else _["no_time"]
-                if len(pubDate) > 22:
-                    pubDate = pubDate[:22]
-                news_list.append({"title": title, "link": link, "publisher": "Google News", "pub_time_str": pubDate})
-            if news_list:
-                return news_list
-    except Exception:
-        pass
+    base_q = f"{query_str} stock news" if is_ticker else query_str
+
+    for window in (["when:3d", "when:7d"] if not is_ticker else ["when:7d", "when:14d"]):
+        try:
+            q_encoded = requests.utils.quote(f"{base_q} {window}")
+            url = f"https://news.google.com/rss/search?q={q_encoded}&hl=en-US&gl=US&ceid=US:en"
+            response = requests.get(url, headers=get_headers(), timeout=8)
+            if response.status_code == 200:
+                root = ET.fromstring(response.content)
+                temp = []
+                for item in root.findall('.//item')[:15]:
+                    title = item.find('title').text if item.find('title') is not None else _["no_title"]
+                    link = item.find('link').text if item.find('link') is not None else "#"
+                    pub_raw = item.find('pubDate').text if item.find('pubDate') is not None else ""
+                    try:
+                        dt_parsed = pd.to_datetime(pub_raw, utc=True)
+                        pub_str = dt_parsed.tz_convert("Europe/Prague").strftime("%d. %m. %Y %H:%M")
+                        ts = dt_parsed.timestamp()
+                    except Exception:
+                        pub_str = pub_raw[:22] if len(pub_raw) > 22 else (pub_raw or _["no_time"])
+                        ts = 0.0
+                    temp.append({
+                        "title": title,
+                        "link": link,
+                        "publisher": "Google News",
+                        "pub_time_str": pub_str,
+                        "_ts": ts
+                    })
+                temp.sort(key=lambda x: x["_ts"], reverse=True)
+                for row in temp[:10]:
+                    row.pop("_ts", None)
+                    news_list.append(row)
+                if news_list:
+                    return news_list
+        except Exception:
+            pass
 
     if is_ticker:
         try:
@@ -326,25 +394,34 @@ def fetch_news(query_str, is_ticker=True):
     return news_list
 
 def generuj_ai_report(tema, typ, zpravy_text, api_klic, provider, model_name, lang):
-    jazyk_vyzva = "v češtině (Czech)" if lang == "CZ" else "in English"
-    kontext_role = "overall equity/macro market brief" if typ == "MARKET BRIEF" else f"specific equity ticker {tema}"
+    if lang == "CZ":
+        lang_rules = (
+            "Piš 100% čistou, přirozenou a gramaticky správnou češtinou. "
+            "Nepoužívej anglická slova ani cizí fráze tam, kde existuje přirozený český výraz. "
+            "Soustřeď se na aktuální události ze zpráv a ignoruj obecné návody nebo staré přehledy."
+        )
+    else:
+        lang_rules = "Write 100% pure, natural institutional English focused on recent market developments."
 
-    prompt = f"""You are an elite quantitative hedge fund analyst writing an institutional brief for {kontext_role} ({tema}).
-Read the following recent news headlines and synthesize them into one sharp, high-signal market update.
-Return STRICTLY valid JSON.
-News Data:
+    kontext_role = "souhrnný makro a tržní přehled" if typ == "MARKET BRIEF" else f"analýzu akcie {tema}"
+
+    prompt = f"""Jsi analytik akciového trhu a makra připravující stručný přehled pro {kontext_role} ({tema}).
+{lang_rules}
+Syntetizuj níže uvedené nejnovější zprávy do jasného, věcného reportu.
+Vrať VÝHRADNĚ platný JSON.
+Zprávy:
 {zpravy_text}
 
-JSON Structure:
+Struktura JSON:
 {{
-    "hlavni_nadpis": "One punchy, institutional headline summarizing the key takeaway {jazyk_vyzva}.",
-    "rezim": "RISK-ON" or "RISK-OFF" or "NEUTRAL",
-    "sentiment_skore": <float between -1.0 (strong Risk-Off) and 1.0 (strong Risk-On)>,
-    "co_se_stalo": "Executive summary of key events in 3-5 crisp sentences {jazyk_vyzva}.",
-    "proc_to_hybe_trhem": "Fundamental & liquidity impact analysis (rates, margins, DCF, positioning) {jazyk_vyzva}.",
-    "na_co_se_zamerit": "2-3 concrete catalysts or levels to watch next as plain text {jazyk_vyzva}."
+    "hlavni_nadpis": "Výstižný, věcný titulek shrnující hlavní dění.",
+    "rezim": "RISK-ON" nebo "RISK-OFF" nebo "NEUTRAL",
+    "sentiment_skore": <desetinné číslo od -1.0 do 1.0>,
+    "co_se_stalo": "Shrnutí hlavních událostí v 3–5 věcných větách.",
+    "proc_to_hybe_trhem": "Dopad na trhy, sazby, marže, valuace a likviditu.",
+    "na_co_se_zamerit": "2–3 konkrétní faktory nebo úrovně ke sledování jako prostý text."
 }}
-Output raw JSON only."""
+Vrať pouze čistý JSON."""
     try:
         vysledek = call_llm_api([{"role": "user", "content": prompt}], api_klic, provider, model_name, temperature=0.1, timeout=30).strip()
         if vysledek.startswith("```"):
@@ -354,7 +431,7 @@ Output raw JSON only."""
         return {"error": str(e)}
 
 def chat_s_ai(otazka, report_obj, historie, api_klic, provider, model_name, lang):
-    jazyk_vyzva = "Odpovídej v češtině." if lang == "CZ" else "Answer in English."
+    jazyk_vyzva = "Odpovídej čistou, přirozenou češtinou bez anglicismů." if lang == "CZ" else "Answer in clean, institutional English."
     analyza_str = json.dumps({
         "tema": report_obj.get("tema"),
         "hlavni_nadpis": report_obj.get("hlavni_nadpis"),
@@ -363,14 +440,14 @@ def chat_s_ai(otazka, report_obj, historie, api_klic, provider, model_name, lang
         "na_co_se_zamerit": report_obj.get("na_co_se_zamerit")
     }, ensure_ascii=False)
     zdroje_txt = "\n".join([f"- {z['pub_time_str']}: {z['title']}" for z in report_obj.get("zdroje", [])])
-    
+
     messages = [
-        {"role": "system", "content": f"Jsi institucionální analytik hedgeového fondu. Odpovídej přímým, analytickým stylem. Report: {analyza_str}. Zdrojové zprávy: {zdroje_txt}. {jazyk_vyzva}"}
+        {"role": "system", "content": f"Jsi analytik trhu. Odpovídej věcně a přehledně. Report: {analyza_str}. Zdrojové zprávy: {zdroje_txt}. {jazyk_vyzva}"}
     ]
     for msg in historie:
         messages.append({"role": msg["role"], "content": msg["content"]})
     messages.append({"role": "user", "content": otazka})
-    
+
     try:
         return call_llm_api(messages, api_klic, provider, model_name, temperature=0.3, timeout=25)
     except Exception as e:
