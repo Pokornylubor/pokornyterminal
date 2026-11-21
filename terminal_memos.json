@@ -1,1 +1,16 @@
-[]
+[
+    {
+        "id": "20261121_200732_MEMO_AMZN",
+        "datum": "21. 11. 2026 20:07",
+        "typ": "INVESTIČNÍ MEMO",
+        "tema": "AMZN",
+        "hlavni_nadpis": "Investiční memo: Amazon.com, Inc. (AMZN) · 246.82 USD",
+        "obsah": "1. **KVALITA BYZNYSU & MARŽE**\nSpolečnost vykazuje robustní růst tržeb, který se v posledních třech letech ustálil na úrovni 11–12 % ročně, s očekávaným zrychlením na 15,7 % v roce 2026. Provozní páka je výrazně pozitivní; provozní marže (EBIT) vzrostla z 6,4 % v roce 2023 na 13,1 % v aktuálním období (LTM), což dokládá efektivitu škálování byznysu. Ačkoliv návratnost investovaného kapitálu (ROIC) na úrovni 23,9 % potvrzuje vysokou kvalitu kapitálu, konverze volného cash flowu (FCF) je v současnosti negativní (-4,4 %). Tento stav je dán extrémně vysokými kapitálovými výdaji (196 mld. USD), které překračují provozní cash flow (168 mld. USD), což naznačuje intenzivní fázi reinvestice do infrastruktury a umělé inteligence.\n\n2. **VALUACE & MARGIN OF SAFETY**\nAktuální tržní ocenění na 246,82 USD odpovídá poměru cena/zisk (P/E) 19,95x, což je relativně přitažlivá úroveň pro technologického giganta s takovou mírou růstu. Forward P/E na 22,59x odráží očekávání trhu o mírném zpomalení růstu zisku na akcii v roce 2027 (z 12,80 USD na 10,66 USD). Poměr podniku hodnoty k EBITDA (EV/EBITDA) 15,57x a PEG 1,15 naznačují, že akcie není drahá vzhledem k očekávanému růstu. Přestože je P/FCF k dispozici jako nulová hodnota kvůli negativnímu FCF, což limituje klasickou analýzu bezpečnostní marže, nízké P/E a solidní EV/EBITDA nabízejí dostatečnou ochranu proti poklesu cen, pokud se investiční cyklus podaří zúročit.\n\n3. **ROZVAHA & RIZIKA**\nZadlužení je na akceptovatelné úrovni s poměrem dluhu k vlastnímu kapitálu 0,37, přičemž celkový dluh 271,9 mld. USD je částečně kompenzován hotovostí a krátkodobými investicemi ve výši 114,2 mld. USD. Likvidita je však napjatá, neboť poměr běžných aktiv k běžným závazkům (Current Ratio) je 0,98, což je pod hranicí 1,0 a signalizuje, že krátkodobá aktiva nestačí na pokrytí krátkodobých závazků. Hlavním rizikem je závislost na kontinuálním financování obrovských kapitálových výdajů; pokud by se návratnost těchto investic (zejména v oblasti AI a logistiky) prodloužila, mohlo by to vést k tlaku na marže a nutnosti dalšího zadlužení nebo emisí akcií.\n\n4. **VERDIKT ANALYTIKA**\nPostoj: **KUP (BUY)**. Klíčovým číslem k sledování je **růst provozního cash flowu (OCF)** v příštích dvou čtvrtletích. Pokud se OCF udrží nad 168 mld. USD a začne překonávat rostoucí CapEx, bude to signálem, že fáze masivních investic přechází do fáze zúročení, což by mohlo vést k re-ratingu ocenění. Naopak, pokud by CapEx dále rostly rychleji než OCF, bylo by třeba přehodnotit udržitelnost aktuální marže.",
+        "chat": [
+            {
+                "role": "user",
+                "content": "Je to pro akcii bullish?"
+            }
+        ]
+    }
+]
