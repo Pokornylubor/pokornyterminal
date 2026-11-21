@@ -729,10 +729,12 @@ if final_tick:
 
         def get_ltm_from_quarterly(df, keys):
             if df is None or df.empty: return None
+            df_sorted = df.reindex(sorted(df.columns, reverse=True), axis=1)
             for key in keys:
-                if key in df.index:
-                    vals = df.loc[key].iloc[:4]
-                    if len(vals) == 4 and not vals.isna().all(): return float(vals.sum())
+                if key in df_sorted.index:
+                    vals = pd.to_numeric(df_sorted.loc[key], errors='coerce').dropna().iloc[:4]
+                    if len(vals) == 4:
+                        return float(vals.sum())
             return None
 
         def get_first_val(df, keys, col=None):
