@@ -41,25 +41,6 @@ def vykresli_menu():
     st.markdown("""
         <style>
             [data-testid="stSidebarNav"] {display: none !important;}
-            .nav-brand {
-                font-family: 'JetBrains Mono', monospace;
-                font-size: 0.92rem;
-                font-weight: 700;
-                letter-spacing: 0.08em;
-                color: #F4F4F5;
-                padding: 4px 0 14px 4px;
-                border-bottom: 1px solid #1F2227;
-                margin-bottom: 14px;
-            }
-            .nav-sec {
-                font-family: 'JetBrains Mono', monospace;
-                font-size: 0.66rem;
-                font-weight: 600;
-                letter-spacing: 0.12em;
-                color: #71717A;
-                text-transform: uppercase;
-                padding: 12px 0 4px 6px;
-            }
         </style>
     """, unsafe_allow_html=True)
 
@@ -67,59 +48,34 @@ def vykresli_menu():
         if "lang" not in st.session_state:
             st.session_state.lang = load_global_lang()
 
-        lang = st.session_state.lang
+        st.markdown("### POKORNY TERMINAL")
+        
+        if st.session_state.lang == "CZ":
+            st.page_link("pages/10_Nastaveni.py", label="Nastavení", icon=":material/tune:")
+        else:
+            st.page_link("pages/10_Nastaveni.py", label="Settings", icon=":material/tune:")
+            
+        st.markdown("---")
 
-        labels = {
-            "CZ": {
-                "sec_term": "TERMINÁL",
-                "sec_data": "TOKY & MAKRO",
-                "sec_sys": "SYSTÉM",
-                "dash": "Hlavní Dashboard",
-                "term": "Terminal",
-                "baskets": "Koše",
-                "ai": "AI Zprávy & Sentiment",
-                "ins": "Insider Tracker (4F)",
-                "sec": "SEC 13F Radar",
-                "opt": "Opční Radar",
-                "cot": "COT Reporty",
-                "makro": "Makro & Rizika",
-                "upd": "Aktualizace Dat",
-                "set": "Nastavení"
-            },
-            "EN": {
-                "sec_term": "TERMINAL",
-                "sec_data": "FLOWS & MACRO",
-                "sec_sys": "SYSTEM",
-                "dash": "Main Dashboard",
-                "term": "Terminal",
-                "baskets": "Baskets",
-                "ai": "AI News & Sentiment",
-                "ins": "Insider Tracker (4F)",
-                "sec": "SEC 13F Radar",
-                "opt": "Options Radar",
-                "cot": "COT Reports",
-                "makro": "Macro & Risks",
-                "upd": "Data Update",
-                "set": "Settings"
-            }
-        }
-        L = labels.get(lang, labels["CZ"])
-
-        st.markdown('<div class="nav-brand">POKORNY TERMINAL</div>', unsafe_allow_html=True)
-
-        st.markdown(f'<div class="nav-sec">{L["sec_term"]}</div>', unsafe_allow_html=True)
-        st.page_link("Dashboard.py", label=L["dash"], icon=":material/dashboard:")
-        st.page_link("pages/3_Terminal.py", label=L["term"], icon=":material/monitoring:")
-        st.page_link("pages/7_Baskets.py", label=L["baskets"], icon=":material/workspaces:")
-        st.page_link("pages/8_AI_Radar.py", label=L["ai"], icon=":material/article:")
-
-        st.markdown(f'<div class="nav-sec">{L["sec_data"]}</div>', unsafe_allow_html=True)
-        st.page_link("pages/1_Insider_4F.py", label=L["ins"], icon=":material/person_search:")
-        st.page_link("pages/2_SEC_13F_Radar.py", label=L["sec"], icon=":material/account_balance:")
-        st.page_link("pages/4_Opcni_Radar.py", label=L["opt"], icon=":material/candlestick_chart:")
-        st.page_link("pages/5_COT_Reporty.py", label=L["cot"], icon=":material/bar_chart:")
-        st.page_link("pages/6_Makro.py", label=L["makro"], icon=":material/public:")
-
-        st.markdown(f'<div class="nav-sec">{L["sec_sys"]}</div>', unsafe_allow_html=True)
-        st.page_link("pages/9_Aktualizace.py", label=L["upd"], icon=":material/sync:")
-        st.page_link("pages/10_Nastaveni.py", label=L["set"], icon=":material/tune:")
+        if st.session_state.lang == "CZ":
+            st.page_link("Dashboard.py", label="Hlavní Dashboard", icon=":material/dashboard:")
+            st.page_link("pages/1_Insider_4F.py", label="Insider Tracker (4F)", icon=":material/person_search:")
+            st.page_link("pages/2_SEC_13F_Radar.py", label="SEC 13F Radar", icon=":material/account_balance:")
+            st.page_link("pages/3_Terminal.py", label="Terminal", icon=":material/monitoring:")
+            st.page_link("pages/4_Opcni_Radar.py", label="Opční Radar", icon=":material/candlestick_chart:")
+            st.page_link("pages/5_COT_Reporty.py", label="COT Reporty", icon=":material/bar_chart:")
+            st.page_link("pages/6_Makro.py", label="Makro & Rizika", icon=":material/public:")
+            st.page_link("pages/7_Baskets.py", label="Koše", icon=":material/workspaces:")
+            st.page_link("pages/8_AI_Radar.py", label="AI Zprávy & Sentiment", icon=":material/article:")
+            st.page_link("pages/9_Aktualizace.py", label="Aktualizace Dat", icon=":material/sync:")
+        else:
+            st.page_link("Dashboard.py", label="Main Dashboard", icon=":material/dashboard:")
+            st.page_link("pages/1_Insider_4F.py", label="Insider Tracker (4F)", icon=":material/person_search:")
+            st.page_link("pages/2_SEC_13F_Radar.py", label="SEC 13F Radar", icon=":material/account_balance:")
+            st.page_link("pages/3_Terminal.py", label="Terminal", icon=":material/monitoring:")
+            st.page_link("pages/4_Opcni_Radar.py", label="Options Radar", icon=":material/candlestick_chart:")
+            st.page_link("pages/5_COT_Reporty.py", label="COT Reports", icon=":material/bar_chart:")
+            st.page_link("pages/6_Makro.py", label="Macro & Risks", icon=":material/public:")
+            st.page_link("pages/7_Baskets.py", label="Baskets", icon=":material/workspaces:")
+            st.page_link("pages/8_AI_Radar.py", label="AI News & Sentiment", icon=":material/article:")
+            st.page_link("pages/9_Aktualizace.py", label="Data Update", icon=":material/sync:")
