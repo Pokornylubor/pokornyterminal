@@ -745,18 +745,23 @@ if final_tick:
                     if pd.notna(v): return float(v)
             return None
 
-        total_rev_ltm = get_ltm_from_quarterly(q_fin_for_kpi, ['Total Revenue']) or info.get("totalRevenue")
-        gross_profit_ltm = get_ltm_from_quarterly(q_fin_for_kpi, ['Gross Profit'])
-        op_inc_ltm = get_ltm_from_quarterly(q_fin_for_kpi, ['Operating Income', 'EBIT'])
-        net_income_ltm = get_ltm_from_quarterly(q_fin_for_kpi, ['Net Income', 'Net Income Common Stockholders']) or info.get("netIncomeToCommon", info.get("netIncome"))
-        ebitda_ltm = get_ltm_from_quarterly(q_fin_for_kpi, ['Normalized EBITDA', 'EBITDA']) or info.get("ebitda")
-        ocf_ltm = get_ltm_from_quarterly(q_cf_for_kpi, ['Operating Cash Flow'])
+        total_rev_ltm = info.get("totalRevenue") or get_ltm_from_quarterly(q_fin_for_kpi, ['Total Revenue'])
+        
+        gm_info = info.get("grossMargins")
+        gross_profit_ltm = (total_rev_ltm * gm_info) if (total_rev_ltm and gm_info) else get_ltm_from_quarterly(q_fin_for_kpi, ['Gross Profit'])
+        
+        om_info = info.get("operatingMargins")
+        op_inc_ltm = (total_rev_ltm * om_info) if (total_rev_ltm and om_info) else get_ltm_from_quarterly(q_fin_for_kpi, ['Operating Income', 'EBIT'])
+        
+        net_income_ltm = info.get("netIncomeToCommon") or info.get("netIncome") or get_ltm_from_quarterly(q_fin_for_kpi, ['Net Income', 'Net Income Common Stockholders'])
+        ebitda_ltm = info.get("ebitda") or get_ltm_from_quarterly(q_fin_for_kpi, ['Normalized EBITDA', 'EBITDA'])
+        
+        ocf_ltm = info.get("operatingCashflow") or get_ltm_from_quarterly(q_cf_for_kpi, ['Operating Cash Flow'])
         capex_ltm = get_ltm_from_quarterly(q_cf_for_kpi, ['Capital Expenditure'])
 
-        fcf = get_ltm_from_quarterly(q_cf_for_kpi, ['Free Cash Flow'])
-        if fcf is None:
-            if ocf_ltm and capex_ltm is not None: fcf = ocf_ltm - abs(capex_ltm)
-            else: fcf = info.get("freeCashflow")
+        fcf = info.get("freeCashflow") or get_ltm_from_quarterly(q_cf_for_kpi, ['Free Cash Flow'])
+        if fcf is None and ocf_ltm is not None and capex_ltm is not None:
+            fcf = ocf_ltm - abs(capex_ltm)
 
         eps_ltm = info.get("trailingEps") or get_ltm_from_quarterly(q_fin_for_kpi, ['Diluted EPS', 'Basic EPS'])
 
