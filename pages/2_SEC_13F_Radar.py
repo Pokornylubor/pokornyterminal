@@ -27,7 +27,7 @@ t = {
     "CZ": {
         "title": "SEC 13F REPORTY",
         "desc": "BLESKOVÉ NAČÍTÁNÍ HISTORICKÝCH DAT PORTFOLIÍ PŘÍMO ZE SEC EDGAR.",
-        "exp_db": "⚙️ SPRÁVA DATABÁZE (PŘIDAT / UPRAVIT / SMAZAT)",
+        "exp_db": "SPRÁVA DATABÁZE (PŘIDAT / UPRAVIT / SMAZAT)",
         "sel_inv": "VÝBĚR A VYHLEDÁVÁNÍ 13F REPORTU:",
         "cik_lbl": "CIK KÓD:",
         "name_lbl": "NÁZEV FONDU:",
@@ -42,7 +42,7 @@ t = {
     "EN": {
         "title": "SEC 13F REPORTS",
         "desc": "LIGHTNING FAST HISTORICAL PORTFOLIO DATA FROM SEC EDGAR.",
-        "exp_db": "⚙️ DATABASE MANAGEMENT (ADD / EDIT / DELETE)",
+        "exp_db": "DATABASE MANAGEMENT (ADD / EDIT / DELETE)",
         "sel_inv": "SELECT AND SEARCH 13F REPORT:",
         "cik_lbl": "CIK CODE:",
         "name_lbl": "FUND NAME:",
@@ -98,10 +98,10 @@ fund_names = sorted(list(ALL_FUNDS.keys()))
 
 # --- SEKCE SPRÁVY DATABÁZE ---
 with st.expander(_["exp_db"], expanded=False):
-    akce = st.radio("Zvolte operaci:", ["➕ Přidat", "✏️ Upravit", "🗑️ Smazat"], horizontal=True, label_visibility="collapsed")
+    akce = st.radio("Zvolte operaci:", ["Přidat", "Upravit", "Smazat"], horizontal=True, label_visibility="collapsed")
     st.markdown("---")
     
-    if akce == "➕ Přidat":
+    if akce == "Přidat":
         cik_input = st.text_input(_["cik_lbl"], "").strip()
         novy_nazev = st.text_input(_["name_lbl"], "").strip()
         if cik_input and novy_nazev and st.button(_["save_new"], use_container_width=True):
@@ -110,7 +110,7 @@ with st.expander(_["exp_db"], expanded=False):
             st.success(_["succ_save"])
             st.rerun()
             
-    elif akce == "✏️ Upravit":
+    elif akce == "Upravit":
         if not fund_names:
             st.info("Databáze je prázdná.")
         else:
@@ -130,15 +130,15 @@ with st.expander(_["exp_db"], expanded=False):
                     else:
                         st.warning("Název i CIK musí být vyplněny.")
                         
-    elif akce == "🗑️ Smazat":
+    elif akce == "Smazat":
         if not fund_names:
             st.info("Databáze je prázdná.")
         else:
             fond_k_odstraneni = st.selectbox("Vyber fond k odstranění:", options=fund_names)
-            if st.button("❌ TRVALE SMAZAT FOND", use_container_width=True):
+            if st.button("TRVALE SMAZAT FOND", use_container_width=True):
                 del data["saved_ciks"][fond_k_odstraneni]
                 save_data(data)
-                st.success(f"✅ Fond '{fond_k_odstraneni}' byl odstraněn.")
+                st.success(f"Fond '{fond_k_odstraneni}' byl odstraněn.")
                 st.rerun()
 
 st.markdown("---")
@@ -147,12 +147,12 @@ st.markdown("---")
 if not fund_names:
     st.info("Databáze je prázdná. Přidejte fond v sekci 'SPRÁVA DATABÁZE'.")
 else:
-    # Jeden chytrý našeptávač, který nahradil původní vyhledávání i roletku
+    ph_search = "Vyhledat..." if st.session_state.get("lang", "CZ") == "CZ" else "Search..."
     vyber = st.selectbox(
         _["sel_inv"], 
         options=fund_names, 
         index=None, 
-        placeholder="🔍"
+        placeholder=ph_search
     )
 
     if vyber:

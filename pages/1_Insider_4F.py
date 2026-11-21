@@ -67,8 +67,8 @@ else:
     ph_text = "Vyhledat..." if current_lang == "CZ" else "Search..."
     ph_db = "Vybrat..." if current_lang == "CZ" else "Select..."
     
-    custom_tick = c1.text_input(f" {_['custom_tick']}", placeholder=ph_text)
-    sel_tick = c2.selectbox(f" {_['db_select']}", all_tickers, index=None, placeholder=ph_db)
+    custom_tick = c1.text_input(_["custom_tick"], placeholder=ph_text)
+    sel_tick = c2.selectbox(_["db_select"], all_tickers, index=None, placeholder=ph_db)
     
     final_tick = custom_tick.upper().strip() if custom_tick.strip() else sel_tick
 

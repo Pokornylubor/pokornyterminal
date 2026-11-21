@@ -29,7 +29,6 @@ def load_watchlist_data():
 def save_settings_to_json(lang, provider, model):
     data = load_watchlist_data()
     
-    # Bezpečné vytvoření bloku settings, pokud ještě neexistuje
     if "settings" not in data:
         data["settings"] = {}
         
@@ -65,35 +64,35 @@ def save_settings_to_json(lang, provider, model):
 # --- DICTIONARY ---
 t = {
     "CZ": {
-        "title": "⚙️ GLOBÁLNÍ NASTAVENÍ",
+        "title": "GLOBÁLNÍ NASTAVENÍ",
         "desc": "SPRÁVA ROZHRANÍ A INFRASTRUKTURY TERMINÁLU.",
-        "ui_h": "🎨 Uživatelské rozhraní",
+        "ui_h": "Uživatelské rozhraní",
         "lang_lbl": "Jazyk aplikace (Language):",
-        "ai_h": "🧠 Umělá inteligence",
+        "ai_h": "Umělá inteligence",
         "ai_desc": "Propojení aplikace s LLM servery pro datovou analýzu.",
         "api_lbl": "Dočasný API Klíč:",
         "prov_lbl": "Poskytovatel:",
         "mod_lbl": "Výchozí model:",
-        "save_btn": "💾 Uložit veškeré nastavení a synchronizovat na GitHub",
+        "save_btn": "Uložit veškeré nastavení a synchronizovat na GitHub",
         "saved_msg": "Globální konfigurace (jazyk, modely) bezpečně uložena na GitHub.",
         "no_models": "Klíč nenalezen. Vložte GROQ_API_KEY do Streamlit Secrets.",
-        "future_h": "🔧 Budoucí moduly",
+        "future_h": "Budoucí moduly",
         "future_desc": "Připraveno pro napojení na brokery a webhooky."
     },
     "EN": {
-        "title": "⚙️ GLOBAL SETTINGS",
+        "title": "GLOBAL SETTINGS",
         "desc": "TERMINAL INTERFACE AND INFRASTRUCTURE MANAGEMENT.",
-        "ui_h": "🎨 User Interface",
+        "ui_h": "User Interface",
         "lang_lbl": "App Language:",
-        "ai_h": "🧠 Artificial Intelligence",
+        "ai_h": "Artificial Intelligence",
         "ai_desc": "Connection to LLM servers for data analysis.",
         "api_lbl": "Temporary API Key:",
         "prov_lbl": "Provider:",
         "mod_lbl": "Default Model:",
-        "save_btn": "💾 Save All Settings & Sync to GitHub",
+        "save_btn": "Save All Settings & Sync to GitHub",
         "saved_msg": "Global configuration (language, models) safely saved to GitHub.",
         "no_models": "Key not found. Add GROQ_API_KEY to Streamlit Secrets.",
-        "future_h": "🔧 Future Modules",
+        "future_h": "Future Modules",
         "future_desc": "Prepared for broker integration and webhooks."
     }
 }
@@ -124,7 +123,6 @@ with col1:
         st.markdown(f"#### {_['ui_h']}")
         new_lang = st.radio(_["lang_lbl"], ["CZ", "EN"], index=0 if current_lang == "CZ" else 1, horizontal=True)
         
-        # Plynulé přepnutí v UI hned po kliknutí
         if new_lang != st.session_state.lang:
             st.session_state.lang = new_lang
             st.rerun()
@@ -146,7 +144,7 @@ with col2:
 
         has_secret = "GROQ_API_KEY" in st.secrets
         if has_secret:
-            st.success("✅ API Klíč je bezpečně načten z tajného trezoru Streamlit Cloud.")
+            st.success("API Klíč je bezpečně načten z tajného trezoru Streamlit Cloud.")
             temp_api = st.secrets["GROQ_API_KEY"]
         else:
             temp_api = st.text_input(_["api_lbl"], type="password", placeholder="gsk_...", help="Pouze pro tuto relaci. Pro trvalé uložení vložte GROQ_API_KEY do Secrets.")
@@ -171,7 +169,6 @@ with col2:
                 if temp_model:
                     st.session_state.ai_model = temp_model
                 
-                # Zapsání jazyka i modelů natrvalo
                 success = save_settings_to_json(st.session_state.lang, temp_prov, temp_model)
                 if success:
                     st.success(_["saved_msg"])

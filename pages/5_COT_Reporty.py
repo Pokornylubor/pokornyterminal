@@ -38,14 +38,14 @@ t = {
         "btn_rem": "ODEBRAT Z WATCHLISTU", 
         "succ_rem": "ODSTRANĚNO.",
         "db_empty": "DATABÁZE JE PRÁZDNÁ.",
-        "tab_chart": "📊 GRAF NET POZIC",
-        "tab_raw": "🗄️ SUROVÁ DATA (CFTC)",
-        "help_title": "📖 JAK ČÍST TENTO GRAF (NÁPOVĚDA)",
+        "tab_chart": "GRAF NET POZIC",
+        "tab_raw": "SUROVÁ DATA (CFTC)",
+        "help_title": "JAK ČÍST TENTO GRAF (NÁPOVĚDA)",
         "help_text": """
 **Základní pravidlo:** Trh je hra s nulovým součtem. Kde jeden kupuje, druhý prodává. Osa Y ukazuje tzv. Net pozice (Long kontrakty mínus Short kontrakty).
 
-* 🟢 **Zelená linka (Commercials / Smart Money):** Velké instituce, banky, korporace. Trh často používají k zajištění. Sledujeme u nich **obraty a extrémy**. Pokud jsou extrémně v mínusu (short) a začnou prudce růst, trh se pravděpodobně otočí nahoru.
-* 🔴 **Červená linka (Non-Commercials / Spekulanti):** Hedge fondy a trend-followeři. Většinou dělají přesný opak toho, co Smart Money.
+- **Zelená linka (Commercials / Smart Money):** Velké instituce, banky, korporace. Trh často používají k zajištění. Sledujeme u nich **obraty a extrémy**. Pokud jsou extrémně v mínusu (short) a začnou prudce růst, trh se pravděpodobně otočí nahoru.
+- **Červená linka (Non-Commercials / Spekulanti):** Hedge fondy a trend-followeři. Většinou dělají přesný opak toho, co Smart Money.
 
 **Co v grafu hledat (Roztažení gumy):**
 Nehledej překřížení nulové osy. Hledej momenty, kdy se od sebe zelená a červená linka **extrémně vzdálí**. Znamená to, že napětí na trhu je na maximu. Spekulanti sází vše na jeden směr, ale Smart Money stojí tvrdě proti nim. V 90 % případů vyhrají Smart Money a trh následně prudce změní směr.
@@ -70,14 +70,14 @@ Nehledej překřížení nulové osy. Hledej momenty, kdy se od sebe zelená a �
         "btn_rem": "REMOVE FROM WATCHLIST", 
         "succ_rem": "REMOVED.",
         "db_empty": "DATABASE IS EMPTY.",
-        "tab_chart": "📊 NET POSITIONS CHART",
-        "tab_raw": "🗄️ RAW CFTC DATA",
-        "help_title": "📖 HOW TO READ THIS CHART (HELP)",
+        "tab_chart": "NET POSITIONS CHART",
+        "tab_raw": "RAW CFTC DATA",
+        "help_title": "HOW TO READ THIS CHART (HELP)",
         "help_text": """
 **Basic Rule:** The market is a zero-sum game. Where one buys, another must sell. The Y-axis shows Net positions (Long contracts minus Short contracts).
 
-* 🟢 **Green Line (Commercials / Smart Money):** Large institutions, banks, corporations. They often use the market for hedging. We look for **reversals and extremes** here. If they are extremely negative (short) and suddenly spike upwards, the market will likely turn up.
-* 🔴 **Red Line (Non-Commercials / Speculators):** Hedge funds and trend-followers. They usually do the exact opposite of Smart Money.
+- **Green Line (Commercials / Smart Money):** Large institutions, banks, corporations. They often use the market for hedging. We look for **reversals and extremes** here. If they are extremely negative (short) and suddenly spike upwards, the market will likely turn up.
+- **Red Line (Non-Commercials / Speculators):** Hedge funds and trend-followers. They usually do the exact opposite of Smart Money.
 
 **What to look for (The Rubber Band Effect):**
 Do not look for zero-line crossovers. Look for moments when the green and red lines **diverge extremely** from each other. This means market tension is at a maximum. Speculators are betting heavily in one direction, but Smart Money is standing firmly against them. 90% of the time, Smart Money wins, and the market sharply reverses.
@@ -164,12 +164,10 @@ if vybrany_trh:
     can_plot = True
     
     try:
-        # --- AGRESIVNÍ PARSOVÁNÍ DATA ---
         date_series = None
         for col_name in ['Report_Date_as_YYYY-MM-DD', 'As of Date in Form YYYY-MM-DD', 'Report_Date_as_MM_DD_YYYY', 'As of Date in Form YYMMDD']:
             if col_name in df_market.columns:
                 if 'YYMMDD' in col_name:
-                    # Ochrana před Pandas Float Bugem (.0)
                     clean = df_market[col_name].astype(str).str.replace(r'\.0$', '', regex=True).str.zfill(6)
                     date_series = pd.to_datetime(clean, format='%y%m%d', errors='coerce')
                 else:
@@ -177,7 +175,6 @@ if vybrany_trh:
                 
                 if date_series.notna().any(): break
         
-        # Fallback vyhledávač
         if date_series is None or not date_series.notna().any():
             possible_cols = [c for c in df_market.columns if 'date' in c.lower() or 'as of' in c.lower()]
             for c in possible_cols:
@@ -197,14 +194,12 @@ if vybrany_trh:
             st.error("CHYBA: Časová osa (Datum) v datech CFTC chybí nebo je v neznámém formátu. Podívejte se do Surových dat.")
             can_plot = False
 
-        # --- AGRESIVNÍ PARSOVÁNÍ SLOUPCŮ POZIC ---
         def get_col(possible_lists, exc=[]):
             for inc in possible_lists:
                 col = next((c for c in df_market.columns if all(k in c.lower() for k in inc) and not any(k in c.lower() for k in exc)), None)
                 if col: return col
             return None
 
-        # CFTC střídá plná slova a zkratky (Commercial vs Comm, NonCommercial vs NonComm)
         c_long = get_col([['commercial', 'long', 'all'], ['comm', 'long', 'all'], ['commercial', 'long'], ['comm', 'long']], ['non'])
         c_short = get_col([['commercial', 'short', 'all'], ['comm', 'short', 'all'], ['commercial', 'short'], ['comm', 'short']], ['non'])
         nc_long = get_col([['non', 'commercial', 'long', 'all'], ['noncomm', 'long', 'all'], ['non', 'commercial', 'long'], ['noncomm', 'long']])

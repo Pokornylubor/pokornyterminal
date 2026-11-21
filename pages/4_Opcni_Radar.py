@@ -31,14 +31,14 @@ t = {
         "loading": "STAHOVÁNÍ OPČNÍHO ŘETĚZCE...",
         "err_data": "OPČNÍ DATA PRO TENTO TICKER NEJSOU DOSTUPNÁ.",
         "exp_lbl": "EXPIRAČNÍ DATUM:",
-        "bear": "🔴 BEARISH (Trh se jistí Puts)",
-        "bull": "🟢 BULLISH (Trh sází na Calls)",
-        "neut": "⚪ NEUTRÁLNÍ",
-        "no_sent": "⚪ NEDOSTATEK DAT",
-        "tab_dash": "📊 RADAR DASHBOARD",
-        "tab_raw": "🗄️ SUROVÝ OPČNÍ ŘETĚZEC (CHAIN)",
-        "wall_call": "📈 Call Wall (Rezistence)",
-        "wall_put": "📉 Put Wall (Support)",
+        "bear": "BEARISH (Trh se jistí Puts)",
+        "bull": "BULLISH (Trh sází na Calls)",
+        "neut": "NEUTRÁLNÍ",
+        "no_sent": "NEDOSTATEK DAT",
+        "tab_dash": "RADAR DASHBOARD",
+        "tab_raw": "SUROVÝ OPČNÍ ŘETĚZEC (CHAIN)",
+        "wall_call": "Call Wall (Rezistence)",
+        "wall_put": "Put Wall (Support)",
         "chart_h": "DISTRIBUCE KONTRAKTŮ (Opční Zdi)",
         "leg_call": "Calls (Rezistence)",
         "leg_put": "Puts (Support)",
@@ -57,14 +57,14 @@ t = {
         "loading": "LOADING OPTION CHAIN...",
         "err_data": "OPTIONS DATA FOR THIS TICKER NOT AVAILABLE.",
         "exp_lbl": "EXPIRATION DATE:",
-        "bear": "🔴 BEARISH (Market hedging with Puts)",
-        "bull": "🟢 BULLISH (Market betting on Calls)",
-        "neut": "⚪ NEUTRAL",
-        "no_sent": "⚪ INSUFFICIENT DATA",
-        "tab_dash": "📊 RADAR DASHBOARD",
-        "tab_raw": "🗄️ RAW OPTION CHAIN",
-        "wall_call": "📈 Call Wall (Resistance)",
-        "wall_put": "📉 Put Wall (Support)",
+        "bear": "BEARISH (Market hedging with Puts)",
+        "bull": "BULLISH (Market betting on Calls)",
+        "neut": "NEUTRAL",
+        "no_sent": "INSUFFICIENT DATA",
+        "tab_dash": "RADAR DASHBOARD",
+        "tab_raw": "RAW OPTION CHAIN",
+        "wall_call": "Call Wall (Resistance)",
+        "wall_put": "Put Wall (Support)",
         "chart_h": "CONTRACT DISTRIBUTION (Option Walls)",
         "leg_call": "Calls (Resistance)",
         "leg_put": "Puts (Support)",
@@ -104,8 +104,8 @@ c1, c2 = st.columns([4, 2])
 ph_text = "Vyhledat..." if current_lang == "CZ" else "Search..."
 ph_db = "Vybrat..." if current_lang == "CZ" else "Select..."
 
-custom_tick = c1.text_input(f"🔍 {_['custom_tick']}", placeholder=ph_text)
-sel_tick = c2.selectbox(f"📂 {_['db_select']}", all_tickers, index=None, placeholder=ph_db)
+custom_tick = c1.text_input(_["custom_tick"], placeholder=ph_text)
+sel_tick = c2.selectbox(_["db_select"], all_tickers, index=None, placeholder=ph_db)
 
 final_tick = custom_tick.upper().strip() if custom_tick.strip() else sel_tick
 
@@ -129,7 +129,6 @@ def fetch_cboe_options(ticker):
                 rows = []
                 for o in opts:
                     sym = o.get("option", "")
-                    # Formát OCC symbolu: TICKER + YYMMDD + C/P + 00000000
                     tail = sym[-15:]
                     if len(tail) == 15 and tail[6] in ("C", "P"):
                         exp_raw = tail[:6]
