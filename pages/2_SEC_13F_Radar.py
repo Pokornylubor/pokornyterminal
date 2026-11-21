@@ -211,7 +211,7 @@ def save_13f_archive(archive_list, commit_msg="13F: Aktualizace sec_13f_archive.
         json.dump(archive_list, f, indent=4, ensure_ascii=False)
     git_sync_file(ARCHIVE_13F_FILE, commit_msg)
 
-def format_aum(val):
+def format_val(val):
     if val is None or pd.isna(val) or val <= 0:
         return "N/A"
     if val >= 1e9:
@@ -283,7 +283,6 @@ def extract_fund_summary_dict(fund_name, meta, df):
     else:
         df_c["_pct"] = 0.0
 
-    total_aum = float(pd.to_numeric(df_c["Value"], errors="coerce").sum()) if "Value" in df_c.columns else 0.0
     top5 = round(float(df_c["_pct"].head(5).sum()), 2)
     top10 = round(float(df_c["_pct"].head(10).sum()), 2)
 
@@ -292,7 +291,7 @@ def extract_fund_summary_dict(fund_name, meta, df):
         rep_p = f"${float(r['ReportedPrice*']):.2f}" if pd.notna(r.get("ReportedPrice*")) else "-"
         cur_p = f"${float(r['Current Price']):.2f}" if pd.notna(r.get("Current Price")) else "-"
         diff_p = f"{float(r['+/-Reported Price']):+.1f}%" if pd.notna(r.get("+/-Reported Price")) else "-"
-        return f"{r.get(stock_col, '')} | Váha: {float(r.get('_pct', 0.0)):.2f}% | Aktivita: {r.get('RecentActivity', '')} | Hodnota: {format_aum(val_num)} | RepCena: {rep_p} | AktCena: {cur_p} ({diff_p})"
+        return f"{r.get(stock_col, '')} | Váha: {float(r.get('_pct', 0.0)):.2f}% | Aktivita: {r.get('RecentActivity', '')} | Hodnota: {format_val(val_num)} | RepCena: {rep_p} | AktCena: {cur_p} ({diff_p})"
 
     top_15 = [row_to_str(r) for _, r in df_c.head(15).iterrows()]
 
@@ -305,7 +304,6 @@ def extract_fund_summary_dict(fund_name, meta, df):
         "fund": fund_name,
         "quarter": meta.get("kvartal", "N/A"),
         "report_date": meta.get("report_date", "N/A"),
-        "total_13f_aum": format_aum(total_aum),
         "total_positions": int(len(df_c)),
         "top5_concentration_pct": top5,
         "top10_concentration_pct": top10,
@@ -351,12 +349,10 @@ def build_master_13f_aggregation(all_funds_dict, target_quarter=None):
         df_f = df.copy()
         df_f["_pct"] = pd.to_numeric(df_f.get("% of Portfolio", 0), errors="coerce").fillna(0.0)
         df_f = df_f.sort_values("_pct", ascending=False)
-        f_aum = float(pd.to_numeric(df_f["Value"], errors="coerce").sum()) if "Value" in df_f.columns else 0.0
 
         funds_meta_list.append({
             "fund": short_f,
             "quarter": meta.get("kvartal", ""),
-            "aum": format_aum(f_aum),
             "positions": len(df_f)
         })
 
@@ -364,7 +360,7 @@ def build_master_13f_aggregation(all_funds_dict, target_quarter=None):
         t3 = ", ".join([f"{r[stock_col]} {r['_pct']:.1f}%" for _, r in df_f.head(3).iterrows()])
         b3 = ", ".join([f"{r[stock_col]} ({r['RecentActivity']})" for _, r in df_f[act_s.str.contains("Buy|Add|New", case=False, na=False)].head(3).iterrows()])
         s3 = ", ".join([f"{r[stock_col]} ({r['RecentActivity']})" for _, r in df_f[act_s.str.contains("Reduce|Sell", case=False, na=False)].head(3).iterrows()])
-        funds_compact_lines.append(f"- {short_f} (AUM {format_aum(f_aum)}): Top3=[{t3}] | Nákupy=[{b3}] | Prodeje=[{s3}]")
+        funds_compact_lines.append(f"- {short_f} ({len(df_f)} pozic): Top3=[{t3}] | Nákupy=[{b3}] | Prodeje=[{s3}]")
 
         for _, r in df_f.iterrows():
             stk = str(r.get(stock_col, "")).strip()
@@ -518,17 +514,12 @@ with tab_ptf:
                     active_meta = json.load(f)
                 active_df = pd.read_csv(csv_path)
 
-                total_aum_val = float(pd.to_numeric(active_df["Value"], errors="coerce").sum()) if "Value" in active_df.columns else 0.0
-                aum_str = format_aum(total_aum_val)
-
                 rep_str = "Reported:" if current_lang == "EN" else "Zobrazen report:"
                 asof_str = "As of" if current_lang == "EN" else "Ke dni"
-                aum_lbl = "13F AUM:" if current_lang == "EN" else "Celkem ve správě (13F):"
                 last_str = "Last updated:" if current_lang == "EN" else "Naposledy staženo:"
 
                 st.info(
                     f"**{vyber.split('(')[0].strip()}** | "
-                    f"{aum_lbl} **{aum_str}** | "
                     f"{rep_str} **{active_meta.get('kvartal', '')}** ({asof_str} {active_meta.get('report_date', '')}) | "
                     f"*{last_str} {active_meta.get('last_updated', '')}*"
                 )
@@ -583,10 +574,10 @@ with tab_ai:
             datum_str = now_dt.strftime("%d. %m. %Y %H:%M")
             lang_instr = "v čisté češtině bez anglických frází" if current_lang == "CZ" else "in clean institutional English"
             prompt_13f = f"""Jsi Senior Equity Analyst & Portfolio Manager. Dnešní datum je {datum_str}.
-Na základě PŘESNĚ TĚCHTO 13F dat fondu {short_fund} (kvartál {active_meta.get('kvartal', '')}, spravovaný objem {fund_summary_dict.get('total_13f_aum', 'N/A')}) vypracuj podrobný, hloubkový institucionální report {lang_instr} (rozsah alespoň 500–700 slov, začni rovnou bodem 1, nepoužívej vymyšlená čísla ani cizí tickery):
+Na základě PŘESNĚ TĚCHTO 13F dat fondu {short_fund} (kvartál {active_meta.get('kvartal', '')}) vypracuj podrobný, hloubkový institucionální report {lang_instr} (rozsah alespoň 500–700 slov, začni rovnou bodem 1, nepoužívej vymyšlená čísla ani cizí tickery):
 
 1. **STRUKTURA PORTFOLIA, KONCENTRACE & HLAVNÍ SÁZKY**
-   - Detailně rozeber celkové spravované 13F AUM ({fund_summary_dict.get('total_13f_aum', 'N/A')}), počet pozic ({fund_summary_dict.get('total_positions', 0)}) a koncentraci v Top 5 ({fund_summary_dict.get('top5_concentration_pct', 0)} %) a Top 10 ({fund_summary_dict.get('top10_concentration_pct', 0)} %).
+   - Detailně rozeber počet pozic ({fund_summary_dict.get('total_positions', 0)}) a koncentraci v Top 5 ({fund_summary_dict.get('top5_concentration_pct', 0)} %) a Top 10 ({fund_summary_dict.get('top10_concentration_pct', 0)} %).
    - Rozeber jednotlivě 5 až 7 největších pozic v portfoliu včetně jejich přesné váhy, dolarové hodnoty a co o investičním stylu fondu vypovídají.
 
 2. **NEJDŮLEŽITĚJŠÍ NÁKUPY A NOVÉ POZICE (OFENZIVNÍ ALOKACE)**
@@ -774,7 +765,7 @@ PŘÍSNÁ PRAVIDLA KONZISTENCE:
    - Rozeber nejvíce prodávané tituly, uveď konkrétní fondy a rozliš, zda jde o částečnou redukci přerostlé pozice, nebo o kompletní výstup.
 
 4. **PŘEHLED KLÍČOVÝCH TAHŮ JEDNOTLIVÝCH MANAŽERŮ**
-   - Vypíchni nejzajímavější tahy u hlavních sledovaných fondů (včetně jejich spravovaného objemu AUM a hlavních sázek).
+   - Vypíchni nejzajímavější tahy u hlavních sledovaných fondů (včetně počtu pozic a hlavních sázek).
 
 5. **AKČNÍ VÝSTUP PRO TÝDENNÍ TRŽNÍ VÝHLED**
    - 5 konkrétních investičních tezí a titulů k hlubší fundamentální a valuační prověrce v Terminálu včetně jasného zdůvodnění.
