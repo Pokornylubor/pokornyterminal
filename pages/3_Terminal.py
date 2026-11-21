@@ -105,7 +105,7 @@ st.markdown("""
     border-bottom: 1px solid #1F2227;
 }
 
-/* STRUCTURED KEY FIGURES & STATEMENTS TABLE */
+/* STRUCTURED STATEMENTS TABLE */
 .kf-wrap {
     width: 100%;
     overflow-x: auto;
@@ -132,9 +132,6 @@ st.markdown("""
     white-space: nowrap;
 }
 .kf-table th:first-child { text-align: left; min-width: 230px; }
-.kf-table th.kf-ltm { background-color: #0E1F16; color: #22C55E; }
-.kf-table th.kf-est { color: #71717A; font-style: italic; }
-
 .kf-table td {
     text-align: right;
     padding: 8px 14px;
@@ -147,34 +144,8 @@ st.markdown("""
     font-size: 0.84rem;
 }
 .kf-table tr:hover td { background-color: rgba(255,255,255,0.025); }
-.kf-table td.kf-ltm { background-color: rgba(34,197,94,0.06); }
-.kf-table td.kf-est { color: #A1A1AA; }
-
 .kf-row-main td:first-child { color: #F4F4F5; font-weight: 600; }
 .kf-row-main td { color: #F4F4F5; font-weight: 500; }
-.kf-row-sub td:first-child { color: #8E929B; padding-left: 26px; font-size: 0.8rem; }
-.kf-row-sub td { color: #8E929B; font-size: 0.78rem; }
-
-.kf-sec-row td {
-    text-align: left !important;
-    font-family: 'JetBrains Mono', monospace !important;
-    font-size: 0.7rem !important;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    color: #71717A !important;
-    background-color: #0D0F12 !important;
-    padding: 11px 14px 7px 14px !important;
-    border-top: 1px solid #1F2227;
-    border-bottom: 1px solid #1F2227;
-}
-.kf-dot {
-    display: inline-block;
-    width: 8px;
-    height: 8px;
-    border-radius: 2px;
-    margin-right: 8px;
-    vertical-align: middle;
-}
 </style>
 """, unsafe_allow_html=True)
 
@@ -211,9 +182,6 @@ t = {
         "met_mar": "MARŽE (KASKÁDA)",
         "met_ret": "RENTABILITA",
         "met_ltm": "LTM (TTM) DATA",
-        "sec_val": "VALUATION & BALANCE",
-        "sec_inc": "INCOME STATEMENT",
-        "sec_cf": "CASH FLOW",
         "r_mcap": "Market Cap",
         "r_cash": "Cash & ST Investments",
         "r_debt": "Total Debt",
@@ -238,8 +206,6 @@ t = {
         "currency_lbl": "Měna výkazů:",
         "convert_usd": "Převést výkazy z {curr} do USD (dle historických kurzů)",
         "matrix_h": "KEY FIGURES",
-        "chart_metrics_lbl": "METRIKY V GRAFU (plné = historie · obrys = odhad)",
-        "chart_ph": "Vyberte metriky pro zobrazení grafu...",
         "arch_cnt": "mem v archivu",
         "kpi_h": "KPI Dashboard & Valuace",
         "kpi_pe": "P/E (Trailing)",
@@ -329,9 +295,6 @@ t = {
         "met_mar": "MARGINS (CASCADE)",
         "met_ret": "PROFITABILITY",
         "met_ltm": "LTM (TTM) DATA",
-        "sec_val": "VALUATION & BALANCE",
-        "sec_inc": "INCOME STATEMENT",
-        "sec_cf": "CASH FLOW",
         "r_mcap": "Market Cap",
         "r_cash": "Cash & ST Investments",
         "r_debt": "Total Debt",
@@ -356,8 +319,6 @@ t = {
         "currency_lbl": "Reporting Currency:",
         "convert_usd": "Convert statements from {curr} to USD (using historical rates)",
         "matrix_h": "KEY FIGURES",
-        "chart_metrics_lbl": "CHART METRICS (solid = history · outline = estimate)",
-        "chart_ph": "Select metrics to display chart...",
         "arch_cnt": "saved memos",
         "kpi_h": "KPI Dashboard & Valuation",
         "kpi_pe": "P/E (Trailing)",
@@ -537,7 +498,7 @@ def render_statement_html(df, unit_mode="B", rate_fn=None):
         rows_html.append(f'<tr class="kf-row-main">{"".join(tds)}</tr>')
     return f'<div class="kf-wrap"><table class="kf-table"><thead><tr>{"".join(th_cells)}</tr></thead><tbody>{"".join(rows_html)}</tbody></table></div>'
 
-# --- SEC EDGAR 10-YEAR BACKFILL (ZDARMA PRO US AKCIE) ---
+# --- SEC EDGAR 10-YEAR BACKFILL ---
 @st.cache_data(ttl=86400, show_spinner=False)
 def get_sec_cik_map():
     try:
@@ -850,7 +811,6 @@ if final_tick:
         est_col_labels = []
         last_hist_year = 2024
 
-        # 1. SEC EDGAR backfill pro starší roky (jen u ročního zobrazení v USD)
         yf_years = set()
         if not financials.empty:
             hist_cols = sorted(financials.columns)
@@ -881,7 +841,6 @@ if final_tick:
                         _["r_fcf"]: s_fcf
                     }
 
-        # 2. YFinance aktuální historie
         if not financials.empty:
             for col in sorted(financials.columns):
                 rate = get_rate(col)
@@ -916,7 +875,6 @@ if final_tick:
                     _["r_fcf"]: c_fcf * rate if c_fcf is not None else None
                 }
 
-        # 3. LTM
         if not is_quarterly:
             rate = latest_fx if convert_to_usd else 1.0
             matrix_dict["LTM"] = {
@@ -935,7 +893,6 @@ if final_tick:
                 _["r_fcf"]: fcf * rate if fcf is not None else None
             }
 
-        # 4. Odhady analytiků
         try:
             rev_est = bundle["rev_est"]
             eps_est = bundle["eps_est"]
@@ -967,109 +924,151 @@ if final_tick:
                 if p_lbl in df_matrix.index:
                     df_matrix.loc[m_lbl] = pd.to_numeric(df_matrix.loc[p_lbl], errors='coerce') / rev_series
 
-        # --- MAIN TABS (rozčleněno jako Lab) ---
+        # --- MAIN TABS ---
         tab_ov, tab_val, tab_inc, tab_bs, tab_cf, tab_ai, tab_ana, tab_news = st.tabs([
             _["tab_ov"], _["tab_val"], _["tab_inc"], _["tab_bs"], _["tab_cf"], _["tab_ai"], _["tab_ana"], _["tab_news"]
         ])
 
         with tab_ov:
-            chart_options = [m for m in [_["r_rev"], _["r_gp"], _["r_ebit"], _["r_ebitda"], _["r_ni"], _["r_ocf"], _["r_fcf"]] if m in df_matrix.index]
-            sel_metrics = st.multiselect(_["chart_metrics_lbl"], chart_options, default=[], placeholder=_["chart_ph"])
+            chart_box = st.container()
 
-            color_map = {
-                _["r_rev"]: ("#22C55E", "rgba(34,197,94,0.12)"),
-                _["r_ni"]: ("#3B82F6", "rgba(59,130,246,0.12)"),
-                _["r_gp"]: ("#14B8A6", "rgba(20,184,166,0.12)"),
-                _["r_ebit"]: ("#F97316", "rgba(249,115,22,0.12)"),
-                _["r_ebitda"]: ("#EAB308", "rgba(234,179,8,0.12)"),
-                _["r_ocf"]: ("#06B6D4", "rgba(6,182,212,0.12)"),
-                _["r_fcf"]: ("#A855F7", "rgba(168,85,247,0.12)")
-            }
-
-            if sel_metrics and not df_matrix.empty:
-                chart_cols = list(df_matrix.columns)
-                fig = go.Figure()
-                for m in sel_metrics:
-                    vals = pd.to_numeric(df_matrix.loc[m, chart_cols], errors='coerce') / unit_div
-                    solid_hex, est_fill = color_map.get(m, ("#22C55E", "rgba(34,197,94,0.12)"))
-                    bar_colors = [est_fill if c in est_col_labels else solid_hex for c in chart_cols]
-                    line_colors = [solid_hex if c in est_col_labels else "rgba(0,0,0,0)" for c in chart_cols]
-                    line_widths = [1.8 if c in est_col_labels else 0 for c in chart_cols]
-                    fmt_hover = ",.2f" if unit_mode == "B" else ",.0f"
-
-                    fig.add_trace(go.Bar(
-                        x=chart_cols, y=vals, name=m,
-                        marker=dict(color=bar_colors, line=dict(color=line_colors, width=line_widths)),
-                        hovertemplate=f"%{{x}}: %{{y:{fmt_hover}}} {unit_suffix} {display_currency}<extra>{m}</extra>"
-                    ))
-
-                fig.update_layout(
-                    template="plotly_dark", barmode="group", bargap=0.28, bargroupgap=0.08, height=300,
-                    paper_bgcolor="#0D0F12", plot_bgcolor="#0D0F12",
-                    margin=dict(l=10, r=10, t=24, b=10),
-                    xaxis=dict(showgrid=False, tickfont=dict(family="JetBrains Mono", size=11, color="#A1A1AA")),
-                    yaxis=dict(showgrid=True, gridcolor="#1F2227", ticksuffix=f" {unit_suffix}", tickfont=dict(family="JetBrains Mono", size=11, color="#71717A")),
-                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0, font=dict(family="Inter", size=12))
-                )
-                st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-
-            # --- STRUCTURED KEY FIGURES TABLE ---
-            cols = list(df_matrix.columns)
-            th_cells = [f'<th>{_["matrix_h"]} ({display_currency} {unit_suffix})</th>']
-            for c in cols:
-                cls = ' class="kf-ltm"' if c == "LTM" else (' class="kf-est"' if c in est_col_labels else '')
-                th_cells.append(f'<th{cls}>{c}</th>')
-
-            sections = [
-                (_["sec_val"], [
-                    (_["r_mcap"], False, False, True),
-                    (_["r_cash"], False, False, False),
-                    (_["r_debt"], False, False, False),
-                    (_["r_ev"], False, False, True)
-                ]),
-                (_["sec_inc"], [
-                    (_["r_rev"], False, False, True),
-                    (_["r_rev_growth"], True, False, False),
-                    (_["r_gp"], False, False, True),
-                    (_["r_gm"], True, False, False),
-                    (_["r_ebit"], False, False, True),
-                    (_["r_om"], True, False, False),
-                    (_["r_ebitda"], False, False, True),
-                    (_["r_ni"], False, False, True),
-                    (_["r_nm"], True, False, False),
-                    (_["r_eps"], False, True, True)
-                ]),
-                (_["sec_cf"], [
-                    (_["r_ocf"], False, False, True),
-                    (_["r_capex"], False, False, False),
-                    (_["r_fcf"], False, False, True),
-                    (_["r_fcfm"], True, False, False)
-                ])
+            row_defs = [
+                (_["r_mcap"], "val"),
+                (_["r_cash"], "val"),
+                (_["r_debt"], "val"),
+                (_["r_ev"], "val"),
+                (_["r_rev"], "val"),
+                (_["r_rev_growth"], "pct"),
+                (_["r_gp"], "val"),
+                (_["r_gm"], "pct"),
+                (_["r_ebit"], "val"),
+                (_["r_om"], "pct"),
+                (_["r_ebitda"], "val"),
+                (_["r_ni"], "val"),
+                (_["r_nm"], "pct"),
+                (_["r_eps"], "eps"),
+                (_["r_ocf"], "val"),
+                (_["r_capex"], "val"),
+                (_["r_fcf"], "val"),
+                (_["r_fcfm"], "pct"),
             ]
 
-            tbody_rows = []
-            colspan = len(cols) + 1
-            for sec_title, rows_cfg in sections:
-                tbody_rows.append(f'<tr class="kf-sec-row"><td colspan="{colspan}">{sec_title}</td></tr>')
-                for r_key, is_pct, is_eps, is_main in rows_cfg:
-                    if r_key not in df_matrix.index:
-                        continue
-                    tr_cls = "kf-row-main" if is_main else "kf-row-sub"
-                    dot_html = ""
-                    if r_key in sel_metrics:
-                        dot_color = color_map.get(r_key, ("#22C55E", ""))[0]
-                        dot_html = f'<span class="kf-dot" style="background-color:{dot_color};"></span>'
-                    tds = [f'<td>{dot_html}{r_key}</td>']
-                    for c in cols:
-                        val = df_matrix.loc[r_key, c]
-                        td_cls = ' class="kf-ltm"' if c == "LTM" else (' class="kf-est"' if c in est_col_labels else '')
-                        tds.append(f'<td{td_cls}>{fmt_cell(val, unit_mode=unit_mode, is_pct=is_pct, is_eps=is_eps)}</td>')
-                    tbody_rows.append(f'<tr class="{tr_cls}">{"".join(tds)}</tr>')
+            valid_rows = [(k, kind) for k, kind in row_defs if k in df_matrix.index]
+            row_names = [k for k, _ in valid_rows]
+            row_kinds = {k: kind for k, kind in valid_rows}
 
-            st.markdown(
-                f'<div class="kf-wrap"><table class="kf-table"><thead><tr>{"".join(th_cells)}</tr></thead><tbody>{"".join(tbody_rows)}</tbody></table></div>',
-                unsafe_allow_html=True
+            cols = list(df_matrix.columns)
+            disp_data = {}
+            for c in cols:
+                disp_data[c] = [
+                    fmt_cell(
+                        df_matrix.loc[k, c],
+                        unit_mode=unit_mode,
+                        is_pct=(row_kinds[k] == "pct"),
+                        is_eps=(row_kinds[k] == "eps")
+                    )
+                    for k in row_names
+                ]
+
+            df_kf = pd.DataFrame(disp_data, index=row_names)
+            df_kf.index.name = f'{_["matrix_h"]} ({display_currency} {unit_suffix})'
+
+            def style_kf(df_in):
+                styles = pd.DataFrame("", index=df_in.index, columns=df_in.columns)
+                if "LTM" in styles.columns:
+                    styles["LTM"] = "background-color: rgba(34, 197, 94, 0.10); color: #22C55E; font-weight: 600;"
+                for ec in est_col_labels:
+                    if ec in styles.columns:
+                        styles[ec] = "color: #9CA3AF; font-style: italic;"
+                return styles
+
+            st.caption("☑️ Klikněte na čtvereček vlevo u libovolné metriky pro její vykreslení do grafu." if current_lang == "CZ" else "☑️ Click the checkbox next to any metric to plot it on the chart.")
+
+            kf_event = st.dataframe(
+                df_kf.style.apply(style_kf, axis=None),
+                use_container_width=True,
+                height=min(665, 38 + len(row_names) * 35),
+                on_select="rerun",
+                selection_mode="multi-row",
+                key=f"kf_sel_{final_tick}_{period_type}_{unit_mode}"
             )
+
+            selected_idx = kf_event.selection.rows if (kf_event and kf_event.selection) else []
+            sel_metrics = [row_names[i] for i in selected_idx if i < len(row_names)]
+
+            palette = ["#22C55E", "#3B82F6", "#F97316", "#A855F7", "#14B8A6", "#EAB308", "#EC4899", "#06B6D4"]
+
+            with chart_box:
+                if sel_metrics:
+                    c_chips, c_type = st.columns([5, 1.2])
+                    chips_html = "".join([
+                        f'<span style="display:inline-flex;align-items:center;gap:6px;background:#14171C;border:1px solid #262930;border-radius:4px;padding:3px 9px;margin:0 6px 6px 0;font-family:\'JetBrains Mono\',monospace;font-size:0.76rem;color:#E4E4E7;">'
+                        f'<span style="width:8px;height:8px;border-radius:2px;background:{palette[i % len(palette)]};display:inline-block;"></span>{m}</span>'
+                        for i, m in enumerate(sel_metrics)
+                    ])
+                    c_chips.markdown(chips_html, unsafe_allow_html=True)
+                    chart_type = c_type.radio(
+                        "Typ grafu",
+                        ["Sloupce", "Linie"] if current_lang == "CZ" else ["Bar", "Line"],
+                        horizontal=True,
+                        label_visibility="collapsed",
+                        key=f"ctype_{final_tick}"
+                    )
+                    is_line = chart_type in ("Linie", "Line")
+
+                    all_pct = all(row_kinds[m] == "pct" for m in sel_metrics)
+                    all_eps = all(row_kinds[m] == "eps" for m in sel_metrics)
+
+                    fig = go.Figure()
+                    for i, m in enumerate(sel_metrics):
+                        color_hex = palette[i % len(palette)]
+                        raw_vals = pd.to_numeric(df_matrix.loc[m, cols], errors='coerce')
+                        kind = row_kinds[m]
+
+                        if kind == "pct":
+                            y_vals = raw_vals * 100
+                            hover_tpl = f"%{{x}}: %{{y:.1f}}%<extra>{m}</extra>"
+                        elif kind == "eps":
+                            y_vals = raw_vals
+                            hover_tpl = f"%{{x}}: %{{y:,.2f}} {display_currency}<extra>{m}</extra>"
+                        else:
+                            y_vals = raw_vals / unit_div
+                            fmt_h = ",.2f" if unit_mode == "B" else ",.0f"
+                            hover_tpl = f"%{{x}}: %{{y:{fmt_h}}} {unit_suffix} {display_currency}<extra>{m}</extra>"
+
+                        if is_line:
+                            fig.add_trace(go.Scatter(
+                                x=cols, y=y_vals, name=m, mode="lines+markers",
+                                line=dict(color=color_hex, width=2.5),
+                                marker=dict(size=6, color=color_hex),
+                                hovertemplate=hover_tpl
+                            ))
+                        else:
+                            est_fill = "rgba(255,255,255,0.06)"
+                            bar_colors = [est_fill if c in est_col_labels else color_hex for c in cols]
+                            line_colors = [color_hex if c in est_col_labels else "rgba(0,0,0,0)" for c in cols]
+                            line_widths = [1.8 if c in est_col_labels else 0 for c in cols]
+                            fig.add_trace(go.Bar(
+                                x=cols, y=y_vals, name=m,
+                                marker=dict(color=bar_colors, line=dict(color=line_colors, width=line_widths)),
+                                hovertemplate=hover_tpl
+                            ))
+
+                    y_suffix = "%" if all_pct else (f" {display_currency}" if all_eps else f" {unit_suffix}")
+                    fig.update_layout(
+                        template="plotly_dark",
+                        barmode="group",
+                        bargap=0.28,
+                        bargroupgap=0.08,
+                        height=300,
+                        paper_bgcolor="#0D0F12",
+                        plot_bgcolor="#0D0F12",
+                        margin=dict(l=10, r=10, t=12, b=10),
+                        showlegend=False,
+                        xaxis=dict(showgrid=False, tickfont=dict(family="JetBrains Mono", size=11, color="#A1A1AA")),
+                        yaxis=dict(showgrid=True, gridcolor="#1F2227", ticksuffix=y_suffix, tickfont=dict(family="JetBrains Mono", size=11, color="#71717A"))
+                    )
+                    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
         with tab_val:
             st.markdown(f'<div class="term-sec-label">{short_name} ({final_tick}) · {_["kpi_h"]}</div>', unsafe_allow_html=True)
