@@ -264,7 +264,7 @@ t = {
         "ai_spin": "AI analyzuje výkazy, marže a valuaci...",
         "ai_no_key": "Pro AI Analytika nastavte GROQ_API_KEY v Secrets a vyberte model v Nastavení.",
         "ai_chat_h": "KONZULTACE S AI NAD VÝKAZY",
-        "ai_chat_ph": "Zeptejte se na DCF, marže, zadlužení, valuaci nebo rizika..."
+        "ai_chat_ph": "Vyhledat..."
     },
     "EN": {
         "title": "DEEP INSTITUTIONAL TERMINAL",
@@ -377,7 +377,7 @@ t = {
         "ai_spin": "AI is analyzing statements, margins and valuation...",
         "ai_no_key": "Configure GROQ_API_KEY in Secrets and select a model in Settings to use AI Analyst.",
         "ai_chat_h": "AI FUNDAMENTAL CONSULTATION",
-        "ai_chat_ph": "Ask about DCF, margins, leverage, valuation, or risks..."
+        "ai_chat_ph": "Search..."
     }
 }
 _ = t.get(current_lang, t["CZ"])
@@ -458,19 +458,35 @@ if final_tick != st.session_state.term_ai_ticker:
     st.session_state.term_ai_saved_id = None
     st.session_state.term_ai_chat = []
 
-def call_llm_api(messages, api_klic, provider, model_name, temperature=0.2, timeout=30):
+def call_llm_api(messages, api_klic, provider, model_name, temperature=0.2, timeout=30, max_tokens=850):
     url = "https://api.groq.com/openai/v1/chat/completions" if provider == "Groq" else "https://api.openai.com/v1/chat/completions"
-    payload = json.dumps({"model": model_name, "messages": messages, "temperature": temperature}).encode("utf-8")
-    req = urllib.request.Request(
-        url, data=payload,
-        headers={"Authorization": f"Bearer {api_klic}", "Content-Type": "application/json", "User-Agent": random.choice(USER_AGENTS)},
-        method="POST"
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return json.loads(resp.read().decode("utf-8"))["choices"][0]["message"]["content"]
-    except urllib.error.HTTPError as e:
-        raise RuntimeError(f"HTTP {e.code}: {e.read().decode('utf-8', errors='ignore')[:250]}")
+    models_to_try = [model_name]
+    if provider == "Groq" and model_name != "llama-3.3-70b-versatile":
+        models_to_try.append("llama-3.3-70b-versatile")
+
+    last_err = ""
+    for mdl in models_to_try:
+        payload = json.dumps({
+            "model": mdl,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            url, data=payload,
+            headers={"Authorization": f"Bearer {api_klic}", "Content-Type": "application/json", "User-Agent": random.choice(USER_AGENTS)},
+            method="POST"
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return json.loads(resp.read().decode("utf-8"))["choices"][0]["message"]["content"]
+        except urllib.error.HTTPError as e:
+            err_txt = e.read().decode("utf-8", errors="ignore")[:250]
+            last_err = f"HTTP {e.code}: {err_txt}"
+            if e.code == 429 and mdl != models_to_try[-1]:
+                continue
+            raise RuntimeError(last_err)
+    raise RuntimeError(last_err)
 
 def fmt_cell(val, unit_mode="B", is_pct=False, is_eps=False):
     if val is None or pd.isna(val): return "—"
@@ -746,16 +762,12 @@ if final_tick:
             return None
 
         total_rev_ltm = info.get("totalRevenue") or get_ltm_from_quarterly(q_fin_for_kpi, ['Total Revenue'])
-        
         gm_info = info.get("grossMargins")
         gross_profit_ltm = (total_rev_ltm * gm_info) if (total_rev_ltm and gm_info) else get_ltm_from_quarterly(q_fin_for_kpi, ['Gross Profit'])
-        
         om_info = info.get("operatingMargins")
         op_inc_ltm = (total_rev_ltm * om_info) if (total_rev_ltm and om_info) else get_ltm_from_quarterly(q_fin_for_kpi, ['Operating Income', 'EBIT'])
-        
         net_income_ltm = info.get("netIncomeToCommon") or info.get("netIncome") or get_ltm_from_quarterly(q_fin_for_kpi, ['Net Income', 'Net Income Common Stockholders'])
         ebitda_ltm = info.get("ebitda") or get_ltm_from_quarterly(q_fin_for_kpi, ['Normalized EBITDA', 'EBITDA'])
-        
         ocf_ltm = info.get("operatingCashflow") or get_ltm_from_quarterly(q_cf_for_kpi, ['Operating Cash Flow'])
         capex_ltm = get_ltm_from_quarterly(q_cf_for_kpi, ['Capital Expenditure'])
 
@@ -1174,7 +1186,7 @@ Používej výhradně tato data:
 {kpi_json_str}"""
                     with st.spinner(_["ai_spin"]):
                         try:
-                            memo_txt = call_llm_api([{"role": "user", "content": memo_prompt}], api_key, model_provider, selected_model, temperature=0.2, timeout=35)
+                            memo_txt = call_llm_api([{"role": "user", "content": memo_prompt}], api_key, model_provider, selected_model, temperature=0.2, timeout=35, max_tokens=1100)
                             rep_id = f"{now_dt.strftime('%Y%m%d_%H%M%S')}_MEMO_{final_tick}"
                             st.session_state.term_ai_memo_obj = {
                                 "id": rep_id,
@@ -1236,13 +1248,20 @@ Používej výhradně tato data:
                         st.markdown(q_term)
                     with st.chat_message("assistant"):
                         with st.spinner(_["ai_spin"]):
-                            lang_reply = "Odpovídej čistou češtinou." if current_lang == "CZ" else "Answer in clean English."
-                            memo_ctx = st.session_state.term_ai_memo_obj.get("obsah", "") if st.session_state.term_ai_memo_obj else ""
-                            msgs = [{"role": "system", "content": f"Jsi Senior Equity Analyst. Máš přesná finanční data firmy {short_name} ({final_tick}): {kpi_json_str}. Vygenerované investiční memo: {memo_ctx}. Odpovídej konkrétně a opírej se o čísla. {lang_reply}"}]
-                            for m in st.session_state.term_ai_chat[:-1]:
+                            lang_reply = "Odpovídej čistou češtinou, stručně a k věci." if current_lang == "CZ" else "Answer in clean, concise English."
+                            compact_kpi = {
+                                "company": f"{short_name} ({final_tick})",
+                                "price": f"{curr_price} {trading_currency}",
+                                "PE": pe, "Forward_PE": fwd_pe, "PEG": peg, "EV_EBITDA": ev_ebitda, "P_FCF": p_fcf,
+                                "Gross_Margin": gross_margin, "Operating_Margin": op_margin, "Net_Margin": profit_margin,
+                                "ROE": roe, "ROIC": roic, "Debt_to_Equity": calc_debt_eq, "Current_Ratio": current_ratio,
+                                "LTM_Revenue": total_rev_ltm, "LTM_Net_Income": net_income_ltm, "LTM_FCF": fcf
+                            }
+                            msgs = [{"role": "system", "content": f"Jsi Senior Equity Analyst. Data: {json.dumps(compact_kpi, default=str)}. {lang_reply}"}]
+                            for m in st.session_state.term_ai_chat[-6:-1]:
                                 msgs.append({"role": m["role"], "content": m["content"]})
                             msgs.append({"role": "user", "content": q_term})
-                            try: ans = call_llm_api(msgs, api_key, model_provider, selected_model, temperature=0.25, timeout=25)
+                            try: ans = call_llm_api(msgs, api_key, model_provider, selected_model, temperature=0.25, timeout=25, max_tokens=650)
                             except Exception as e: ans = f"⚠️ AI Error ({e})."
                             st.markdown(ans)
                     if not ans.startswith("⚠️"):
