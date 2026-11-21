@@ -3,6 +3,7 @@ import pandas as pd
 import yfinance as yf
 import os
 import sys
+import math
 import calendar
 import requests
 import plotly.graph_objects as go
@@ -239,16 +240,15 @@ def safe_iloc(df, steps_back):
 def fetch_cme_fedwatch_data():
     """
     Přesná replika CME FedWatch:
-    1. Určí aktuální cílové pásmo z aktuálního měsíčního ZQ kontraktu (kde v měsíci bez FOMC leží EFFR na středu pásma).
-    2. Pro vybrané FOMC zasedání stáhne příslušný měsíční ZQ kontrakt (a předchozí měsíc).
-    3. Spočítá vážený průměr dnů v měsíci před rozhodnutím FOMC a po něm (změna platí den po zasedání).
+    1. Použije reálnou nezaokrouhlenou EFFR z předchozího měsíce bez FOMC (např. ZQX26.CBT ~ 3.883 %), ne umělý střed 3.875 %.
+    2. Spočítá r_end z váženého průměru dnů před a po zasedání FOMC.
+    3. Posun (delta = r_end - base_effr) převede na počet 25 bps kroků od aktuálního pásma.
     """
     today = datetime.now()
     future_meetings = [d for d in FOMC_DATES if d.date() >= today.date()]
     if not future_meetings:
         return None
 
-    # Stáhneme futures pro aktuální měsíc a pro následujících 6 zasedání
     months_needed = {(today.year, today.month)}
     for m_dt in future_meetings[:6]:
         months_needed.add((m_dt.year, m_dt.month))
@@ -268,16 +268,14 @@ def fetch_cme_fedwatch_data():
     if not zq_hist:
         return None
 
-    # Určení aktuálního cílového pásma Fedu (zaokrouhleno na nejbližší 0.25 % pásmo kolem EFFR)
     curr_series = zq_hist.get((today.year, today.month))
     if curr_series is None or curr_series.empty:
         first_key = sorted(zq_hist.keys())[0]
         curr_series = zq_hist[first_key]
     effr_now = float(curr_series.iloc[-1])
 
-    # Pásmo má šířku 0.25 %, střed je lower + 0.125 -> lower = round((effr - 0.125) / 0.25) * 0.25
+    # Aktuální cílové pásmo (např. 3.75 - 4.00)
     curr_lower = round((effr_now - 0.125) / 0.25) * 0.25
-    curr_mid = curr_lower + 0.125
 
     def get_rate_at_offset(series, offset):
         if series is None or series.empty:
@@ -289,7 +287,10 @@ def fetch_cme_fedwatch_data():
         return float(series.iloc[0])
 
     meetings_output = []
-    running_mids = {0: curr_mid, 1: curr_mid, 5: curr_mid, 21: curr_mid}
+    running_rates = {
+        off: get_rate_at_offset(curr_series, off) or effr_now
+        for off in (0, 1, 5, 21)
+    }
 
     for mtg in future_meetings[:6]:
         s_mtg = zq_hist.get((mtg.year, mtg.month))
@@ -297,11 +298,9 @@ def fetch_cme_fedwatch_data():
             continue
 
         days_in_month = calendar.monthrange(mtg.year, mtg.month)[1]
-        # Zasedání končí v den mtg.day; nová sazba vstupuje v platnost následující den
         days_before = mtg.day
         days_after = days_in_month - days_before
 
-        # Zjistíme, zda v témže měsíci nebylo dřívější zasedání (zpravidla není, FOMC zasedá 8x ročně)
         prev_m_dt = mtg.replace(day=1) - timedelta(days=1)
         s_prev = zq_hist.get((prev_m_dt.year, prev_m_dt.month))
 
@@ -311,49 +310,37 @@ def fetch_cme_fedwatch_data():
             if r_month is None:
                 continue
 
-            # Počáteční sazba před tímto zasedáním
-            if (mtg.year, mtg.month) == (today.year, today.month) and off == 0:
-                r_start = curr_mid
-            elif s_prev is not None and not s_prev.empty:
-                r_prev_val = get_rate_at_offset(s_prev, off)
-                # Zaokrouhlíme předchozí měsíc na nejbližší 25bps střed pásma (pokud v předchozím měsíci nebylo FOMC, rovná se přesně středu)
-                r_start = round((r_prev_val - 0.125) / 0.25) * 0.25 + 0.125
+            if s_prev is not None and not s_prev.empty:
+                r_start = get_rate_at_offset(s_prev, off)
             else:
-                r_start = running_mids[off]
+                r_start = running_rates[off]
 
-            # CME rovnice: r_month = (days_before * r_start + days_after * r_end) / days_in_month
             if days_after > 0:
                 r_end = (r_month * days_in_month - days_before * r_start) / days_after
             else:
                 r_end = r_month
 
-            running_mids[off] = r_end
+            running_rates[off] = r_end
 
-            # Převod r_end na pravděpodobnosti sousedních 25 bps pásem (CME Binomický strom)
-            end_lower = (r_end // 0.25) * 0.25
-            end_mid_low = end_lower + 0.125
-            if r_end >= end_mid_low:
-                b1_low = end_lower
-                b2_low = end_lower + 0.25
-                p2 = (r_end - end_mid_low) / 0.25
-                p1 = 1.0 - p2
-            else:
-                b1_low = end_lower - 0.25
-                b2_low = end_lower
-                p2 = (r_end - (b1_low + 0.125)) / 0.25
-                p1 = 1.0 - p2
+            base_effr = get_rate_at_offset(curr_series, off) or effr_now
+            steps = (r_end - base_effr) / 0.25
 
-            p1 = max(0.0, min(1.0, p1)) * 100.0
-            p2 = max(0.0, min(1.0, p2)) * 100.0
+            k_low = math.floor(steps)
+            k_high = k_low + 1
+            p_high = (steps - k_low) * 100.0
+            p_low = 100.0 - p_high
 
-            lbl1 = f"{int(round(b1_low*100))}-{int(round((b1_low+0.25)*100))}"
-            lbl2 = f"{int(round(b2_low*100))}-{int(round((b2_low+0.25)*100))}"
-            snap_probs[off] = {lbl1: p1, lbl2: p2}
+            b1_low = curr_lower + k_low * 0.25
+            b2_low = curr_lower + k_high * 0.25
+
+            lbl1 = f"{int(round(b1_low * 100))}-{int(round((b1_low + 0.25) * 100))}"
+            lbl2 = f"{int(round(b2_low * 100))}-{int(round((b2_low + 0.25) * 100))}"
+            snap_probs[off] = {lbl1: p_low, lbl2: p_high}
 
         meetings_output.append({
             "date": mtg,
             "date_str": mtg.strftime("%d. %m. %Y"),
-            "curr_bracket": f"{int(round(curr_lower*100))}-{int(round((curr_lower+0.25)*100))}",
+            "curr_bracket": f"{int(round(curr_lower * 100))}-{int(round((curr_lower + 0.25) * 100))}",
             "curr_lower": curr_lower,
             "probs": snap_probs
         })
