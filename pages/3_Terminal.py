@@ -9,6 +9,7 @@ import requests
 import urllib.request
 import urllib.error
 import xml.etree.ElementTree as ET
+from datetime import datetime
 import plotly.graph_objects as go
 
 # --- INITIAL SETUP ---
@@ -37,13 +38,46 @@ def get_headers():
         "Accept-Language": "en-US,en;q=0.9"
     }
 
-# --- CLEAN EDITORIAL CSS ---
+# --- INSTITUTIONAL DARK CSS ---
 st.markdown("""
 <style>
-@import url('[https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap](https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap)');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 .stApp { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
 
+.term-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 14px 20px;
+    background-color: #0D0F12;
+    border: 1px solid #1F2227;
+    border-radius: 6px;
+    margin: 12px 0 18px 0;
+}
+.term-co-name {
+    font-size: 1.45rem;
+    font-weight: 700;
+    color: #F4F4F5;
+    letter-spacing: -0.02em;
+}
+.term-co-tick {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.9rem;
+    color: #71717A;
+    margin-left: 10px;
+}
+.term-co-stats {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    color: #71717A;
+}
+.term-co-stats b {
+    color: #F4F4F5;
+    font-weight: 600;
+}
 .term-sec-label {
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.74rem;
@@ -60,6 +94,11 @@ st.markdown("""
     border: 1px solid #1F2227;
     border-radius: 6px;
     margin: 14px 0 22px 0;
+}
+/* Monospace zarovnání čísel v tabulce výkazů */
+div[data-testid="stTable"] table {
+    font-family: 'JetBrains Mono', monospace !important;
+    font-size: 0.84rem !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -78,7 +117,7 @@ t = {
         "quarterly": "Kvartální (Quarterly)",
         "loading": "STAHOVÁNÍ VÝKAZŮ...",
         "err_data": "DATA PRO TENTO TICKER NEJSOU DOSTUPNÁ.",
-        "tab_matrix": "FINANČNÍ MATICE & VÝHLED",
+        "tab_matrix": "FINANČNÍ MATICE & GRAFY",
         "tab_val": "VALUACE & KPI",
         "tab_ai": "AI ANALYTIK",
         "tab_ana": "ANALYTICI & KONSENZUS",
@@ -100,16 +139,17 @@ t = {
         "r_rev_growth": " ↳ Meziroční růst tržeb (YoY)",
         "r_gp": "Hrubý zisk (Gross Profit)",
         "r_gm": " ↳ Hrubá marže (Gross Margin)",
-        "r_ebit": "Provozní zisk (Operating Income / EBIT)",
+        "r_ebit": "Provozní zisk (EBIT)",
         "r_om": " ↳ Provozní marže (Operating Margin)",
         "r_ni": "Čistý zisk (Net Income)",
         "r_nm": " ↳ Čistá marže (Net Margin)",
         "r_eps": "Zisk na akcii (EPS)",
-        "r_fcf": "Volné cash flow (Free Cash Flow)",
+        "r_fcf": "Volné cash flow (FCF)",
         "r_fcfm": " ↳ FCF marže",
         "currency_lbl": "Měna výkazů:",
         "convert_usd": "Převést výkazy z {curr} do USD (dle historických kurzů)",
-        "matrix_h": "Finanční časová osa",
+        "matrix_h": "KLÍČOVÉ FINANČNÍ UKAZATELE",
+        "chart_metrics_lbl": "METRIKY V GRAFU (plné = historie · obrys = odhad)",
         "kpi_h": "KPI Dashboard",
         "kpi_pe": "P/E (Trailing)",
         "kpi_fpe": "Forward P/E",
@@ -162,9 +202,7 @@ t = {
         "ai_spin": "AI analyzuje výkazy, marže a valuaci...",
         "ai_no_key": "Pro AI Analytika nastavte GROQ_API_KEY v Secrets a vyberte model v Nastavení.",
         "ai_chat_h": "KONZULTACE S AI NAD VÝKAZY",
-        "ai_chat_ph": "Zeptejte se na DCF, marže, zadlužení, valuaci nebo rizika...",
-        "chart_rev_h": "TRŽBY · ČISTÝ ZISK · FREE CASH FLOW",
-        "chart_mar_h": "VÝVOJ MARŽÍ (%)"
+        "ai_chat_ph": "Zeptejte se na DCF, marže, zadlužení, valuaci nebo rizika..."
     },
     "EN": {
         "title": "DEEP INSTITUTIONAL TERMINAL",
@@ -176,7 +214,7 @@ t = {
         "quarterly": "Quarterly",
         "loading": "LOADING STATEMENTS...",
         "err_data": "DATA FOR THIS TICKER NOT AVAILABLE.",
-        "tab_matrix": "FINANCIAL MATRIX & OUTLOOK",
+        "tab_matrix": "FINANCIAL MATRIX & CHARTS",
         "tab_val": "VALUATION & KPIs",
         "tab_ai": "AI ANALYST",
         "tab_ana": "ANALYSTS & CONSENSUS",
@@ -207,7 +245,8 @@ t = {
         "r_fcfm": " ↳ FCF Margin",
         "currency_lbl": "Reporting Currency:",
         "convert_usd": "Convert statements from {curr} to USD (using historical rates)",
-        "matrix_h": "Financial Timeline",
+        "matrix_h": "KEY FINANCIAL FIGURES",
+        "chart_metrics_lbl": "CHART METRICS (solid = history · outline = estimate)",
         "kpi_h": "KPI Dashboard",
         "kpi_pe": "P/E (Trailing)",
         "kpi_fpe": "Forward P/E",
@@ -260,9 +299,7 @@ t = {
         "ai_spin": "AI is analyzing statements, margins and valuation...",
         "ai_no_key": "Configure GROQ_API_KEY in Secrets and select a model in Settings to use AI Analyst.",
         "ai_chat_h": "AI FUNDAMENTAL CONSULTATION",
-        "ai_chat_ph": "Ask about DCF, margins, leverage, valuation, or risks...",
-        "chart_rev_h": "REVENUE · NET INCOME · FREE CASH FLOW",
-        "chart_mar_h": "MARGIN TRENDS (%)"
+        "ai_chat_ph": "Ask about DCF, margins, leverage, valuation, or risks..."
     }
 }
 _ = t.get(current_lang, t["CZ"])
@@ -314,7 +351,7 @@ if final_tick != st.session_state.term_ai_ticker:
 
 # --- NATIVE URLLIB AI CALL ---
 def call_llm_api(messages, api_klic, provider, model_name, temperature=0.2, timeout=30):
-    url = "[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)" if provider == "Groq" else "[https://api.openai.com/v1/chat/completions](https://api.openai.com/v1/chat/completions)"
+    url = "https://api.groq.com/openai/v1/chat/completions" if provider == "Groq" else "https://api.openai.com/v1/chat/completions"
     payload = json.dumps({
         "model": model_name,
         "messages": messages,
@@ -348,7 +385,7 @@ def format_val(val, currency_code, is_pct=False, is_eps=False, force_currency=Fa
     if abs(val) >= 1e6: return f"{val / 1e6:,.2f} M" + (f" {currency_code}" if force_currency else "")
     return f"{val:,.2f}" + (f" {currency_code}" if force_currency else "")
 
-# --- CACHED YFINANCE BUNDLE (zabraňuje blokaci při přepínání záložek a chatu) ---
+# --- CACHED YFINANCE BUNDLE ---
 @st.cache_data(ttl=900, show_spinner=False)
 def load_ticker_bundle(ticker):
     tkr = yf.Ticker(ticker)
@@ -357,7 +394,7 @@ def load_ticker_bundle(ticker):
         "fin_a": pd.DataFrame(), "fin_q": pd.DataFrame(),
         "cf_a": pd.DataFrame(), "cf_q": pd.DataFrame(),
         "bs": pd.DataFrame(), "rev_est": None, "eps_est": None,
-        "cal": None, "eh": None
+        "cal": None, "eh": None, "edates": None
     }
     try: bundle["info"] = tkr.info or {}
     except Exception: pass
@@ -385,21 +422,20 @@ def load_ticker_bundle(ticker):
     except Exception: pass
     try: bundle["eh"] = tkr.earnings_history
     except Exception: pass
+    try: bundle["edates"] = tkr.earnings_dates
+    except Exception: pass
     return bundle
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def load_fx_history(currency_code):
-    try:
-        return yf.Ticker(f"{currency_code}USD=X").history(period="10y")
-    except Exception:
-        return pd.DataFrame()
+    try: return yf.Ticker(f"{currency_code}USD=X").history(period="10y")
+    except Exception: return pd.DataFrame()
 
 @st.cache_data(ttl=900, show_spinner=False)
 def fetch_ticker_news(ticker):
     articles = []
-    # 1. Google News RSS
     try:
-        rss_url = f"[https://news.google.com/rss/search?q=](https://news.google.com/rss/search?q=){ticker}+stock+news&hl=en-US&gl=US&ceid=US:en"
+        rss_url = f"https://news.google.com/rss/search?q={ticker}+stock+news&hl=en-US&gl=US&ceid=US:en"
         rss_resp = requests.get(rss_url, headers=get_headers(), timeout=8)
         if rss_resp.status_code == 200:
             root = ET.fromstring(rss_resp.content)
@@ -412,14 +448,11 @@ def fetch_ticker_news(ticker):
                 try: dt_str = pd.to_datetime(pubDate).strftime("%d. %m. %Y %H:%M")
                 except Exception: dt_str = pubDate[:22] if len(pubDate) > 22 else pubDate
                 articles.append({"title": title, "link": link, "date": dt_str, "publisher": publisher})
-            if articles:
-                return articles
-    except Exception:
-        pass
+            if articles: return articles
+    except Exception: pass
 
-    # 2. Yahoo Finance RSS fallback
     try:
-        yf_rss = f"[https://feeds.finance.yahoo.com/rss/2.0/headline?s=](https://feeds.finance.yahoo.com/rss/2.0/headline?s=){ticker}®ion=US&lang=en-US"
+        yf_rss = f"https://feeds.finance.yahoo.com/rss/2.0/headline?s={ticker}®ion=US&lang=en-US"
         r2 = requests.get(yf_rss, headers=get_headers(), timeout=8)
         if r2.status_code == 200:
             root = ET.fromstring(r2.content)
@@ -430,12 +463,9 @@ def fetch_ticker_news(ticker):
                 try: dt_str = pd.to_datetime(pubDate).strftime("%d. %m. %Y %H:%M")
                 except Exception: dt_str = pubDate[:22] if len(pubDate) > 22 else pubDate
                 articles.append({"title": title, "link": link, "date": dt_str, "publisher": "Yahoo Finance"})
-            if articles:
-                return articles
-    except Exception:
-        pass
+            if articles: return articles
+    except Exception: pass
 
-    # 3. yfinance.news fallback
     try:
         yf_news = yf.Ticker(ticker).news
         if yf_news:
@@ -447,9 +477,7 @@ def fetch_ticker_news(ticker):
                 if title:
                     dt_str = pubDate[:16].replace("T", " ") if isinstance(pubDate, str) and len(pubDate) > 16 else str(pubDate)
                     articles.append({"title": title, "link": link, "date": dt_str, "publisher": "Yahoo Finance"})
-    except Exception:
-        pass
-
+    except Exception: pass
     return articles
 
 if final_tick:
@@ -477,6 +505,16 @@ if final_tick:
         currency_code = info.get("financialCurrency") or info.get("currency") or fast.get("currency") or "USD"
         trading_currency = info.get("currency") or fast.get("currency") or "USD"
 
+        # --- INSTITUTIONAL TOP BAR (jako na screenshotu) ---
+        mcap_str = f"{market_cap/1e9:,.2f}B {trading_currency}" if (market_cap and market_cap >= 1e9) else (f"{market_cap/1e6:,.1f}M {trading_currency}" if market_cap else "N/A")
+        st.markdown(
+            f'<div class="term-topbar">'
+            f'<div><span class="term-co-name">{short_name}</span><span class="term-co-tick">{final_tick}</span></div>'
+            f'<div class="term-co-stats">last close <b>{curr_price:,.2f} {trading_currency}</b>   ·   mkt cap <b>{mcap_str}</b></div>'
+            f'</div>',
+            unsafe_allow_html=True
+        )
+
         # --- FX TRANSLATION ---
         convert_to_usd = False
         display_currency = currency_code
@@ -488,8 +526,7 @@ if final_tick:
             if convert_to_usd:
                 display_currency = "USD"
                 fx_hist = load_fx_history(currency_code)
-                if not fx_hist.empty:
-                    latest_fx = float(fx_hist['Close'].iloc[-1])
+                if not fx_hist.empty: latest_fx = float(fx_hist['Close'].iloc[-1])
 
         def get_rate(d):
             if not convert_to_usd: return 1.0
@@ -571,19 +608,19 @@ if final_tick:
             try:
                 ebit = financials.loc['EBIT'].iloc[0] if 'EBIT' in financials.index else (financials.loc['Operating Income'].iloc[0] if 'Operating Income' in financials.index else 0)
                 if ebit: roce = float(ebit) / capital_employed
-            except Exception:
-                pass
+            except Exception: pass
         if net_income_ltm and total_assets > 0: roi = net_income_ltm / total_assets
 
         # Build matrix
         matrix_dict = {}
+        est_col_labels = []
         last_hist_year = 2024
         if not financials.empty:
             hist_cols = sorted(financials.columns)
             last_hist_year = hist_cols[-1].year
             for col in hist_cols:
                 rate = get_rate(col)
-                col_label = f"{col.year}-Q{col.quarter}" if is_quarterly else str(col.year)
+                col_label = f"{col.year}-Q{col.quarter}" if is_quarterly else f"FY{col.year}"
                 matrix_dict[col_label] = {}
                 rev = financials.loc["Total Revenue", col] if "Total Revenue" in financials.index else None
                 matrix_dict[col_label][_["r_rev"]] = (rev * rate) if pd.notna(rev) else None
@@ -616,8 +653,9 @@ if final_tick:
         try:
             rev_est = bundle["rev_est"]
             eps_est = bundle["eps_est"]
-            est_keys = [("0q", _["est_q1"]), ("+1q", _["est_q2"])] if is_quarterly else [("0y", f"{last_hist_year + 1}E"), ("+1y", f"{last_hist_year + 2}E")]
+            est_keys = [("0q", _["est_q1"]), ("+1q", _["est_q2"])] if is_quarterly else [("0y", f"FY{last_hist_year + 1}E"), ("+1y", f"FY{last_hist_year + 2}E")]
             for k, label in est_keys:
+                est_col_labels.append(label)
                 rate = latest_fx if convert_to_usd else 1.0
                 e_val = eps_est.loc[k, "avg"] if (eps_est is not None and not eps_est.empty and k in eps_est.index and "avg" in eps_est.columns) else None
                 r_val = rev_est.loc[k, "avg"] if (rev_est is not None and not rev_est.empty and k in rev_est.index and "avg" in rev_est.columns) else None
@@ -652,48 +690,58 @@ if final_tick:
             is_eps = (r == _["r_eps"])
             df_display.loc[r] = df_display.loc[r].apply(lambda x: format_val(x, display_currency, is_pct=is_pct, is_eps=is_eps, force_currency=(not is_pct and not is_eps)))
 
-        st.markdown("---")
         tab_matrix, tab_val, tab_ai, tab_ana, tab_earn, tab_news, tab_raw = st.tabs([
             _["tab_matrix"], _["tab_val"], _["tab_ai"], _["tab_ana"], _["tab_earn"], _["tab_news"], _["tab_raw"]
         ])
 
         with tab_matrix:
+            # --- PROFI GRAF PŘÍMO NAD TABULKOU (plné sloupce = historie, obrys = odhad) ---
+            chart_options = [m for m in [_["r_rev"], _["r_ni"], _["r_ebit"], _["r_fcf"]] if m in df_matrix.index]
+            default_sel = [m for m in [_["r_rev"], _["r_ni"]] if m in chart_options]
+            sel_metrics = st.multiselect(_["chart_metrics_lbl"], chart_options, default=default_sel)
+
+            color_map = {
+                _["r_rev"]: ("#22C55E", "rgba(34,197,94,0.12)"),
+                _["r_ni"]: ("#3B82F6", "rgba(59,130,246,0.12)"),
+                _["r_ebit"]: ("#F97316", "rgba(249,115,22,0.12)"),
+                _["r_fcf"]: ("#A855F7", "rgba(168,85,247,0.12)")
+            }
+
+            if sel_metrics and not df_matrix.empty:
+                chart_cols = list(df_matrix.columns)
+                fig = go.Figure()
+                for m in sel_metrics:
+                    vals = pd.to_numeric(df_matrix.loc[m, chart_cols], errors='coerce')
+                    solid_hex, est_fill = color_map.get(m, ("#22C55E", "rgba(34,197,94,0.12)"))
+                    bar_colors = [est_fill if c in est_col_labels else solid_hex for c in chart_cols]
+                    line_colors = [solid_hex if c in est_col_labels else "rgba(0,0,0,0)" for c in chart_cols]
+                    line_widths = [1.8 if c in est_col_labels else 0 for c in chart_cols]
+
+                    fig.add_trace(go.Bar(
+                        x=chart_cols,
+                        y=vals,
+                        name=m,
+                        marker=dict(color=bar_colors, line=dict(color=line_colors, width=line_widths)),
+                        hovertemplate="%{x}: %{y:,.2s} " + display_currency + "<extra>" + m + "</extra>"
+                    ))
+
+                fig.update_layout(
+                    template="plotly_dark",
+                    barmode="group",
+                    bargap=0.28,
+                    bargroupgap=0.08,
+                    height=310,
+                    paper_bgcolor="#0D0F12",
+                    plot_bgcolor="#0D0F12",
+                    margin=dict(l=10, r=10, t=24, b=10),
+                    xaxis=dict(showgrid=False, tickfont=dict(family="JetBrains Mono", size=11, color="#A1A1AA")),
+                    yaxis=dict(showgrid=True, gridcolor="#1F2227", tickfont=dict(family="JetBrains Mono", size=11, color="#71717A")),
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0, font=dict(family="Inter", size=12))
+                )
+                st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+
             st.markdown(f'<div class="term-sec-label">{_["matrix_h"]} · {_["currency_lbl"]} {display_currency}</div>', unsafe_allow_html=True)
             st.table(df_display)
-
-            chart_cols = [c for c in df_matrix.columns if c != "LTM"]
-            if chart_cols and _["r_rev"] in df_matrix.index:
-                ch1, ch2 = st.columns(2)
-                with ch1:
-                    st.markdown(f'<div class="term-sec-label">{_["chart_rev_h"]} ({display_currency})</div>', unsafe_allow_html=True)
-                    fig1 = go.Figure()
-                    for row_lbl, color_hex in [(_["r_rev"], "#3B82F6"), (_["r_ni"], "#22C55E"), (_["r_fcf"], "#F97316")]:
-                        if row_lbl in df_matrix.index:
-                            vals = pd.to_numeric(df_matrix.loc[row_lbl, chart_cols], errors='coerce')
-                            fig1.add_trace(go.Bar(x=chart_cols, y=vals, name=row_lbl, marker_color=color_hex))
-                    fig1.update_layout(
-                        template="plotly_dark", barmode="group", height=340,
-                        paper_bgcolor="#0D0F12", plot_bgcolor="#0D0F12",
-                        margin=dict(l=10, r=10, t=20, b=10),
-                        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0)
-                    )
-                    st.plotly_chart(fig1, use_container_width=True, config={'displayModeBar': False})
-
-                with ch2:
-                    st.markdown(f'<div class="term-sec-label">{_["chart_mar_h"]}</div>', unsafe_allow_html=True)
-                    fig2 = go.Figure()
-                    for row_lbl, color_hex in [(_["r_gm"], "#22C55E"), (_["r_om"], "#3B82F6"), (_["r_nm"], "#F97316"), (_["r_fcfm"], "#A855F7")]:
-                        if row_lbl in df_matrix.index:
-                            vals = pd.to_numeric(df_matrix.loc[row_lbl, chart_cols], errors='coerce') * 100
-                            fig2.add_trace(go.Scatter(x=chart_cols, y=vals, mode="lines+markers", name=row_lbl.replace(" ↳ ", ""), line=dict(color=color_hex, width=2.5)))
-                    fig2.update_layout(
-                        template="plotly_dark", height=340,
-                        paper_bgcolor="#0D0F12", plot_bgcolor="#0D0F12",
-                        margin=dict(l=10, r=10, t=20, b=10),
-                        yaxis_ticksuffix="%",
-                        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0)
-                    )
-                    st.plotly_chart(fig2, use_container_width=True, config={'displayModeBar': False})
 
         with tab_val:
             st.markdown(f'<div class="term-sec-label">{short_name} ({final_tick}) · {_["kpi_h"]}</div>', unsafe_allow_html=True)
@@ -820,8 +868,22 @@ Používej výhradně tato data:
         with tab_earn:
             st.subheader(_["earn_next_h"])
             try:
+                today_d = datetime.now().date()
+                next_date = None
                 cal = bundle["cal"]
-                next_date = cal['Earnings Date'][0] if (isinstance(cal, dict) and 'Earnings Date' in cal and len(cal['Earnings Date']) > 0) else None
+                if isinstance(cal, dict) and 'Earnings Date' in cal:
+                    for d_cand in cal['Earnings Date']:
+                        d_val = d_cand.date() if hasattr(d_cand, "date") else d_cand
+                        if d_val >= today_d:
+                            next_date = d_val
+                            break
+
+                # Fallback na budoucí datum z earnings_dates, pokud calendar drží staré datum
+                if not next_date and bundle["edates"] is not None and not bundle["edates"].empty:
+                    future_dates = sorted([idx.date() for idx in bundle["edates"].index if idx.date() >= today_d])
+                    if future_dates:
+                        next_date = future_dates[0]
+
                 if next_date:
                     eps_est_val, rev_est_val = None, None
                     try:
@@ -850,9 +912,21 @@ Používej výhradně tato data:
                         df_eh.index.name = _["eh_date"]
                     elif "quarter" in df_eh.columns:
                         df_eh["quarter"] = pd.to_datetime(df_eh["quarter"]).dt.strftime("%Y-%m-%d")
-                    df_eh = df_eh.rename(columns={"epsActual": _["eh_act"], "epsEstimate": _["eh_est"], "epsDifference": _["eh_diff"], "surprisePercent": _["eh_surp"]})
-                    if _["eh_diff"] in df_eh.columns: df_eh[_["eh_diff"]] = df_eh[_["eh_diff"]].apply(lambda x: f"{x:+.2f}" if pd.notna(x) else "-")
-                    if _["eh_surp"] in df_eh.columns: df_eh[_["eh_surp"]] = df_eh[_["eh_surp"]].apply(lambda x: f"{x*100:+.2f} %" if pd.notna(x) else "-")
+
+                    keep_cols = [c for c in ["epsActual", "epsEstimate", "epsDifference", "surprisePercent"] if c in df_eh.columns]
+                    df_eh = df_eh[keep_cols].rename(columns={
+                        "epsActual": _["eh_act"],
+                        "epsEstimate": _["eh_est"],
+                        "epsDifference": _["eh_diff"],
+                        "surprisePercent": _["eh_surp"]
+                    })
+                    for col_eps in [_["eh_act"], _["eh_est"]]:
+                        if col_eps in df_eh.columns:
+                            df_eh[col_eps] = df_eh[col_eps].apply(lambda x: f"{float(x):.2f}" if pd.notna(x) else "-")
+                    if _["eh_diff"] in df_eh.columns:
+                        df_eh[_["eh_diff"]] = df_eh[_["eh_diff"]].apply(lambda x: f"{float(x):+.2f}" if pd.notna(x) else "-")
+                    if _["eh_surp"] in df_eh.columns:
+                        df_eh[_["eh_surp"]] = df_eh[_["eh_surp"]].apply(lambda x: f"{float(x)*100:+.2f} %" if pd.notna(x) else "-")
                     st.table(df_eh)
                 else:
                     st.info(_["eh_na3"])
