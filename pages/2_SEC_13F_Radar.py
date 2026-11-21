@@ -752,17 +752,16 @@ with tab_master:
 Celý výstup musí mít rozsah cca 700–800 slov, aby se bezpečně dokončil až do posledního slova bodu 5 bez useknutí (začni rovnou bodem 1).
 
 PŘÍSNÁ PRAVIDLA (DODRŽUJ DO POSLEDNÍHO SLOVA V CELÉM TEXTU):
-1. JAZYK A OBDOBÍ: Piš {lang_instr} přirozeným, spisovným stylem (hlídej gramatické rody a shodu podmětu s přísudkem). Analyzuješ výhradně čtvrtletí {q_label} – vždy v celém textu uváděj přesně toto období ({q_label}) a nikdy ho nezaměňuj za jiné čtvrtletí. V hlavičkách tabulek vždy piš „Titul“, nikdy „Título“.
-2. ZAKÁZANÁ SLOVA, SEKTORY A TICKERY:
+1. JAZYK A OBDOBÍ: Piš {lang_instr}. Analyzuješ výhradně čtvrtletí {q_label} – vždy v celém textu uváděj přesně toto období ({q_label}) a nikdy ho nezaměňuj za jiné čtvrtletí. V hlavičkách tabulek vždy piš „Titul“, nikdy „Título“.
+2. ZAKÁZANÁ SLOVA A SEKTOROVÁ PŘESNOST:
    - ZAKÁZANÁ SLOVA: Nikdy v textu nepoužij slova „metaverse“, „pandemie“ ani „po pandemii“.
-   - SEKTORY: Než zařadíš firmu do sektoru, ověř si její reálný byznys (polovodiče/úložiště/software = technologie a hardware; pojišťovny/nemocnice = zdravotnictví; banky/platební sítě/ratingové agentury = finance).
-   - TICKERY: Burzovní ticker v závorce uveď POUZE tehdy, pokud je přímo v surových datech nebo si jsi 100% jistý jeho přesností (nikdy netipuj – pokud si nejsi jistý, napiš jen název firmy bez tickeru).
+   - SEKTORY: Než zařadíš firmu do sektoru, ověř si její reálný byznys (např. polovodiče/úložiště/software jsou technologie a hardware, nikdy energetika; pojišťovny a nemocnice jsou zdravotnictví, nikdy energetika; banky a karty jsou finance).
 3. DEFINICE METRIK (ZÁKAZ ZÁMĚNY JEDNOTEK A ROLÍ):
    - „Čistý rozdíl počtu fondů“ (`Net_Fund_Count_Diff`) je POČET KUPUJÍCÍCH FONDŮ MÍNUS POČET PRODÁVAJÍCÍCH FONDŮ. NIKDY k němu nepřidávej znak %!
    - Procenta (%) uváděj POUZE u změny pozice konkrétního fondu nebo váhy v portfoliu.
-   - STRIKTNÍ ROZLIŠENÍ „Buy 100 %“ VS. „Add“ (PLATÍ I PRO SEKCE 4 A 5!): Jako „novou pozici“ smíš označit VÝHRADNĚ záznam se štítkem „Buy 100 %“. Pokud má manažer u titulu štítek „Add“ (jakékoliv procento), jde VŽDY o „navýšení stávající pozice“, NIKDY o novou pozici!
+   - STRIKTNÍ ROZLIŠENÍ „Buy 100 %“ VS. „Add“: Jako „novou pozici“ smíš označit VÝHRADNĚ záznam se štítkem „Buy 100 %“. Pokud má manažer u titulu štítek „Add“ (jakékoliv procento), jde o „navýšení stávající pozice“, NIKDY o novou pozici!
    - Přísně rozlišuj SUBJEKT (manažer/firma podávající 13F hlášení) a TITUL (držená akcie v portfoliu). Pokud je podavatelem hlášení samotná firma (korporátní 13F), jde o její investiční portfolio, nikdy nepřipisuj držbu akcii samotné.
-4. KONZISTENCE: Komentář v bodě 1 a odrážky v bodech 4 a 5 musí 100% odpovídat tabulkám v bodech 2 a 3. Pokud je akcie v tabulce prodejů, popiš ji v úvodu jako historicky drženou jádrovou pozici, kde probíhá výběr zisků. Bez odhadů AUM.
+4. KONZISTENCE: Komentář v bodě 1 a odrážky v bodě 5 musí 100% odpovídat tabulkám v bodech 2 a 3. Pokud je akcie v tabulce prodejů, popiš ji v úvodu jako historicky drženou jádrovou pozici, kde probíhá výběr zisků. Bez odhadů AUM.
 
 POŽADOVANÁ STRUKTURA VÝSTUPU:
 
@@ -778,12 +777,10 @@ POŽADOVANÁ STRUKTURA VÝSTUPU:
    - Pod tabulkou 3 stručné odrážky k výběru zisků.
 
 4. **PŘEHLED KLÍČOVÝCH TAHŮ HLAVNÍCH SUBJEKTŮ**
-   - U 8 hlavních fondů/subjektů uveď přesně 1 stručnou větu (hlavní sázky, nákup vs. prodej; před napsáním věty si zkontroluj, zda jde o „Buy 100 %“ = nová pozice, nebo „Add“ = navýšení). Bez odhadů AUM.
+   - U 8 hlavních fondů/subjektů uveď přesně 1 stručnou větu (hlavní sázky, nákup vs. prodej; přísně rozlišuj novou pozici `Buy 100 %` vs. navýšení `Add`). Bez odhadů AUM.
 
 5. **AKČNÍ VÝSTUP PRO TÝDENNÍ TRŽNÍ VÝHLED**
-   - 5 stručných, konkrétních investičních tezí a titulů k prověření v Terminálu (ověř si soulad `Buy 100 %` vs. `Add` s tabulkami a nepoužívej zakázaná slova).
-
-
+   - 5 stručných, konkrétních investičních tezí a titulů k prověření v Terminálu (včetně tickeru v závorce; hlídej soulad s tabulkami a nepoužívej zakázaná slova).
 
 NEJČASTĚJI DRŽENÉ AKCIE ({q_label}):
 {own_lines}
