@@ -19,6 +19,113 @@ sys.path.append(hlavni_slozka)
 import menu
 menu.vykresli_menu()
 
+# --- LAB EDITORIAL CSS (Brycht.app inspired) ---
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* Globální typografie pro Lab */
+.stApp {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.lab-header {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #1F2227;
+    margin-bottom: 24px;
+}
+.lab-logo {
+    font-family: 'Inter', sans-serif;
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #22C55E;
+    letter-spacing: -0.03em;
+}
+.lab-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: #71717A;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+/* Editorial Report Card */
+.lab-article {
+    max-width: 860px;
+    margin: 12px 0 24px 0;
+    padding: 28px 32px;
+    background-color: #0D0F12;
+    border: 1px solid #1F2227;
+    border-radius: 6px;
+}
+.lab-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.76rem;
+    color: #71717A;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 10px;
+}
+.lab-headline {
+    font-family: 'Inter', sans-serif;
+    font-size: 1.85rem;
+    font-weight: 700;
+    color: #F4F4F5;
+    line-height: 1.25;
+    letter-spacing: -0.025em;
+    margin: 0 0 16px 0;
+}
+.lab-badge {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 3px;
+    letter-spacing: 0.05em;
+    margin-bottom: 22px;
+}
+.lab-divider {
+    border: none;
+    border-top: 1px solid #1F2227;
+    margin: 20px 0;
+}
+.lab-sec-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #71717A;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin: 22px 0 8px 0;
+}
+.lab-body {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.98rem;
+    line-height: 1.72;
+    color: #D4D4D8;
+    margin: 0;
+}
+
+/* Library List Row */
+.lab-lib-row {
+    padding: 14px 0;
+    border-bottom: 1px solid #1F2227;
+}
+.lab-lib-title {
+    font-family: 'Inter', sans-serif;
+    font-size: 1.08rem;
+    font-weight: 600;
+    color: #F4F4F5;
+    margin-top: 4px;
+    letter-spacing: -0.01em;
+}
+</style>
+""", unsafe_allow_html=True)
+
 current_lang = st.session_state.get("lang", "CZ")
 
 WATCHLIST_FILE = os.path.join(hlavni_slozka, "watchlist.json")
@@ -27,82 +134,78 @@ ARCHIVE_FILE = os.path.join(hlavni_slozka, "lab_archive.json")
 # --- DICTIONARY ---
 t = {
     "CZ": {
-        "title": "AI.Lab",
-        "desc": "MARKET BRIEF, HLUBOKÁ ANALÝZA AKCIÍ A VLASTNÍ KNIHOVNA REPORTŮ.",
-        "tab_gen": "🔬 GENERÁTOR",
-        "tab_lib": "📚 KNIHOVNA (ARCHIVE)",
+        "sub": "MARKET BRIEF · EQUITY RESEARCH · LIBRARY",
+        "tab_gen": "GENERÁTOR",
+        "tab_lib": "LIBRARY (ARCHIVE)",
         "mode_lbl": "REŽIM ANALÝZY",
-        "mode_macro": "🌍 MARKET BRIEF (Trh & Makro)",
-        "mode_stock": "📈 AKCIE (Ticker)",
+        "mode_macro": "MARKET BRIEF (Trh & Makro)",
+        "mode_stock": "AKCIE (Ticker)",
         "macro_preset": "TRŽNÍ OKRUH",
         "macro_custom": "VLASTNÍ TÉMA (volitelné)",
         "macro_ph": "např. US tariffs China, earnings season, EURUSD ECB...",
         "tick_db": "DATABÁZE",
         "tick_cust": "VLASTNÍ TICKER",
-        "btn_ai": "⚡ Vygenerovat AI report",
-        "btn_save": "💾 Uložit report do Knihovny (GitHub)",
-        "saved_ok": "✅ Report byl uložen do Knihovny a synchronizován na GitHub.",
-        "already_saved": "ℹ️ Tento report už je v Knihovně uložený.",
+        "btn_ai": "Vygenerovat report",
+        "btn_save": "Uložit do Library (GitHub)",
+        "saved_ok": "Report uložen do Library a synchronizován na GitHub.",
+        "already_saved": "Tento report je již uložený v Library.",
         "spin_search": "Stahování datového toku...",
-        "spin_ai": "AI syntetizuje datový tok a počítá tržní režim...",
-        "err_api": "⚠️ AI API klíč nebo model nebyl nalezen. Zkontrolujte GROQ_API_KEY v Secrets a Nastavení.",
+        "spin_ai": "AI syntetizuje datový tok...",
+        "err_api": "AI API klíč nebo model nebyl nalezen. Zkontrolujte GROQ_API_KEY v Secrets a Nastavení.",
         "err_ai": "Chyba AI enginu:",
         "err_news": "Žádné aktuální zprávy nebyly nalezeny.",
-        "sources": "🗄️ Zdrojové zprávy použité pro syntézu",
+        "sources": "Zdrojové zprávy použité pro syntézu",
         "what_happened": "CO SE STALO",
         "why_move": "PROČ TO HÝBE TRHEM (FUNDAMENT)",
         "watch_next": "CO SLEDOVAT DÁL",
-        "sent_desc": "Změřený dopad na tržní sentiment. Kladné hodnoty = Risk-On, záporné = Risk-Off.",
         "no_title": "Bez titulku",
         "no_time": "Neznámý čas",
-        "chat_h": "💬 Dotazy k tomuto reportu",
+        "chat_h": "Dotazy k tomuto reportu",
         "chat_ph": "Zeptejte se na detaily, valuaci nebo historický kontext...",
-        "lib_empty": "Knihovna je zatím prázdná. Vygenerujte report v záložce Generátor a uložte ho.",
+        "lib_empty": "Library je zatím prázdná. Vygenerujte report v záložce Generátor a uložte ho.",
         "lib_filter": "FILTR",
-        "lib_search": "HLEDAT V KNIHOVNĚ",
+        "lib_search": "HLEDAT V LIBRARY",
         "lib_search_ph": "Ticker, téma nebo klíčové slovo...",
-        "lib_open": "Otevřít",
-        "lib_del": "🗑️ Smazat z Knihovny",
-        "lib_deleted": "Report byl odstraněn z Knihovny.",
-        "lib_back": "← Zpět na přehled Knihovny"
+        "lib_open": "Číst →",
+        "lib_del": "Smazat",
+        "lib_deleted": "Report byl odstraněn z Library.",
+        "lib_back": "← Zpět do Library"
     },
     "EN": {
-        "title": "AI.Lab",
-        "desc": "MARKET BRIEF, DEEP EQUITY RESEARCH & PERSONAL REPORT LIBRARY.",
-        "tab_gen": "🔬 GENERATOR",
-        "tab_lib": "📚 LIBRARY (ARCHIVE)",
+        "sub": "MARKET BRIEF · EQUITY RESEARCH · LIBRARY",
+        "tab_gen": "GENERATOR",
+        "tab_lib": "LIBRARY (ARCHIVE)",
         "mode_lbl": "ANALYSIS MODE",
-        "mode_macro": "🌍 MARKET BRIEF (Macro & Market)",
-        "mode_stock": "📈 EQUITY (Ticker)",
+        "mode_macro": "MARKET BRIEF (Macro & Market)",
+        "mode_stock": "EQUITY (Ticker)",
         "macro_preset": "MARKET FOCUS",
         "macro_custom": "CUSTOM TOPIC (optional)",
         "macro_ph": "e.g. US tariffs China, earnings season, EURUSD ECB...",
         "tick_db": "DATABASE",
         "tick_cust": "CUSTOM TICKER",
-        "btn_ai": "⚡ Generate AI Report",
-        "btn_save": "💾 Save Report to Library (GitHub)",
-        "saved_ok": "✅ Report saved to Library and synced to GitHub.",
-        "already_saved": "ℹ️ This report is already saved in the Library.",
+        "btn_ai": "Generate Report",
+        "btn_save": "Save to Library (GitHub)",
+        "saved_ok": "Report saved to Library and synced to GitHub.",
+        "already_saved": "This report is already saved in the Library.",
         "spin_search": "Fetching data feed...",
-        "spin_ai": "AI is synthesizing data feed and evaluating market regime...",
-        "err_api": "⚠️ AI API key or model not found. Check GROQ_API_KEY in Secrets and Settings.",
+        "spin_ai": "AI is synthesizing data feed...",
+        "err_api": "AI API key or model not found. Check GROQ_API_KEY in Secrets and Settings.",
         "err_ai": "AI Engine Error:",
         "err_news": "No current news found.",
-        "sources": "🗄️ Source news used for synthesis",
+        "sources": "Source news used for synthesis",
         "what_happened": "WHAT HAPPENED",
         "why_move": "WHY IT MOVES THE MARKET (FUNDAMENTALS)",
         "watch_next": "WHAT TO WATCH NEXT",
-        "sent_desc": "Measured impact on market sentiment. Positive = Risk-On, negative = Risk-Off.",
         "no_title": "No Title",
         "no_time": "Unknown Time",
-        "chat_h": "💬 Questions about this report",
+        "chat_h": "Questions about this report",
         "chat_ph": "Ask about details, valuation, or historical context...",
         "lib_empty": "Library is empty. Generate a report in the Generator tab and save it.",
         "lib_filter": "FILTER",
         "lib_search": "SEARCH LIBRARY",
         "lib_search_ph": "Ticker, topic, or keyword...",
-        "lib_open": "Open",
-        "lib_del": "🗑️ Delete from Library",
+        "lib_open": "Read →",
+        "lib_del": "Delete",
         "lib_deleted": "Report removed from Library.",
         "lib_back": "← Back to Library"
     }
@@ -116,6 +219,14 @@ MACRO_PRESETS = {
     "Zlato, Ropa & Komodity": "gold price XAUUSD crude oil commodities market",
     "Makro & Geopolitika (USD, EUR)": "global macro economy EURUSD tariffs geopolitics markets"
 }
+
+# --- HEADER ---
+st.markdown(f"""
+<div class="lab-header">
+    <span class="lab-logo">Lab</span>
+    <span class="lab-sub">{_['sub']}</span>
+</div>
+""", unsafe_allow_html=True)
 
 # --- DATA HELPERS ---
 def load_app_data():
@@ -138,7 +249,7 @@ def load_archive():
             pass
     return []
 
-def save_archive(archive_list, commit_msg="AI.Lab: Aktualizace knihovny reportů"):
+def save_archive(archive_list, commit_msg="AI.Lab: Aktualizace Library"):
     with open(ARCHIVE_FILE, "w", encoding="utf-8") as f:
         json.dump(archive_list, f, indent=4, ensure_ascii=False)
     try:
@@ -163,10 +274,6 @@ tickers = sorted(list(set(app_data.get("portfolio", []) + app_data.get("watchlis
 api_key = st.secrets.get("GROQ_API_KEY", "")
 model_provider = st.session_state.get("ai_provider", saved_settings.get("ai_provider", "Groq"))
 selected_model = st.session_state.get("ai_model", saved_settings.get("ai_model", ""))
-
-st.title(_["title"])
-st.caption(_["desc"])
-st.markdown("---")
 
 if not api_key or not selected_model:
     st.warning(_["err_api"])
@@ -300,36 +407,37 @@ def vykresli_report_kartu(rep):
     skore = float(rep.get("sentiment_skore", 0.0))
     rezim = rep.get("rezim", "NEUTRAL").upper()
     if rezim == "RISK-ON" or skore > 0.15:
-        badge_bg, badge_fg = "rgba(38,166,154,0.18)", "#26A69A"
+        badge_bg, badge_fg = "rgba(34,197,94,0.14)", "#22C55E"
     elif rezim == "RISK-OFF" or skore < -0.15:
-        badge_bg, badge_fg = "rgba(239,83,80,0.18)", "#EF5350"
+        badge_bg, badge_fg = "rgba(239,68,68,0.14)", "#EF4444"
     else:
-        badge_bg, badge_fg = "rgba(158,158,158,0.18)", "#BDBDBD"
+        badge_bg, badge_fg = "rgba(161,161,170,0.14)", "#A1A1AA"
 
-    with st.container(border=True):
-        st.markdown(
-            f"<span style='color:#9E9E9E; font-size:0.85em; font-weight:600;'>{rep.get('typ', '')}  •  {rep.get('datum', '')}  •  {rep.get('tema', '')}</span>",
-            unsafe_allow_html=True
-        )
-        st.markdown(f"### {rep.get('hlavni_nadpis', 'Analýza trhu')}")
-        st.markdown(
-            f"<span style='background-color:{badge_bg}; color:{badge_fg}; font-weight:700; padding:3px 9px; border-radius:4px; font-size:0.85em;'>{rezim}   {skore:+.2f}</span>",
-            unsafe_allow_html=True
-        )
-        st.caption(_["sent_desc"])
-        st.markdown("---")
-        st.markdown(f"**{_['what_happened']}**")
-        st.write(rep.get("co_se_stalo", ""))
-        st.markdown(f"**{_['why_move']}**")
-        st.write(rep.get("proc_to_hybe_trhem", ""))
-        if rep.get("na_co_se_zamerit"):
-            st.markdown(f"**{_['watch_next']}**")
-            st.write(rep.get("na_co_se_zamerit", ""))
+    watch_html = ""
+    if rep.get("na_co_se_zamerit"):
+        watch_html = f"""
+        <div class="lab-sec-label">{_['watch_next']}</div>
+        <p class="lab-body">{rep.get('na_co_se_zamerit', '')}</p>
+        """
+
+    st.markdown(f"""
+    <div class="lab-article">
+        <div class="lab-meta">{rep.get('datum', '')}  ·  {rep.get('typ', '')}  ·  {rep.get('tema', '')}</div>
+        <h1 class="lab-headline">{rep.get('hlavni_nadpis', 'Analýza trhu')}</h1>
+        <span class="lab-badge" style="background-color:{badge_bg}; color:{badge_fg};">{rezim}   {skore:+.2f}</span>
+        <hr class="lab-divider" />
+        <div class="lab-sec-label">{_['what_happened']}</div>
+        <p class="lab-body">{rep.get('co_se_stalo', '')}</p>
+        <div class="lab-sec-label">{_['why_move']}</div>
+        <p class="lab-body">{rep.get('proc_to_hybe_trhem', '')}</p>
+        {watch_html}
+    </div>
+    """, unsafe_allow_html=True)
 
     if rep.get("zdroje"):
         with st.expander(_["sources"]):
             for article in rep["zdroje"]:
-                st.markdown(f"- **{article.get('pub_time_str', '')}** | [{article.get('title', '')}]({article.get('link', '#')})")
+                st.markdown(f"- `{article.get('pub_time_str', '')}` · [{article.get('title', '')}]({article.get('link', '#')})")
 
 # --- MAIN TABS ---
 tab_gen, tab_lib = st.tabs([_["tab_gen"], _["tab_lib"]])
@@ -358,8 +466,8 @@ with tab_gen:
         c1, c2 = st.columns([1.2, 1.2])
         ph_text = "Vyhledat..." if current_lang == "CZ" else "Search..."
         ph_db = "Vybrat..." if current_lang == "CZ" else "Select..."
-        custom_val = c1.text_input(f"🔍 {_['tick_cust']}", placeholder=ph_text)
-        dropdown_val = c2.selectbox(f"📂 {_['tick_db']}", tickers, index=None, placeholder=ph_db)
+        custom_val = c1.text_input(_["tick_cust"], placeholder=ph_text)
+        dropdown_val = c2.selectbox(_["tick_db"], tickers, index=None, placeholder=ph_db)
         vybrany_ticker = custom_val.strip().upper() if custom_val.strip() else dropdown_val
         target_label = vybrany_ticker
         search_query = vybrany_ticker
@@ -398,21 +506,19 @@ with tab_gen:
 
     if st.session_state.lab_current_report:
         rep = st.session_state.lab_current_report
-        st.markdown("<br>", unsafe_allow_html=True)
         vykresli_report_kartu(rep)
 
         if st.session_state.lab_saved_id == rep["id"]:
             st.info(_["already_saved"])
         else:
-            if st.button(_["btn_save"], use_container_width=True):
+            if st.button(_["btn_save"]):
                 archive = load_archive()
                 archive.insert(0, rep)
                 save_archive(archive, commit_msg=f"AI.Lab: Uložen report {rep['tema']}")
                 st.session_state.lab_saved_id = rep["id"]
                 st.success(_["saved_ok"])
 
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown(f"#### {_['chat_h']}")
+        st.markdown(f"<div class='lab-sec-label'>{_['chat_h']}</div>", unsafe_allow_html=True)
         for msg in st.session_state.lab_chat:
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
@@ -429,7 +535,7 @@ with tab_gen:
                 st.session_state.lab_chat.append({"role": "assistant", "content": odpoved})
 
 # ==========================================
-# TAB 2: KNIHOVNA (ARCHIVE)
+# TAB 2: LIBRARY (ARCHIVE)
 # ==========================================
 with tab_lib:
     archive = load_archive()
@@ -440,7 +546,7 @@ with tab_lib:
         selected_rep = next((r for r in archive if r.get("id") == st.session_state.lib_selected_id), None)
 
         if selected_rep:
-            col_back, col_del = st.columns([4, 1])
+            col_back, col_del = st.columns([5, 1])
             if col_back.button(_["lib_back"]):
                 st.session_state.lib_selected_id = None
                 st.session_state.lib_chat = []
@@ -455,8 +561,7 @@ with tab_lib:
 
             vykresli_report_kartu(selected_rep)
 
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown(f"#### {_['chat_h']}")
+            st.markdown(f"<div class='lab-sec-label'>{_['chat_h']}</div>", unsafe_allow_html=True)
             for msg in st.session_state.lib_chat:
                 with st.chat_message(msg["role"]):
                     st.markdown(msg["content"])
@@ -486,23 +591,26 @@ with tab_lib:
                         continue
                 filtered.append(r)
 
-            st.caption(f"Zobrazeno reportů: **{len(filtered)}**")
+            st.markdown(f"<div class='lab-sec-label'>LATEST IN THE LIBRARY · {len(filtered)}</div>", unsafe_allow_html=True)
             for item in filtered:
                 skore = float(item.get("sentiment_skore", 0.0))
                 rezim = item.get("rezim", "NEUTRAL").upper()
-                badge_color = "#26A69A" if (rezim == "RISK-ON" or skore > 0.15) else "#EF5350" if (rezim == "RISK-OFF" or skore < -0.15) else "#BDBDBD"
+                badge_color = "#22C55E" if (rezim == "RISK-ON" or skore > 0.15) else "#EF4444" if (rezim == "RISK-OFF" or skore < -0.15) else "#A1A1AA"
 
-                with st.container(border=True):
-                    c_info, c_btn = st.columns([5, 1])
-                    with c_info:
-                        st.markdown(
-                            f"<span style='color:#9E9E9E; font-size:0.82em;'>{item.get('datum', '')}  •  <b>{item.get('typ', '')}</b>  •  {item.get('tema', '')}  •  <span style='color:{badge_color}; font-weight:700;'>{rezim} ({skore:+.2f})</span></span>",
-                            unsafe_allow_html=True
-                        )
-                        st.markdown(f"**{item.get('hlavni_nadpis', '')}**")
-                    with c_btn:
-                        st.markdown("<br>", unsafe_allow_html=True)
-                        if st.button(_["lib_open"], key=f"open_{item.get('id')}", use_container_width=True):
-                            st.session_state.lib_selected_id = item.get("id")
-                            st.session_state.lib_chat = []
-                            st.rerun()
+                c_info, c_btn = st.columns([6, 1])
+                with c_info:
+                    st.markdown(f"""
+                    <div class="lab-lib-row">
+                        <div class="lab-meta" style="margin-bottom:4px;">
+                            {item.get('datum', '')}  ·  {item.get('typ', '')}  ·  {item.get('tema', '')}  · 
+                            <span style="color:{badge_color}; font-weight:600;">{rezim} {skore:+.2f}</span>
+                        </div>
+                        <div class="lab-lib-title">{item.get('hlavni_nadpis', '')}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with c_btn:
+                    st.markdown("<div style='padding-top:18px;'></div>", unsafe_allow_html=True)
+                    if st.button(_["lib_open"], key=f"open_{item.get('id')}", use_container_width=True):
+                        st.session_state.lib_selected_id = item.get("id")
+                        st.session_state.lib_chat = []
+                        st.rerun()
