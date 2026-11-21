@@ -5,11 +5,13 @@ import json
 import os
 import sys
 import random
+import subprocess
 import requests
 import urllib.request
 import urllib.error
 import xml.etree.ElementTree as ET
 from datetime import datetime
+from zoneinfo import ZoneInfo
 import plotly.graph_objects as go
 
 # --- INITIAL SETUP ---
@@ -20,6 +22,7 @@ aktualni_slozka = os.path.dirname(os.path.abspath(__file__))
 hlavni_slozka = os.path.dirname(aktualni_slozka) if os.path.basename(aktualni_slozka) == "pages" else aktualni_slozka
 sys.path.append(hlavni_slozka)
 WATCHLIST_FILE = os.path.join(hlavni_slozka, "watchlist.json")
+ARCHIVE_FILE = os.path.join(hlavni_slozka, "lab_archive.json")
 
 import menu
 menu.vykresli_menu()
@@ -93,9 +96,18 @@ st.markdown("""
     background-color: #0D0F12;
     border: 1px solid #1F2227;
     border-radius: 6px;
-    margin: 14px 0 22px 0;
+    margin: 14px 0 18px 0;
 }
-/* Monospace zarovnání čísel v tabulce výkazů */
+.term-memo-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    color: #71717A;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #1F2227;
+}
 div[data-testid="stTable"] table {
     font-family: 'JetBrains Mono', monospace !important;
     font-size: 0.84rem !important;
@@ -150,6 +162,7 @@ t = {
         "convert_usd": "Převést výkazy z {curr} do USD (dle historických kurzů)",
         "matrix_h": "KLÍČOVÉ FINANČNÍ UKAZATELE",
         "chart_metrics_lbl": "METRIKY V GRAFU (plné = historie · obrys = odhad)",
+        "chart_ph": "Vyberte metriky pro zobrazení grafu...",
         "kpi_h": "KPI Dashboard",
         "kpi_pe": "P/E (Trailing)",
         "kpi_fpe": "Forward P/E",
@@ -199,6 +212,12 @@ t = {
         "news_date": "Vydáno",
         "news_na": "Aktuálně nejsou dostupné žádné zprávy.",
         "ai_btn": "Vygenerovat AI Investiční Memo (z živých výkazů)",
+        "ai_save": "Uložit Investiční Memo (GitHub)",
+        "ai_saved_ok": "Investiční Memo uloženo do archivu a synchronizováno na GitHub.",
+        "ai_already_saved": "Toto Investiční Memo je již uložené v archivu.",
+        "ai_saved_list": "ULOŽENÁ INVESTIČNÍ MEMA",
+        "ai_load_btn": "Načíst",
+        "ai_del_btn": "Smazat",
         "ai_spin": "AI analyzuje výkazy, marže a valuaci...",
         "ai_no_key": "Pro AI Analytika nastavte GROQ_API_KEY v Secrets a vyberte model v Nastavení.",
         "ai_chat_h": "KONZULTACE S AI NAD VÝKAZY",
@@ -247,6 +266,7 @@ t = {
         "convert_usd": "Convert statements from {curr} to USD (using historical rates)",
         "matrix_h": "KEY FINANCIAL FIGURES",
         "chart_metrics_lbl": "CHART METRICS (solid = history · outline = estimate)",
+        "chart_ph": "Select metrics to display chart...",
         "kpi_h": "KPI Dashboard",
         "kpi_pe": "P/E (Trailing)",
         "kpi_fpe": "Forward P/E",
@@ -296,6 +316,12 @@ t = {
         "news_date": "Published",
         "news_na": "No news currently available.",
         "ai_btn": "Generate AI Investment Memo (from live statements)",
+        "ai_save": "Save Investment Memo (GitHub)",
+        "ai_saved_ok": "Investment Memo saved to archive and synced to GitHub.",
+        "ai_already_saved": "This Investment Memo is already saved in the archive.",
+        "ai_saved_list": "SAVED INVESTMENT MEMOS",
+        "ai_load_btn": "Load",
+        "ai_del_btn": "Delete",
         "ai_spin": "AI is analyzing statements, margins and valuation...",
         "ai_no_key": "Configure GROQ_API_KEY in Secrets and select a model in Settings to use AI Analyst.",
         "ai_chat_h": "AI FUNDAMENTAL CONSULTATION",
@@ -322,6 +348,35 @@ def load_data():
     st.error(f"Soubor watchlist.json nebyl nalezen na cestě: {WATCHLIST_FILE}")
     st.stop()
 
+def load_archive():
+    if os.path.exists(ARCHIVE_FILE):
+        try:
+            with open(ARCHIVE_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, list):
+                    return data
+        except Exception:
+            pass
+    return []
+
+def save_archive(archive_list, commit_msg="Terminal: Aktualizace investičních mem"):
+    with open(ARCHIVE_FILE, "w", encoding="utf-8") as f:
+        json.dump(archive_list, f, indent=4, ensure_ascii=False)
+    try:
+        if "GITHUB_TOKEN" in st.secrets:
+            token = st.secrets["GITHUB_TOKEN"]
+            owner = st.secrets["GITHUB_OWNER"]
+            repo = st.secrets["GITHUB_REPO"]
+            remote_url = f"https://{owner}:{token}@github.com/{owner}/{repo}.git"
+            subprocess.run(["git", "config", "--global", "user.email", "bot@pokornyterminal.cz"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(["git", "config", "--global", "user.name", "Terminal Bot"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(["git", "pull", "--rebase", remote_url, "main"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(["git", "add", ARCHIVE_FILE], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(["git", "commit", "-m", commit_msg], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(["git", "push", remote_url, "HEAD:main"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception:
+        pass
+
 data = load_data()
 all_tickers = list(dict.fromkeys(data.get("portfolio", []) + data.get("watchlist", [])))
 saved_settings = data.get("settings", {})
@@ -331,7 +386,8 @@ model_provider = st.session_state.get("ai_provider", saved_settings.get("ai_prov
 selected_model = st.session_state.get("ai_model", saved_settings.get("ai_model", ""))
 
 if "term_ai_ticker" not in st.session_state: st.session_state.term_ai_ticker = None
-if "term_ai_memo" not in st.session_state: st.session_state.term_ai_memo = None
+if "term_ai_memo_obj" not in st.session_state: st.session_state.term_ai_memo_obj = None
+if "term_ai_saved_id" not in st.session_state: st.session_state.term_ai_saved_id = None
 if "term_ai_chat" not in st.session_state: st.session_state.term_ai_chat = []
 
 col_sel1, col_sel2, col_sel3 = st.columns([2.5, 1.5, 3])
@@ -346,7 +402,8 @@ final_tick = custom_tick.upper().strip() if custom_tick.strip() else sel_tick
 
 if final_tick != st.session_state.term_ai_ticker:
     st.session_state.term_ai_ticker = final_tick
-    st.session_state.term_ai_memo = None
+    st.session_state.term_ai_memo_obj = None
+    st.session_state.term_ai_saved_id = None
     st.session_state.term_ai_chat = []
 
 # --- NATIVE URLLIB AI CALL ---
@@ -505,7 +562,7 @@ if final_tick:
         currency_code = info.get("financialCurrency") or info.get("currency") or fast.get("currency") or "USD"
         trading_currency = info.get("currency") or fast.get("currency") or "USD"
 
-        # --- INSTITUTIONAL TOP BAR (jako na screenshotu) ---
+        # --- INSTITUTIONAL TOP BAR ---
         mcap_str = f"{market_cap/1e9:,.2f}B {trading_currency}" if (market_cap and market_cap >= 1e9) else (f"{market_cap/1e6:,.1f}M {trading_currency}" if market_cap else "N/A")
         st.markdown(
             f'<div class="term-topbar">'
@@ -695,10 +752,8 @@ if final_tick:
         ])
 
         with tab_matrix:
-            # --- PROFI GRAF PŘÍMO NAD TABULKOU (plné sloupce = historie, obrys = odhad) ---
             chart_options = [m for m in [_["r_rev"], _["r_ni"], _["r_ebit"], _["r_fcf"]] if m in df_matrix.index]
-            default_sel = [m for m in [_["r_rev"], _["r_ni"]] if m in chart_options]
-            sel_metrics = st.multiselect(_["chart_metrics_lbl"], chart_options, default=default_sel)
+            sel_metrics = st.multiselect(_["chart_metrics_lbl"], chart_options, default=[], placeholder=_["chart_ph"])
 
             color_map = {
                 _["r_rev"]: ("#22C55E", "rgba(34,197,94,0.12)"),
@@ -808,8 +863,11 @@ if final_tick:
                 kpi_json_str = json.dumps(kpi_summary, ensure_ascii=False, default=str)
 
                 if st.button(_["ai_btn"], type="primary", use_container_width=True):
+                    now_dt = datetime.now(ZoneInfo("Europe/Prague"))
+                    datum_str = now_dt.strftime("%d. %m. %Y %H:%M")
                     lang_instr = "v čisté češtině bez anglických frází" if current_lang == "CZ" else "in clean institutional English"
-                    memo_prompt = f"""Jsi Senior Equity Analyst & Portfolio Manager. Na základě PŘESNĚ TĚCHTO finančních dat vypracuj stručné institucionální investiční memo {lang_instr}:
+                    memo_prompt = f"""Jsi Senior Equity Analyst & Portfolio Manager. Dnešní datum a čas je {datum_str}.
+Na základě PŘESNĚ TĚCHTO finančních dat vypracuj stručné institucionální investiční memo {lang_instr} (nepiš žádné úvodní řádky s datem ani zástupné symboly v hranatých závorkách, začni rovnou bodem 1):
 1. **KVALITA BYZNYSU & MARŽE** (trend tržeb, provozní páka, FCF konverze, ROIC)
 2. **VALUACE & MARGIN OF SAFETY** (zhodnocení P/E, Forward P/E, EV/EBITDA, P/FCF vůči růstu)
 3. **ROZVAHA & RIZIKA** (zadlužení, likvidita, hlavní hrozby)
@@ -819,14 +877,44 @@ Používej výhradně tato data:
 {kpi_json_str}"""
                     with st.spinner(_["ai_spin"]):
                         try:
-                            st.session_state.term_ai_memo = call_llm_api([{"role": "user", "content": memo_prompt}], api_key, model_provider, selected_model, temperature=0.2, timeout=35)
+                            memo_txt = call_llm_api([{"role": "user", "content": memo_prompt}], api_key, model_provider, selected_model, temperature=0.2, timeout=35)
+                            rep_id = f"{now_dt.strftime('%Y%m%d_%H%M%S')}_MEMO_{final_tick}"
+                            st.session_state.term_ai_memo_obj = {
+                                "id": rep_id,
+                                "datum": datum_str,
+                                "typ": "INVESTIČNÍ MEMO",
+                                "tema": final_tick,
+                                "hlavni_nadpis": f"Investiční memo: {short_name} ({final_tick}) · {curr_price:,.2f} {trading_currency}",
+                                "rezim": "NEUTRAL",
+                                "sentiment_skore": 0.0,
+                                "co_se_stalo": memo_txt,
+                                "proc_to_hybe_trhem": "",
+                                "na_co_se_zamerit": "",
+                                "zdroje": []
+                            }
+                            st.session_state.term_ai_saved_id = None
                         except Exception as e:
                             st.error(f"AI Error: {e}")
 
-                if st.session_state.term_ai_memo:
-                    st.markdown('<div class="term-memo-box">', unsafe_allow_html=True)
-                    st.markdown(st.session_state.term_ai_memo)
+                if st.session_state.term_ai_memo_obj:
+                    m_obj = st.session_state.term_ai_memo_obj
+                    st.markdown(
+                        f'<div class="term-memo-box">'
+                        f'<div class="term-memo-meta">{m_obj.get("datum", "")}  ·  INVESTIČNÍ MEMO  ·  {short_name} ({final_tick})</div>',
+                        unsafe_allow_html=True
+                    )
+                    st.markdown(m_obj.get("co_se_stalo", ""))
                     st.markdown('</div>', unsafe_allow_html=True)
+
+                    if st.session_state.term_ai_saved_id == m_obj["id"]:
+                        st.info(_["ai_already_saved"])
+                    else:
+                        if st.button(f"💾 {_['ai_save']}"):
+                            archive = load_archive()
+                            archive.insert(0, m_obj)
+                            save_archive(archive, commit_msg=f"Terminal: Uloženo Investiční Memo {final_tick}")
+                            st.session_state.term_ai_saved_id = m_obj["id"]
+                            st.success(_["ai_saved_ok"])
 
                 st.markdown(f'<div class="term-sec-label">{_["ai_chat_h"]}</div>', unsafe_allow_html=True)
                 for msg in st.session_state.term_ai_chat:
@@ -850,6 +938,26 @@ Používej výhradně tato data:
                     if not ans.startswith("⚠️"):
                         st.session_state.term_ai_chat.append({"role": "assistant", "content": ans})
 
+                # --- ARCHIV ULOŽENÝCH INVESTIČNÍCH MEM PRO TENTO TICKER ---
+                all_archive = load_archive()
+                saved_memos = [r for r in all_archive if r.get("typ") == "INVESTIČNÍ MEMO" and r.get("tema") == final_tick]
+                if saved_memos:
+                    st.markdown("---")
+                    st.markdown(f'<div class="term-sec-label">{_["ai_saved_list"]} ({final_tick}) · {len(saved_memos)}</div>', unsafe_allow_html=True)
+                    for sm in saved_memos:
+                        c_m1, c_m2, c_m3 = st.columns([5, 1, 1])
+                        c_m1.markdown(f"`{sm.get('datum', '')}` · **{sm.get('hlavni_nadpis', final_tick)}**")
+                        if c_m2.button(_["ai_load_btn"], key=f"load_m_{sm.get('id')}", use_container_width=True):
+                            st.session_state.term_ai_memo_obj = sm
+                            st.session_state.term_ai_saved_id = sm.get("id")
+                            st.rerun()
+                        if c_m3.button(_["ai_del_btn"], key=f"del_m_{sm.get('id')}", use_container_width=True):
+                            new_arch = [r for r in all_archive if r.get("id") != sm.get("id")]
+                            save_archive(new_arch, commit_msg=f"Terminal: Smazáno Memo {final_tick}")
+                            if st.session_state.term_ai_memo_obj and st.session_state.term_ai_memo_obj.get("id") == sm.get("id"):
+                                st.session_state.term_ai_memo_obj = None
+                            st.rerun()
+
         with tab_ana:
             st.subheader(_["targets_h"])
             target_low = info.get("targetLowPrice", curr_price)
@@ -868,7 +976,7 @@ Používej výhradně tato data:
         with tab_earn:
             st.subheader(_["earn_next_h"])
             try:
-                today_d = datetime.now().date()
+                today_d = datetime.now(ZoneInfo("Europe/Prague")).date()
                 next_date = None
                 cal = bundle["cal"]
                 if isinstance(cal, dict) and 'Earnings Date' in cal:
@@ -878,7 +986,6 @@ Používej výhradně tato data:
                             next_date = d_val
                             break
 
-                # Fallback na budoucí datum z earnings_dates, pokud calendar drží staré datum
                 if not next_date and bundle["edates"] is not None and not bundle["edates"].empty:
                     future_dates = sorted([idx.date() for idx in bundle["edates"].index if idx.date() >= today_d])
                     if future_dates:
