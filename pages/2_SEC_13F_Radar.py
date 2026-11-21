@@ -235,7 +235,7 @@ def get_groq_available_models(api_klic):
     except Exception:
         return []
 
-def call_llm_api(messages, api_klic, provider, model_name, temperature=0.25, timeout=45, max_tokens=2800):
+def call_llm_api(messages, api_klic, provider, model_name, temperature=0.25, timeout=45, max_tokens=2600):
     url = "https://api.groq.com/openai/v1/chat/completions" if provider == "Groq" else "https://api.openai.com/v1/chat/completions"
     models_to_try = [model_name]
     if provider == "Groq":
@@ -262,7 +262,7 @@ def call_llm_api(messages, api_klic, provider, model_name, temperature=0.25, tim
         except urllib.error.HTTPError as e:
             err_txt = e.read().decode("utf-8", errors="ignore")[:250]
             last_err = f"HTTP {e.code}: {err_txt}"
-            if e.code in (400, 404, 429) and mdl != models_to_try[-1]:
+            if e.code in (400, 404, 413, 429) and mdl != models_to_try[-1]:
                 continue
             raise RuntimeError(last_err)
     raise RuntimeError(last_err)
@@ -287,24 +287,19 @@ def extract_fund_summary_dict(fund_name, meta, df):
     top5 = round(float(df_c["_pct"].head(5).sum()), 2)
     top10 = round(float(df_c["_pct"].head(10).sum()), 2)
 
-    def row_to_item(r):
+    def row_to_str(r):
         val_num = float(r["Value"]) if pd.notna(r.get("Value")) else None
-        return {
-            "stock": str(r.get(stock_col, "")),
-            "pct_portfolio": round(float(r.get("_pct", 0.0)), 2),
-            "activity": str(r.get("RecentActivity", "")),
-            "value_formatted": format_aum(val_num),
-            "reported_price": round(float(r["ReportedPrice*"]), 2) if pd.notna(r.get("ReportedPrice*")) else None,
-            "current_price": round(float(r["Current Price"]), 2) if pd.notna(r.get("Current Price")) else None,
-            "vs_reported_pct": round(float(r["+/-Reported Price"]), 2) if pd.notna(r.get("+/-Reported Price")) else None
-        }
+        rep_p = f"${float(r['ReportedPrice*']):.2f}" if pd.notna(r.get("ReportedPrice*")) else "-"
+        cur_p = f"${float(r['Current Price']):.2f}" if pd.notna(r.get("Current Price")) else "-"
+        diff_p = f"{float(r['+/-Reported Price']):+.1f}%" if pd.notna(r.get("+/-Reported Price")) else "-"
+        return f"{r.get(stock_col, '')} | Váha: {float(r.get('_pct', 0.0)):.2f}% | Aktivita: {r.get('RecentActivity', '')} | Hodnota: {format_aum(val_num)} | RepCena: {rep_p} | AktCena: {cur_p} ({diff_p})"
 
-    top_15 = [row_to_item(r) for _, r in df_c.head(15).iterrows()]
+    top_15 = [row_to_str(r) for _, r in df_c.head(15).iterrows()]
 
     act_col = df_c["RecentActivity"].astype(str) if "RecentActivity" in df_c.columns else pd.Series([""] * len(df_c))
-    new_pos = [row_to_item(r) for _, r in df_c[act_col.str.contains("New|Buy", case=False, na=False)].head(12).iterrows()]
-    adds = [row_to_item(r) for _, r in df_c[act_col.str.contains("Add", case=False, na=False)].head(12).iterrows()]
-    reduces = [row_to_item(r) for _, r in df_c[act_col.str.contains("Reduce|Sell", case=False, na=False)].head(12).iterrows()]
+    new_pos = [row_to_str(r) for _, r in df_c[act_col.str.contains("New|Buy", case=False, na=False)].head(10).iterrows()]
+    adds = [row_to_str(r) for _, r in df_c[act_col.str.contains("Add", case=False, na=False)].head(10).iterrows()]
+    reduces = [row_to_str(r) for _, r in df_c[act_col.str.contains("Reduce|Sell", case=False, na=False)].head(10).iterrows()]
 
     return {
         "fund": fund_name,
@@ -345,7 +340,7 @@ def build_master_13f_aggregation(all_funds_dict, target_quarter=None):
 
     own_map, buy_map, sell_map = {}, {}, {}
     funds_meta_list = []
-    funds_breakdown = []
+    funds_compact_lines = []
 
     for f_name, meta, df in raw_funds:
         if use_q and meta.get("kvartal") != use_q:
@@ -366,17 +361,10 @@ def build_master_13f_aggregation(all_funds_dict, target_quarter=None):
         })
 
         act_s = df_f["RecentActivity"].astype(str) if "RecentActivity" in df_f.columns else pd.Series([""] * len(df_f))
-        top_5_str = [f"{r[stock_col]} ({r['_pct']:.1f}%)" for _, r in df_f.head(5).iterrows()]
-        buys_str = [f"{r[stock_col]} [{r['RecentActivity']}, {r['_pct']:.1f}%]" for _, r in df_f[act_s.str.contains("Buy|Add|New", case=False, na=False)].head(5).iterrows()]
-        sells_str = [f"{r[stock_col]} [{r['RecentActivity']}, {r['_pct']:.1f}%]" for _, r in df_f[act_s.str.contains("Reduce|Sell", case=False, na=False)].head(5).iterrows()]
-
-        funds_breakdown.append({
-            "fund": short_f,
-            "aum": format_aum(f_aum),
-            "top_5_holdings": top_5_str,
-            "key_buys_adds": buys_str,
-            "key_reduces_sells": sells_str
-        })
+        t3 = ", ".join([f"{r[stock_col]} {r['_pct']:.1f}%" for _, r in df_f.head(3).iterrows()])
+        b3 = ", ".join([f"{r[stock_col]} ({r['RecentActivity']})" for _, r in df_f[act_s.str.contains("Buy|Add|New", case=False, na=False)].head(3).iterrows()])
+        s3 = ", ".join([f"{r[stock_col]} ({r['RecentActivity']})" for _, r in df_f[act_s.str.contains("Reduce|Sell", case=False, na=False)].head(3).iterrows()])
+        funds_compact_lines.append(f"- {short_f} (AUM {format_aum(f_aum)}): Top3=[{t3}] | Nákupy=[{b3}] | Prodeje=[{s3}]")
 
         for _, r in df_f.iterrows():
             stk = str(r.get(stock_col, "")).strip()
@@ -419,7 +407,7 @@ def build_master_13f_aggregation(all_funds_dict, target_quarter=None):
     df_buy = pd.DataFrame(sorted(buy_map.values(), key=lambda x: x["Buy/Add Count"], reverse=True)[:20])
     df_sell = pd.DataFrame(sorted(sell_map.values(), key=lambda x: x["Sell/Reduce Count"], reverse=True)[:20])
 
-    return all_quarters, funds_meta_list, funds_breakdown, df_own, df_buy, df_sell
+    return all_quarters, funds_meta_list, funds_compact_lines, df_own, df_buy, df_sell
 
 # --- LOAD DATA & SETTINGS ---
 app_data = load_full_watchlist()
@@ -609,14 +597,14 @@ Na základě PŘESNĚ TĚCHTO 13F dat fondu {short_fund} (kvartál {active_meta.
    - Detailně rozeber největší redukce a prodeje, uveď přesná čísla a zhodnoť, zda jde o vybírání zisků po růstu, nebo o strukturální odchod ze sektoru.
 
 4. **VALUAČNÍ PŘÍLEŽITOSTI & ZÁVĚR PRO INVESTORA**
-   - Porovnej nahlášené ceny (`reported_price`) s aktuální tržní cenou (`current_price` / `vs_reported_pct`) a vypíchni konkrétní tituly, které se nyní obchodují se slevou oproti ceně, za kterou nakupoval tento fond.
+   - Porovnej nahlášené ceny (`RepCena`) s aktuální tržní cenou (`AktCena`) a vypíchni konkrétní tituly, které se nyní obchodují se slevou oproti ceně, za kterou nakupoval tento fond.
    - Shrň hlavní strategický signál fondu pro další kvartál.
 
 Data 13F:
 {fund_json_str}"""
             with st.spinner(_["ai_spin"]):
                 try:
-                    memo_txt = call_llm_api([{"role": "user", "content": prompt_13f}], api_key, model_provider, selected_model, temperature=0.25, timeout=45, max_tokens=2800)
+                    memo_txt = call_llm_api([{"role": "user", "content": prompt_13f}], api_key, model_provider, selected_model, temperature=0.25, timeout=45, max_tokens=2600)
                     rep_id = f"{now_dt.strftime('%Y%m%d_%H%M%S')}_13F_{active_cik}"
                     st.session_state.sec_ai_memo = {
                         "id": rep_id,
@@ -729,7 +717,7 @@ Data 13F:
                     st.rerun()
 
 with tab_master:
-    all_quarters, funds_meta_list, funds_breakdown, df_own, df_buy, df_sell = build_master_13f_aggregation(ALL_FUNDS)
+    all_quarters, funds_meta_list, funds_compact_lines, df_own, df_buy, df_sell = build_master_13f_aggregation(ALL_FUNDS)
 
     if not funds_meta_list:
         st.info(_["m_no_funds"])
@@ -759,21 +747,18 @@ with tab_master:
                 datum_str = now_dt.strftime("%d. %m. %Y %H:%M")
                 q_label = active_q or now_dt.strftime("%Y")
 
-                master_payload = {
-                    "quarter": q_label,
-                    "total_funds_analyzed": len(funds_meta_list),
-                    "most_owned_consensus": df_own.head(15).to_dict(orient="records") if not df_own.empty else [],
-                    "most_bought_or_new": df_buy.head(15).to_dict(orient="records") if not df_buy.empty else [],
-                    "most_sold_or_reduced": df_sell.head(15).to_dict(orient="records") if not df_sell.empty else [],
-                    "individual_funds_highlights": funds_breakdown
-                }
+                own_lines = "\n".join([f"- {r['Stock']}: {r['Funds']} fondů | Prům. váha {r['Avg Weight %']}% | Net Flow {r['Net Flow']:+d} ({r['Managers']})" for _, r in df_own.head(15).iterrows()]) if not df_own.empty else "-"
+                buy_lines = "\n".join([f"- {r['Stock']}: {r['Buy/Add Count']}x nákup ({r['Managers']})" for _, r in df_buy.head(15).iterrows()]) if not df_buy.empty else "-"
+                sell_lines = "\n".join([f"- {r['Stock']}: {r['Sell/Reduce Count']}x prodej ({r['Managers']})" for _, r in df_sell.head(15).iterrows()]) if not df_sell.empty else "-"
+                funds_lines_txt = "\n".join(funds_compact_lines)
+
                 lang_instr = "v čisté češtině bez anglických frází" if current_lang == "CZ" else "in clean institutional English"
                 master_prompt = f"""Jsi Chief Investment Officer (CIO) a připravuješ obsáhlý, hloubkový čtvrtletní Master 13F report napříč {len(funds_meta_list)} sledovanými institucionálními fondy výhradně za kvartál {q_label}.
 Report musí být dostatečně detailní a analytický (rozsah cca 800–1100 slov), aby sloužil jako plnohodnotný podklad pro týdenní tržní výhledy.
 
 PŘÍSNÁ PRAVIDLA KONZISTENCE:
 - Nikdy si neprotiřeč: Pokud je akcie mezi nejčastěji drženými, ale má záporný Net Flow (více prodávajících než kupujících), napiš jasně, že jde o historicky drženou jádrovou pozici, ze které ale v {q_label} fondy vybírají zisky. Nikdy netvrď, že do ní kapitál přitéká, pokud je v tabulce prodejů.
-- Používej výhradně přesná čísla, váhy a názvy ze zadaného JSONu. Nevymýšlej si vlastní procenta ani cizí tickery (pokud si nejsi 100% jistý tickerem, napiš jen název firmy z dat).
+- Používej výhradně přesná čísla, váhy a názvy ze zadaných dat. Nevymýšlej si vlastní procenta ani cizí tickery (pokud si nejsi 100% jistý tickerem, napiš jen název firmy z dat).
 - Rozlišuj „Nová pozice (New/Buy)“ od „Navýšení (Add)“ – nikdy nespojuj 100% novou pozici s procentuálním navýšením u téhož fondu.
 - Piš {lang_instr}, začni rovnou bodem 1:
 
@@ -782,24 +767,33 @@ PŘÍSNÁ PRAVIDLA KONZISTENCE:
    - Zhodnoť chování u Big Techu / polovodičů oproti defenzivním a cyklickým sektorům.
 
 2. **KONSENZUÁLNÍ NÁKUPY A NOVÉ POZICE (DETAILNÍ ROZBOR)**
-   - Rozeber podrobně nejvíce nakupované tituly, uveď přesně, které fondy je nakupovaly, s jakou aktivitou a jakou váhou v portfoliu.
+   - Rozeber podrobně nejvíce nakupované tituly, uveď přesně, které fondy je nakupovaly a s jakou aktivitou.
    - Vysvětli investiční tezi, proč se na těchto titulech shodlo více manažerů najednou.
 
 3. **DISTRIBUCE, REDUKCE A VÝBĚR ZISKŮ**
    - Rozeber nejvíce prodávané tituly, uveď konkrétní fondy a rozliš, zda jde o částečnou redukci přerostlé pozice, nebo o kompletní výstup.
 
 4. **PŘEHLED KLÍČOVÝCH TAHŮ JEDNOTLIVÝCH MANAŽERŮ**
-   - Vypíchni nejzajímavější tahy u hlavních sledovaných fondů z pole `individual_funds_highlights` (včetně jejich spravovaného objemu AUM a hlavních sázek).
+   - Vypíchni nejzajímavější tahy u hlavních sledovaných fondů (včetně jejich spravovaného objemu AUM a hlavních sázek).
 
 5. **AKČNÍ VÝSTUP PRO TÝDENNÍ TRŽNÍ VÝHLED**
    - 5 konkrétních investičních tezí a titulů k hlubší fundamentální a valuační prověrce v Terminálu včetně jasného zdůvodnění.
 
-Agregovaná 13F data za {q_label}:
-{json.dumps(master_payload, ensure_ascii=False, default=str)}"""
+NEJČASTĚJI DRŽENÉ AKCIE ({q_label}):
+{own_lines}
+
+NEJVÍCE NAKUPOVANÉ / NOVÉ POZICE ({q_label}):
+{buy_lines}
+
+NEJVÍCE PRODÁVANÉ / REDUKOVANÉ POZICE ({q_label}):
+{sell_lines}
+
+PŘEHLED JEDNOTLIVÝCH FONDŮ ({q_label}):
+{funds_lines_txt}"""
 
                 with st.spinner(_["m_spin"]):
                     try:
-                        master_txt = call_llm_api([{"role": "user", "content": master_prompt}], api_key, model_provider, selected_model, temperature=0.25, timeout=50, max_tokens=3200)
+                        master_txt = call_llm_api([{"role": "user", "content": master_prompt}], api_key, model_provider, selected_model, temperature=0.25, timeout=50, max_tokens=2800)
                         rep_id = f"{now_dt.strftime('%Y%m%d_%H%M%S')}_MASTER_13F"
                         st.session_state.sec_master_obj = {
                             "id": rep_id,
