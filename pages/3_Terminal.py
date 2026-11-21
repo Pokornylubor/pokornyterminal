@@ -60,27 +60,21 @@ st.markdown("""
     border-radius: 6px;
     margin: 12px 0 18px 0;
 }
-.term-co-name {
-    font-size: 1.45rem;
-    font-weight: 700;
-    color: #F4F4F5;
-    letter-spacing: -0.02em;
-}
-.term-co-tick {
+.term-co-name { font-size: 1.45rem; font-weight: 700; color: #F4F4F5; letter-spacing: -0.02em; }
+.term-co-tick { font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; color: #71717A; margin-left: 10px; }
+.term-arch-pill {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.9rem;
-    color: #71717A;
-    margin-left: 10px;
+    font-size: 0.74rem;
+    color: #22C55E;
+    background: rgba(34,197,94,0.12);
+    border: 1px solid rgba(34,197,94,0.28);
+    padding: 2px 8px;
+    border-radius: 99px;
+    margin-left: 12px;
 }
-.term-co-stats {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.85rem;
-    color: #71717A;
-}
-.term-co-stats b {
-    color: #F4F4F5;
-    font-weight: 600;
-}
+.term-co-stats { font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: #71717A; }
+.term-co-stats b { color: #F4F4F5; font-weight: 600; }
+
 .term-sec-label {
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.74rem;
@@ -108,9 +102,76 @@ st.markdown("""
     padding-bottom: 10px;
     border-bottom: 1px solid #1F2227;
 }
-div[data-testid="stTable"] table {
+
+/* STRUCTURED KEY FIGURES TABLE */
+.kf-wrap {
+    width: 100%;
+    overflow-x: auto;
+    border: 1px solid #1F2227;
+    border-radius: 6px;
+    background-color: #0B0D10;
+    margin-top: 8px;
+}
+.kf-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    color: #E4E4E7;
+}
+.kf-table th {
+    text-align: right;
+    padding: 10px 14px;
+    font-weight: 600;
+    font-size: 0.76rem;
+    color: #A1A1AA;
+    border-bottom: 1px solid #1F2227;
+    background-color: #0D0F12;
+    white-space: nowrap;
+}
+.kf-table th:first-child { text-align: left; min-width: 220px; }
+.kf-table th.kf-ltm { background-color: #0E1F16; color: #22C55E; }
+.kf-table th.kf-est { color: #71717A; font-style: italic; }
+
+.kf-table td {
+    text-align: right;
+    padding: 8px 14px;
+    border-bottom: 1px solid #16181D;
+    white-space: nowrap;
+}
+.kf-table td:first-child {
+    text-align: left;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.84rem;
+}
+.kf-table tr:hover td { background-color: rgba(255,255,255,0.025); }
+.kf-table td.kf-ltm { background-color: rgba(34,197,94,0.06); }
+.kf-table td.kf-est { color: #A1A1AA; }
+
+.kf-row-main td:first-child { color: #F4F4F5; font-weight: 600; }
+.kf-row-main td { color: #F4F4F5; font-weight: 500; }
+.kf-row-sub td:first-child { color: #8E929B; padding-left: 26px; font-size: 0.8rem; }
+.kf-row-sub td { color: #8E929B; font-size: 0.78rem; }
+
+.kf-sec-row td {
+    text-align: left !important;
     font-family: 'JetBrains Mono', monospace !important;
-    font-size: 0.84rem !important;
+    font-size: 0.7rem !important;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: #71717A !important;
+    background-color: #0D0F12 !important;
+    padding: 11px 14px 7px 14px !important;
+    border-top: 1px solid #1F2227;
+    border-bottom: 1px solid #1F2227;
+}
+.kf-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    margin-right: 8px;
+    vertical-align: middle;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -147,22 +208,36 @@ t = {
         "met_mar": "MARŽE (KASKÁDA)",
         "met_ret": "RENTABILITA",
         "met_ltm": "LTM (TTM) DATA",
+        "sec_val": "VALUATION & BALANCE",
+        "sec_inc": "INCOME STATEMENT",
+        "sec_cf": "CASH FLOW",
+        "r_mcap": "Market Cap",
+        "r_cash": "Cash & ST Investments",
+        "r_debt": "Total Debt",
+        "r_ev": "Enterprise Value",
         "r_rev": "Tržby (Revenue)",
-        "r_rev_growth": " ↳ Meziroční růst tržeb (YoY)",
+        "r_rev_growth": "Růst tržeb (YoY)",
         "r_gp": "Hrubý zisk (Gross Profit)",
-        "r_gm": " ↳ Hrubá marže (Gross Margin)",
+        "r_gm": "Hrubá marže",
         "r_ebit": "Provozní zisk (EBIT)",
-        "r_om": " ↳ Provozní marže (Operating Margin)",
+        "r_om": "EBIT marže",
+        "r_ebitda": "EBITDA",
         "r_ni": "Čistý zisk (Net Income)",
-        "r_nm": " ↳ Čistá marže (Net Margin)",
+        "r_nm": "Čistá marže",
         "r_eps": "Zisk na akcii (EPS)",
+        "r_ocf": "Provozní cash flow (OCF)",
+        "r_capex": "Kapitálové výdaje (CapEx)",
         "r_fcf": "Volné cash flow (FCF)",
-        "r_fcfm": " ↳ FCF marže",
+        "r_fcfm": "FCF marže",
+        "unit_lbl": "JEDNOTKY:",
+        "unit_b": "Mld. (B)",
+        "unit_m": "Mil. (M)",
         "currency_lbl": "Měna výkazů:",
         "convert_usd": "Převést výkazy z {curr} do USD (dle historických kurzů)",
-        "matrix_h": "KLÍČOVÉ FINANČNÍ UKAZATELE",
+        "matrix_h": "KEY FIGURES",
         "chart_metrics_lbl": "METRIKY V GRAFU (plné = historie · obrys = odhad)",
         "chart_ph": "Vyberte metriky pro zobrazení grafu...",
+        "arch_cnt": "v Archivu",
         "kpi_h": "KPI Dashboard",
         "kpi_pe": "P/E (Trailing)",
         "kpi_fpe": "Forward P/E",
@@ -191,8 +266,8 @@ t = {
         "kpi_eps": "LTM EPS",
         "bal_h": "Rozvaha",
         "bal_na": "Rozvaha není k dispozici.",
-        "est_q1": "Q+1 (Odhad)",
-        "est_q2": "Q+2 (Odhad)",
+        "est_q1": "Q+1E",
+        "est_q2": "Q+2E",
         "earn_next_h": "Nadcházející kvartální report",
         "earn_hist_h": "Historie překonání odhadů (Beat / Miss)",
         "earn_date_lbl": "Termín",
@@ -251,22 +326,36 @@ t = {
         "met_mar": "MARGINS (CASCADE)",
         "met_ret": "PROFITABILITY",
         "met_ltm": "LTM (TTM) DATA",
-        "r_rev": "Total Revenue",
-        "r_rev_growth": " ↳ Revenue Growth (YoY)",
-        "r_gp": "Gross Profit",
-        "r_gm": " ↳ Gross Margin",
-        "r_ebit": "Operating Income (EBIT)",
-        "r_om": " ↳ Operating Margin",
-        "r_ni": "Net Income",
-        "r_nm": " ↳ Net Margin",
-        "r_eps": "Diluted EPS",
-        "r_fcf": "Free Cash Flow (FCF)",
-        "r_fcfm": " ↳ FCF Margin",
+        "sec_val": "VALUATION & BALANCE",
+        "sec_inc": "INCOME STATEMENT",
+        "sec_cf": "CASH FLOW",
+        "r_mcap": "Market Cap",
+        "r_cash": "Cash & ST Investments",
+        "r_debt": "Total Debt",
+        "r_ev": "Enterprise Value",
+        "r_rev": "Revenue",
+        "r_rev_growth": "Revenue growth",
+        "r_gp": "Gross profit",
+        "r_gm": "Gross margin",
+        "r_ebit": "EBIT",
+        "r_om": "EBIT margin",
+        "r_ebitda": "EBITDA",
+        "r_ni": "Net income",
+        "r_nm": "Net margin",
+        "r_eps": "EPS (diluted)",
+        "r_ocf": "Operating cash flow",
+        "r_capex": "Capital expenditure",
+        "r_fcf": "Free cash flow",
+        "r_fcfm": "FCF margin",
+        "unit_lbl": "UNITS:",
+        "unit_b": "Bn (B)",
+        "unit_m": "Mn (M)",
         "currency_lbl": "Reporting Currency:",
         "convert_usd": "Convert statements from {curr} to USD (using historical rates)",
-        "matrix_h": "KEY FINANCIAL FIGURES",
+        "matrix_h": "KEY FIGURES",
         "chart_metrics_lbl": "CHART METRICS (solid = history · outline = estimate)",
         "chart_ph": "Select metrics to display chart...",
+        "arch_cnt": "in Archive",
         "kpi_h": "KPI Dashboard",
         "kpi_pe": "P/E (Trailing)",
         "kpi_fpe": "Forward P/E",
@@ -295,8 +384,8 @@ t = {
         "kpi_eps": "LTM EPS",
         "bal_h": "Balance Sheet",
         "bal_na": "Balance sheet is not available.",
-        "est_q1": "Q+1 (Est)",
-        "est_q2": "Q+2 (Est)",
+        "est_q1": "Q+1E",
+        "est_q2": "Q+2E",
         "earn_next_h": "Upcoming Earnings Report",
         "earn_hist_h": "Earnings Surprise History (Beat / Miss)",
         "earn_date_lbl": "Date",
@@ -406,31 +495,28 @@ if final_tick != st.session_state.term_ai_ticker:
     st.session_state.term_ai_saved_id = None
     st.session_state.term_ai_chat = []
 
-# --- NATIVE URLLIB AI CALL ---
 def call_llm_api(messages, api_klic, provider, model_name, temperature=0.2, timeout=30):
     url = "https://api.groq.com/openai/v1/chat/completions" if provider == "Groq" else "https://api.openai.com/v1/chat/completions"
-    payload = json.dumps({
-        "model": model_name,
-        "messages": messages,
-        "temperature": temperature
-    }).encode("utf-8")
+    payload = json.dumps({"model": model_name, "messages": messages, "temperature": temperature}).encode("utf-8")
     req = urllib.request.Request(
-        url,
-        data=payload,
-        headers={
-            "Authorization": f"Bearer {api_klic}",
-            "Content-Type": "application/json",
-            "User-Agent": random.choice(USER_AGENTS)
-        },
+        url, data=payload,
+        headers={"Authorization": f"Bearer {api_klic}", "Content-Type": "application/json", "User-Agent": random.choice(USER_AGENTS)},
         method="POST"
     )
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-            return data["choices"][0]["message"]["content"]
+            return json.loads(resp.read().decode("utf-8"))["choices"][0]["message"]["content"]
     except urllib.error.HTTPError as e:
-        err_body = e.read().decode("utf-8", errors="ignore")[:250]
-        raise RuntimeError(f"HTTP {e.code}: {err_body}")
+        raise RuntimeError(f"HTTP {e.code}: {e.read().decode('utf-8', errors='ignore')[:250]}")
+
+def fmt_cell(val, unit_mode="B", is_pct=False, is_eps=False):
+    if val is None or pd.isna(val): return "—"
+    try: val = float(val)
+    except Exception: return str(val)
+    if is_pct: return f"{val * 100:.1f}%"
+    if is_eps: return f"{val:,.2f}"
+    if unit_mode == "M": return f"{val / 1e6:,.0f}"
+    return f"{val / 1e9:,.2f}"
 
 def format_val(val, currency_code, is_pct=False, is_eps=False, force_currency=False):
     if val is None or pd.isna(val) or val == "-": return "-"
@@ -442,7 +528,6 @@ def format_val(val, currency_code, is_pct=False, is_eps=False, force_currency=Fa
     if abs(val) >= 1e6: return f"{val / 1e6:,.2f} M" + (f" {currency_code}" if force_currency else "")
     return f"{val:,.2f}" + (f" {currency_code}" if force_currency else "")
 
-# --- CACHED YFINANCE BUNDLE ---
 @st.cache_data(ttl=900, show_spinner=False)
 def load_ticker_bundle(ticker):
     tkr = yf.Ticker(ticker)
@@ -450,7 +535,8 @@ def load_ticker_bundle(ticker):
         "info": {}, "fast": {}, "hist_price": 0.0,
         "fin_a": pd.DataFrame(), "fin_q": pd.DataFrame(),
         "cf_a": pd.DataFrame(), "cf_q": pd.DataFrame(),
-        "bs": pd.DataFrame(), "rev_est": None, "eps_est": None,
+        "bs_a": pd.DataFrame(), "bs_q": pd.DataFrame(),
+        "rev_est": None, "eps_est": None,
         "cal": None, "eh": None, "edates": None
     }
     try: bundle["info"] = tkr.info or {}
@@ -469,7 +555,9 @@ def load_ticker_bundle(ticker):
     except Exception: pass
     try: bundle["cf_q"] = tkr.quarterly_cashflow
     except Exception: pass
-    try: bundle["bs"] = tkr.balance_sheet
+    try: bundle["bs_a"] = tkr.balance_sheet
+    except Exception: pass
+    try: bundle["bs_q"] = tkr.quarterly_balance_sheet
     except Exception: pass
     try: bundle["rev_est"] = tkr.revenue_estimate
     except Exception: pass
@@ -552,7 +640,8 @@ if final_tick:
         is_quarterly = (period_type == _["quarterly"])
         financials = bundle["fin_q"] if is_quarterly else bundle["fin_a"]
         cashflow = bundle["cf_q"] if is_quarterly else bundle["cf_a"]
-        balance_sheet = bundle["bs"]
+        bs_period = bundle["bs_q"] if is_quarterly else bundle["bs_a"]
+        balance_sheet = bundle["bs_a"]
 
         if financials is None or financials.empty:
             st.error(_["err_data"])
@@ -562,11 +651,16 @@ if final_tick:
         currency_code = info.get("financialCurrency") or info.get("currency") or fast.get("currency") or "USD"
         trading_currency = info.get("currency") or fast.get("currency") or "USD"
 
+        # Count saved archive items for this ticker
+        all_archive = load_archive()
+        arch_count = sum(1 for r in all_archive if str(r.get("tema", "")).upper() == final_tick)
+        arch_badge = f'<span class="term-arch-pill">{arch_count} {_["arch_cnt"]}</span>' if arch_count > 0 else ""
+
         # --- INSTITUTIONAL TOP BAR ---
         mcap_str = f"{market_cap/1e9:,.2f}B {trading_currency}" if (market_cap and market_cap >= 1e9) else (f"{market_cap/1e6:,.1f}M {trading_currency}" if market_cap else "N/A")
         st.markdown(
             f'<div class="term-topbar">'
-            f'<div><span class="term-co-name">{short_name}</span><span class="term-co-tick">{final_tick}</span></div>'
+            f'<div><span class="term-co-name">{short_name}</span><span class="term-co-tick">{final_tick}</span>{arch_badge}</div>'
             f'<div class="term-co-stats">last close <b>{curr_price:,.2f} {trading_currency}</b>   ·   mkt cap <b>{mcap_str}</b></div>'
             f'</div>',
             unsafe_allow_html=True
@@ -608,31 +702,45 @@ if final_tick:
                     if len(vals) == 4 and not vals.isna().all(): return float(vals.sum())
             return None
 
+        def get_first_val(df, keys, col=None):
+            if df is None or df.empty: return None
+            for k in keys:
+                if k in df.index:
+                    v = df.loc[k, col] if (col is not None and col in df.columns) else df.loc[k].iloc[0]
+                    if pd.notna(v): return float(v)
+            return None
+
         total_rev_ltm = get_ltm_from_quarterly(q_fin_for_kpi, ['Total Revenue']) or info.get("totalRevenue")
         gross_profit_ltm = get_ltm_from_quarterly(q_fin_for_kpi, ['Gross Profit'])
         op_inc_ltm = get_ltm_from_quarterly(q_fin_for_kpi, ['Operating Income', 'EBIT'])
         net_income_ltm = get_ltm_from_quarterly(q_fin_for_kpi, ['Net Income', 'Net Income Common Stockholders']) or info.get("netIncomeToCommon", info.get("netIncome"))
         ebitda_ltm = get_ltm_from_quarterly(q_fin_for_kpi, ['Normalized EBITDA', 'EBITDA']) or info.get("ebitda")
+        ocf_ltm = get_ltm_from_quarterly(q_cf_for_kpi, ['Operating Cash Flow'])
+        capex_ltm = get_ltm_from_quarterly(q_cf_for_kpi, ['Capital Expenditure'])
 
         fcf = get_ltm_from_quarterly(q_cf_for_kpi, ['Free Cash Flow'])
         if fcf is None:
-            ocf = get_ltm_from_quarterly(q_cf_for_kpi, ['Operating Cash Flow'])
-            capex = get_ltm_from_quarterly(q_cf_for_kpi, ['Capital Expenditure'])
-            if ocf and capex is not None: fcf = ocf - abs(capex)
+            if ocf_ltm and capex_ltm is not None: fcf = ocf_ltm - abs(capex_ltm)
             else: fcf = info.get("freeCashflow")
 
         eps_ltm = info.get("trailingEps") or get_ltm_from_quarterly(q_fin_for_kpi, ['Diluted EPS', 'Basic EPS'])
+
+        # Latest balance sheet for KPI & LTM
+        latest_bs = bundle["bs_q"] if (bundle["bs_q"] is not None and not bundle["bs_q"].empty) else balance_sheet
+        latest_cash = get_first_val(latest_bs, ['Cash Cash Equivalents And Short Term Investments', 'Cash And Cash Equivalents'])
+        latest_debt = get_first_val(latest_bs, ['Total Debt'])
+        latest_ev = (market_cap + (latest_debt or 0) - (latest_cash or 0)) if market_cap else info.get("enterpriseValue")
 
         calc_debt_eq, roic, roce, roi = None, None, None, None
         total_debt, stockholders_eq, total_assets, current_assets, current_liab, inventory = 0, 0, 0, 0, 0, 0
         if balance_sheet is not None and not balance_sheet.empty:
             try:
-                total_debt = float(balance_sheet.loc['Total Debt'].iloc[0]) if 'Total Debt' in balance_sheet.index else 0
-                stockholders_eq = float(balance_sheet.loc['Stockholders Equity'].iloc[0]) if 'Stockholders Equity' in balance_sheet.index else 0
-                total_assets = float(balance_sheet.loc['Total Assets'].iloc[0]) if 'Total Assets' in balance_sheet.index else 0
-                current_assets = float(balance_sheet.loc['Current Assets'].iloc[0]) if 'Current Assets' in balance_sheet.index else 0
-                current_liab = float(balance_sheet.loc['Current Liabilities'].iloc[0]) if 'Current Liabilities' in balance_sheet.index else (float(balance_sheet.loc['Total Current Liabilities'].iloc[0]) if 'Total Current Liabilities' in balance_sheet.index else 0)
-                inventory = float(balance_sheet.loc['Inventory'].iloc[0]) if 'Inventory' in balance_sheet.index else 0
+                total_debt = get_first_val(balance_sheet, ['Total Debt']) or 0
+                stockholders_eq = get_first_val(balance_sheet, ['Stockholders Equity']) or 0
+                total_assets = get_first_val(balance_sheet, ['Total Assets']) or 0
+                current_assets = get_first_val(balance_sheet, ['Current Assets']) or 0
+                current_liab = get_first_val(balance_sheet, ['Current Liabilities', 'Total Current Liabilities']) or 0
+                inventory = get_first_val(balance_sheet, ['Inventory']) or 0
                 invested_capital = total_debt + stockholders_eq
                 capital_employed = total_assets - current_liab
                 if stockholders_eq > 0: calc_debt_eq = total_debt / stockholders_eq
@@ -646,7 +754,7 @@ if final_tick:
         peg = info.get("pegRatio")
         ps = info.get("priceToSalesTrailing12Months") or ((market_cap / total_rev_ltm) if (market_cap and total_rev_ltm and total_rev_ltm > 0) else None)
         pb = info.get("priceToBook") or ((market_cap / stockholders_eq) if (market_cap and stockholders_eq and stockholders_eq > 0) else None)
-        ev_ebitda = info.get("enterpriseToEbitda")
+        ev_ebitda = info.get("enterpriseToEbitda") or ((latest_ev / ebitda_ltm) if (latest_ev and ebitda_ltm and ebitda_ltm > 0) else None)
         p_fcf = (market_cap / fcf) if (market_cap and fcf and fcf > 0) else None
 
         current_ratio = info.get("currentRatio") or ((current_assets / current_liab) if (current_assets and current_liab > 0) else None)
@@ -662,13 +770,11 @@ if final_tick:
 
         if net_income_ltm and invested_capital > 0: roic = net_income_ltm / invested_capital
         if not financials.empty and capital_employed > 0:
-            try:
-                ebit = financials.loc['EBIT'].iloc[0] if 'EBIT' in financials.index else (financials.loc['Operating Income'].iloc[0] if 'Operating Income' in financials.index else 0)
-                if ebit: roce = float(ebit) / capital_employed
-            except Exception: pass
+            ebit_0 = get_first_val(financials, ['EBIT', 'Operating Income'])
+            if ebit_0: roce = ebit_0 / capital_employed
         if net_income_ltm and total_assets > 0: roi = net_income_ltm / total_assets
 
-        # Build matrix
+        # --- BUILD STRUCTURED MATRIX (VALUATION + INCOME + CASH FLOW) ---
         matrix_dict = {}
         est_col_labels = []
         last_hist_year = 2024
@@ -678,33 +784,52 @@ if final_tick:
             for col in hist_cols:
                 rate = get_rate(col)
                 col_label = f"{col.year}-Q{col.quarter}" if is_quarterly else f"FY{col.year}"
-                matrix_dict[col_label] = {}
-                rev = financials.loc["Total Revenue", col] if "Total Revenue" in financials.index else None
-                matrix_dict[col_label][_["r_rev"]] = (rev * rate) if pd.notna(rev) else None
-                gp = financials.loc["Gross Profit", col] if "Gross Profit" in financials.index else None
-                matrix_dict[col_label][_["r_gp"]] = (gp * rate) if pd.notna(gp) else None
-                ebit = financials.loc["Operating Income", col] if "Operating Income" in financials.index else (financials.loc["EBIT", col] if "EBIT" in financials.index else None)
-                matrix_dict[col_label][_["r_ebit"]] = (ebit * rate) if pd.notna(ebit) else None
-                ni = financials.loc["Net Income Common Stockholders", col] if "Net Income Common Stockholders" in financials.index else (financials.loc["Net Income", col] if "Net Income" in financials.index else None)
-                matrix_dict[col_label][_["r_ni"]] = (ni * rate) if pd.notna(ni) else None
-                eps = financials.loc["Diluted EPS", col] if "Diluted EPS" in financials.index else (financials.loc["Basic EPS", col] if "Basic EPS" in financials.index else None)
-                matrix_dict[col_label][_["r_eps"]] = (eps * rate) if pd.notna(eps) else None
-                fcf_val = None
-                if not cashflow.empty and col in cashflow.columns:
-                    if "Free Cash Flow" in cashflow.index: fcf_val = cashflow.loc["Free Cash Flow", col]
-                    elif "Operating Cash Flow" in cashflow.index and "Capital Expenditure" in cashflow.index:
-                        fcf_val = cashflow.loc["Operating Cash Flow", col] - abs(cashflow.loc["Capital Expenditure", col])
-                matrix_dict[col_label][_["r_fcf"]] = (fcf_val * rate) if pd.notna(fcf_val) else None
+                c_cash = get_first_val(bs_period, ['Cash Cash Equivalents And Short Term Investments', 'Cash And Cash Equivalents'], col)
+                c_debt = get_first_val(bs_period, ['Total Debt'], col)
+                c_rev = get_first_val(financials, ['Total Revenue'], col)
+                c_gp = get_first_val(financials, ['Gross Profit'], col)
+                c_ebit = get_first_val(financials, ['Operating Income', 'EBIT'], col)
+                c_ebitda = get_first_val(financials, ['Normalized EBITDA', 'EBITDA'], col)
+                c_ni = get_first_val(financials, ['Net Income Common Stockholders', 'Net Income'], col)
+                c_eps = get_first_val(financials, ['Diluted EPS', 'Basic EPS'], col)
+                c_ocf = get_first_val(cashflow, ['Operating Cash Flow'], col)
+                c_capex = get_first_val(cashflow, ['Capital Expenditure'], col)
+                c_fcf = get_first_val(cashflow, ['Free Cash Flow'], col)
+                if c_fcf is None and c_ocf is not None and c_capex is not None:
+                    c_fcf = c_ocf - abs(c_capex)
+
+                matrix_dict[col_label] = {
+                    _["r_mcap"]: None,
+                    _["r_cash"]: c_cash * rate if c_cash is not None else None,
+                    _["r_debt"]: c_debt * rate if c_debt is not None else None,
+                    _["r_ev"]: None,
+                    _["r_rev"]: c_rev * rate if c_rev is not None else None,
+                    _["r_gp"]: c_gp * rate if c_gp is not None else None,
+                    _["r_ebit"]: c_ebit * rate if c_ebit is not None else None,
+                    _["r_ebitda"]: c_ebitda * rate if c_ebitda is not None else None,
+                    _["r_ni"]: c_ni * rate if c_ni is not None else None,
+                    _["r_eps"]: c_eps * rate if c_eps is not None else None,
+                    _["r_ocf"]: c_ocf * rate if c_ocf is not None else None,
+                    _["r_capex"]: abs(c_capex) * rate if c_capex is not None else None,
+                    _["r_fcf"]: c_fcf * rate if c_fcf is not None else None
+                }
 
         if not is_quarterly:
             rate = latest_fx if convert_to_usd else 1.0
             matrix_dict["LTM"] = {
-                _["r_rev"]: (total_rev_ltm * rate) if pd.notna(total_rev_ltm) else None,
-                _["r_gp"]: (gross_profit_ltm * rate) if gross_profit_ltm is not None else None,
-                _["r_ebit"]: (op_inc_ltm * rate) if op_inc_ltm is not None else None,
-                _["r_ni"]: (net_income_ltm * rate) if pd.notna(net_income_ltm) else None,
-                _["r_eps"]: (eps_ltm * rate) if pd.notna(eps_ltm) else None,
-                _["r_fcf"]: (fcf * rate) if pd.notna(fcf) else None
+                _["r_mcap"]: market_cap * rate if market_cap else None,
+                _["r_cash"]: latest_cash * rate if latest_cash is not None else None,
+                _["r_debt"]: latest_debt * rate if latest_debt is not None else None,
+                _["r_ev"]: latest_ev * rate if latest_ev else None,
+                _["r_rev"]: total_rev_ltm * rate if total_rev_ltm is not None else None,
+                _["r_gp"]: gross_profit_ltm * rate if gross_profit_ltm is not None else None,
+                _["r_ebit"]: op_inc_ltm * rate if op_inc_ltm is not None else None,
+                _["r_ebitda"]: ebitda_ltm * rate if ebitda_ltm is not None else None,
+                _["r_ni"]: net_income_ltm * rate if net_income_ltm is not None else None,
+                _["r_eps"]: eps_ltm * rate if eps_ltm is not None else None,
+                _["r_ocf"]: ocf_ltm * rate if ocf_ltm is not None else None,
+                _["r_capex"]: abs(capex_ltm) * rate if capex_ltm is not None else None,
+                _["r_fcf"]: fcf * rate if fcf is not None else None
             }
 
         try:
@@ -717,11 +842,12 @@ if final_tick:
                 e_val = eps_est.loc[k, "avg"] if (eps_est is not None and not eps_est.empty and k in eps_est.index and "avg" in eps_est.columns) else None
                 r_val = rev_est.loc[k, "avg"] if (rev_est is not None and not rev_est.empty and k in rev_est.index and "avg" in rev_est.columns) else None
                 matrix_dict[label] = {
-                    _["r_eps"]: (e_val * rate) if pd.notna(e_val) else None,
-                    _["r_rev"]: (r_val * rate) if pd.notna(r_val) else None,
-                    _["r_gp"]: None, _["r_ebit"]: None,
-                    _["r_ni"]: (e_val * rate * shares_out) if (pd.notna(e_val) and shares_out) else None,
-                    _["r_fcf"]: None
+                    _["r_mcap"]: None, _["r_cash"]: None, _["r_debt"]: None, _["r_ev"]: None,
+                    _["r_rev"]: (float(r_val) * rate) if pd.notna(r_val) else None,
+                    _["r_gp"]: None, _["r_ebit"]: None, _["r_ebitda"]: None,
+                    _["r_ni"]: (float(e_val) * rate * shares_out) if (pd.notna(e_val) and shares_out) else None,
+                    _["r_eps"]: (float(e_val) * rate) if pd.notna(e_val) else None,
+                    _["r_ocf"]: None, _["r_capex"]: None, _["r_fcf"]: None
                 }
         except Exception:
             pass
@@ -737,28 +863,24 @@ if final_tick:
                 if p_lbl in df_matrix.index:
                     df_matrix.loc[m_lbl] = pd.to_numeric(df_matrix.loc[p_lbl], errors='coerce') / rev_series
 
-        ordered_rows = [_["r_rev"], _["r_rev_growth"], _["r_gp"], _["r_gm"], _["r_ebit"], _["r_om"], _["r_ni"], _["r_nm"], _["r_eps"], _["r_fcf"], _["r_fcfm"]]
-        df_matrix = df_matrix.reindex([r for r in ordered_rows if r in df_matrix.index])
-
-        df_display = df_matrix.copy().astype(object)
-        pct_rows = [_["r_rev_growth"], _["r_gm"], _["r_om"], _["r_nm"], _["r_fcfm"]]
-        for r in df_display.index:
-            is_pct = (r in pct_rows)
-            is_eps = (r == _["r_eps"])
-            df_display.loc[r] = df_display.loc[r].apply(lambda x: format_val(x, display_currency, is_pct=is_pct, is_eps=is_eps, force_currency=(not is_pct and not is_eps)))
-
         tab_matrix, tab_val, tab_ai, tab_ana, tab_earn, tab_news, tab_raw = st.tabs([
             _["tab_matrix"], _["tab_val"], _["tab_ai"], _["tab_ana"], _["tab_earn"], _["tab_news"], _["tab_raw"]
         ])
 
         with tab_matrix:
-            chart_options = [m for m in [_["r_rev"], _["r_ni"], _["r_ebit"], _["r_fcf"]] if m in df_matrix.index]
-            sel_metrics = st.multiselect(_["chart_metrics_lbl"], chart_options, default=[], placeholder=_["chart_ph"])
+            c_m1, c_m2 = st.columns([4, 1.3])
+            chart_options = [m for m in [_["r_rev"], _["r_gp"], _["r_ebit"], _["r_ebitda"], _["r_ni"], _["r_ocf"], _["r_fcf"]] if m in df_matrix.index]
+            sel_metrics = c_m1.multiselect(_["chart_metrics_lbl"], chart_options, default=[], placeholder=_["chart_ph"])
+            unit_choice = c_m2.radio(_["unit_lbl"], [_["unit_b"], _["unit_m"]], horizontal=True)
+            unit_mode = "B" if unit_choice == _["unit_b"] else "M"
 
             color_map = {
                 _["r_rev"]: ("#22C55E", "rgba(34,197,94,0.12)"),
                 _["r_ni"]: ("#3B82F6", "rgba(59,130,246,0.12)"),
+                _["r_gp"]: ("#14B8A6", "rgba(20,184,166,0.12)"),
                 _["r_ebit"]: ("#F97316", "rgba(249,115,22,0.12)"),
+                _["r_ebitda"]: ("#EAB308", "rgba(234,179,8,0.12)"),
+                _["r_ocf"]: ("#06B6D4", "rgba(6,182,212,0.12)"),
                 _["r_fcf"]: ("#A855F7", "rgba(168,85,247,0.12)")
             }
 
@@ -773,21 +895,14 @@ if final_tick:
                     line_widths = [1.8 if c in est_col_labels else 0 for c in chart_cols]
 
                     fig.add_trace(go.Bar(
-                        x=chart_cols,
-                        y=vals,
-                        name=m,
+                        x=chart_cols, y=vals, name=m,
                         marker=dict(color=bar_colors, line=dict(color=line_colors, width=line_widths)),
                         hovertemplate="%{x}: %{y:,.2s} " + display_currency + "<extra>" + m + "</extra>"
                     ))
 
                 fig.update_layout(
-                    template="plotly_dark",
-                    barmode="group",
-                    bargap=0.28,
-                    bargroupgap=0.08,
-                    height=310,
-                    paper_bgcolor="#0D0F12",
-                    plot_bgcolor="#0D0F12",
+                    template="plotly_dark", barmode="group", bargap=0.28, bargroupgap=0.08, height=300,
+                    paper_bgcolor="#0D0F12", plot_bgcolor="#0D0F12",
                     margin=dict(l=10, r=10, t=24, b=10),
                     xaxis=dict(showgrid=False, tickfont=dict(family="JetBrains Mono", size=11, color="#A1A1AA")),
                     yaxis=dict(showgrid=True, gridcolor="#1F2227", tickfont=dict(family="JetBrains Mono", size=11, color="#71717A")),
@@ -795,8 +910,67 @@ if final_tick:
                 )
                 st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
-            st.markdown(f'<div class="term-sec-label">{_["matrix_h"]} · {_["currency_lbl"]} {display_currency}</div>', unsafe_allow_html=True)
-            st.table(df_display)
+            # --- RENDER STRUCTURED KEY FIGURES HTML TABLE ---
+            unit_tag = f"{display_currency} {'bn' if unit_mode == 'B' else 'm'}"
+            cols = list(df_matrix.columns)
+            th_cells = [f'<th>{_["matrix_h"]} ({unit_tag})</th>']
+            for c in cols:
+                cls = ' class="kf-ltm"' if c == "LTM" else (' class="kf-est"' if c in est_col_labels else '')
+                th_cells.append(f'<th{cls}>{c}</th>')
+
+            sections = [
+                (_["sec_val"], [
+                    (_["r_mcap"], False, False, True),
+                    (_["r_cash"], False, False, False),
+                    (_["r_debt"], False, False, False),
+                    (_["r_ev"], False, False, True)
+                ]),
+                (_["sec_inc"], [
+                    (_["r_rev"], False, False, True),
+                    (_["r_rev_growth"], True, False, False),
+                    (_["r_gp"], False, False, True),
+                    (_["r_gm"], True, False, False),
+                    (_["r_ebit"], False, False, True),
+                    (_["r_om"], True, False, False),
+                    (_["r_ebitda"], False, False, True),
+                    (_["r_ni"], False, False, True),
+                    (_["r_nm"], True, False, False),
+                    (_["r_eps"], False, True, True)
+                ]),
+                (_["sec_cf"], [
+                    (_["r_ocf"], False, False, True),
+                    (_["r_capex"], False, False, False),
+                    (_["r_fcf"], False, False, True),
+                    (_["r_fcfm"], True, False, False)
+                ])
+            ]
+
+            tbody_rows = []
+            colspan = len(cols) + 1
+            for sec_title, rows_cfg in sections:
+                tbody_rows.append(f'<tr class="kf-sec-row"><td colspan="{colspan}">{sec_title}</td></tr>')
+                for r_key, is_pct, is_eps, is_main in rows_cfg:
+                    if r_key not in df_matrix.index:
+                        continue
+                    tr_cls = "kf-row-main" if is_main else "kf-row-sub"
+                    dot_html = ""
+                    if r_key in sel_metrics:
+                        dot_color = color_map.get(r_key, ("#22C55E", ""))[0]
+                        dot_html = f'<span class="kf-dot" style="background-color:{dot_color};"></span>'
+                    tds = [f'<td>{dot_html}{r_key}</td>']
+                    for c in cols:
+                        val = df_matrix.loc[r_key, c]
+                        td_cls = ' class="kf-ltm"' if c == "LTM" else (' class="kf-est"' if c in est_col_labels else '')
+                        tds.append(f'<td{td_cls}>{fmt_cell(val, unit_mode=unit_mode, is_pct=is_pct, is_eps=is_eps)}</td>')
+                    tbody_rows.append(f'<tr class="{tr_cls}">{"".join(tds)}</tr>')
+
+            table_html = (
+                f'<div class="kf-wrap"><table class="kf-table">'
+                f'<thead><tr>{"".join(th_cells)}</tr></thead>'
+                f'<tbody>{"".join(tbody_rows)}</tbody>'
+                f'</table></div>'
+            )
+            st.markdown(table_html, unsafe_allow_html=True)
 
         with tab_val:
             st.markdown(f'<div class="term-sec-label">{short_name} ({final_tick}) · {_["kpi_h"]}</div>', unsafe_allow_html=True)
@@ -858,7 +1032,7 @@ if final_tick:
                     "PE": pe, "Forward_PE": fwd_pe, "PEG": peg, "EV_EBITDA": ev_ebitda, "P_FCF": p_fcf,
                     "Gross_Margin": gross_margin, "Operating_Margin": op_margin, "Net_Margin": profit_margin, "FCF_Margin": fcf_margin,
                     "ROE": roe, "ROIC": roic, "Debt_to_Equity": calc_debt_eq, "Current_Ratio": current_ratio,
-                    "Financial_Matrix": df_display.to_dict()
+                    "Financial_Matrix": df_matrix.dropna(how="all").to_dict()
                 }
                 kpi_json_str = json.dumps(kpi_summary, ensure_ascii=False, default=str)
 
@@ -938,8 +1112,6 @@ Používej výhradně tato data:
                     if not ans.startswith("⚠️"):
                         st.session_state.term_ai_chat.append({"role": "assistant", "content": ans})
 
-                # --- ARCHIV ULOŽENÝCH INVESTIČNÍCH MEM PRO TENTO TICKER ---
-                all_archive = load_archive()
                 saved_memos = [r for r in all_archive if r.get("typ") == "INVESTIČNÍ MEMO" and r.get("tema") == final_tick]
                 if saved_memos:
                     st.markdown("---")
