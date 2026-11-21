@@ -105,8 +105,8 @@ t = {
         "ai_saved_list": "ULOŽENÉ 13F ANALÝZY",
         "ai_load": "Načíst",
         "ai_del": "Smazat",
-        "m_btn": "Vygenerovat detailní Master 13F report všech fondů (AI)",
-        "m_spin": "Agregace všech fondů a generování hloubkového Master 13F reportu...",
+        "m_btn": "Vygenerovat institucionální Master 13F report všech subjektů (AI)",
+        "m_spin": "Agregace všech subjektů a generování Master 13F reportu...",
         "m_copy_lbl": "PODKLAD PRO TÝDENNÍ TRŽNÍ VÝHLED (KOPÍROVATELNÝ MARKDOWN)",
         "m_saved_list": "ULOŽENÉ MASTER 13F SOUHRNY",
         "m_no_funds": "Ve složce sec_data/ zatím nejsou staženy žádné 13F reporty.",
@@ -145,8 +145,8 @@ t = {
         "ai_saved_list": "SAVED 13F ANALYSES",
         "ai_load": "Load",
         "ai_del": "Delete",
-        "m_btn": "Generate Comprehensive Master 13F Synthesis Across All Funds (AI)",
-        "m_spin": "Aggregating all funds and generating comprehensive Master 13F report...",
+        "m_btn": "Generate Institutional Master 13F Synthesis Across All Entities (AI)",
+        "m_spin": "Aggregating all entities and generating Master 13F report...",
         "m_copy_lbl": "EXPORT FOR WEEKLY MARKET OUTLOOK (COPYABLE MARKDOWN)",
         "m_saved_list": "SAVED MASTER 13F SYNTHESES",
         "m_no_funds": "No downloaded 13F reports found in sec_data/ yet.",
@@ -579,7 +579,7 @@ Na základě PŘESNĚ TĚCHTO 13F dat subjektu {short_fund} (kvartál {active_me
 PŘÍSNÁ PRAVIDLA:
 - Piš výhradně spisovnou češtinou, nikdy nepoužívej slova jako „Título“ ani zastaralé fráze („oživení po pandemii“, „metaverse“).
 - Neuváděj žádné odhady celkového AUM fondu.
-- „Buy 100 %“ znamená otevření zcela nové pozice v daném kvartálu.
+- „Buy 100 %“ znamená otevření zcela nové pozice v daném kvartálu; „Add“ znamená navýšení již existující pozice.
 - Používej výhradně čísla z přiložených dat a nevymýšlej si cizí tickery.
 
 1. **STRUKTURA PORTFOLIA, KONCENTRACE & HLAVNÍ SÁZKY**
@@ -742,23 +742,24 @@ with tab_master:
                 datum_str = now_dt.strftime("%d. %m. %Y %H:%M")
                 q_label = active_q or now_dt.strftime("%Y")
 
-                own_lines = "\n".join([f"- {r['Stock']}: drží {r['Funds']} subjektů | průměrná váha v PTF {r['Avg Weight %']}% | čistý rozdíl počtu fondů (kupující mínus prodávající) = {r['Net_Fund_Count_Diff']:+d} fondů ({r['Managers']})" for _, r in df_own.head(10).iterrows()]) if not df_own.empty else "-"
-                buy_lines = "\n".join([f"- {r['Stock']}: {r['Buy/Add Count']}x nákup/navýšení ({r['Managers']})" for _, r in df_buy.head(8).iterrows()]) if not df_buy.empty else "-"
-                sell_lines = "\n".join([f"- {r['Stock']}: {r['Sell/Reduce Count']}x prodej/redukce ({r['Managers']})" for _, r in df_sell.head(8).iterrows()]) if not df_sell.empty else "-"
+                own_lines = "\n".join([f"- {r['Stock']}: drží {r['Funds']} subjektů | průměrná váha v PTF {r['Avg Weight %']}% | čistý rozdíl počtu fondů (kupující mínus prodávající) = {r['Net_Fund_Count_Diff']:+d} fondů ({r['Managers']})" for _, r in df_own.head(15).iterrows()]) if not df_own.empty else "-"
+                buy_lines = "\n".join([f"- {r['Stock']}: {r['Buy/Add Count']}x nákup/navýšení ({r['Managers']})" for _, r in df_buy.head(15).iterrows()]) if not df_buy.empty else "-"
+                sell_lines = "\n".join([f"- {r['Stock']}: {r['Sell/Reduce Count']}x prodej/redukce ({r['Managers']})" for _, r in df_sell.head(15).iterrows()]) if not df_sell.empty else "-"
                 funds_lines_txt = "\n".join(funds_compact_lines)
 
                 lang_instr = "výhradně spisovnou, přirozenou češtinou bez překlepů" if current_lang == "CZ" else "in clean institutional English"
-                master_prompt = f"""Jsi seniorní institucionální akciový analytik. Tvým úkolem je vytvořit stručný, hutný a kompletní „MASTER 13F SOUHRN“ pro čtvrtletí {q_label} (data zveřejněná v listopadu 2026) napříč {len(funds_meta_list)} sledovanými subjekty výhradně na základě níže přiložených dat z hlášení 13F.
-Celý výstup musí mít rozsah max. 650–750 slov, aby se bezpečně dokončil až do posledního slova bodu 5 bez useknutí (začni rovnou bodem 1).
+                master_prompt = f"""Jsi seniorní institucionální akciový analytik. Tvým úkolem je vytvořit hutný, analyticky přesný a kompletní „MASTER 13F SOUHRN“ pro čtvrtletí {q_label} (data zveřejněná v listopadu 2026) napříč {len(funds_meta_list)} sledovanými subjekty výhradně na základě níže přiložených dat z hlášení 13F.
+Celý výstup musí mít rozsah cca 700–800 slov, aby se bezpečně dokončil až do posledního slova bodu 5 bez useknutí (začni rovnou bodem 1).
 
 PŘÍSNÁ PRAVIDLA:
 1. JAZYK: Piš {lang_instr}. Nikdy nepoužívej cizí slova v hlavičkách tabulek (vždy „Titul“, nikdy „Título“).
-2. DEFINICE METRIK:
+2. DEFINICE METRIK (ZÁKAZ ZÁMĚNY JEDNOTEK):
    - „Čistý rozdíl počtu fondů“ (`Net_Fund_Count_Diff`) je POČET KUPUJÍCÍCH FONDŮ MÍNUS POČET PRODÁVAJÍCÍCH FONDŮ. NIKDY k němu nepřidávej znak %!
    - Procenta (%) uváděj POUZE u změny pozice konkrétního fondu nebo váhy v portfoliu.
-   - „Buy 100 %“ = zcela nová pozice. „NVDIA“ / „NVIDIA“ v seznamu subjektů = korporátní 13F hlášení samotné společnosti NVIDIA.
-3. ZÁKAZ HALUCINACÍ: Nepoužívej zastaralé fráze („pandemie“, „metaverse“), neuváděj odhady AUM a nepopleť sektory (Visa, Bank of America, Capital One = finance; GE Aerospace = průmysl; Humana = zdravotnictví).
-4. KONZISTENCE: Komentář v bodě 1 musí 100% odpovídat tabulkám v bodech 2 a 3.
+   - Rozlišuj striktně „Buy 100 %“ (= otevření zcela nové pozice) od „Add“ (= navýšení již držené pozice, např. Add 435.53 % není nová pozice, ale navýšení).
+   - „NVDIA“ / „NVIDIA“ v seznamu subjektů = korporátní 13F hlášení samotné společnosti NVIDIA, nikoliv investiční fond.
+3. ZÁKAZ HALUCINACÍ: Nepoužívej zastaralé fráze („pandemie“, „metaverse“), neuváděj odhady AUM a nepopleť sektory (Alphabet, Apple, Amazon, Microsoft, NVIDIA = technologie/komunikace; Visa, Bank of America, Capital One, American Express = finance; GE Aerospace = průmysl; Humana = zdravotnictví).
+4. KONZISTENCE: Komentář v bodě 1 musí 100% odpovídat tabulkám v bodech 2 a 3. Pokud je akcie v tabulce prodejů (např. Visa, Moody's, Alphabet, NVIDIA), popiš ji jako historicky drženou jádrovou pozici, kde probíhá výběr zisků.
 
 POŽADOVANÁ STRUKTURA VÝSTUPU:
 
@@ -766,15 +767,15 @@ POŽADOVANÁ STRUKTURA VÝSTUPU:
    - Ve 2–3 hutných odstavcích shrň hlavní rotaci kapitálu (odliv vs. příliv podle rozdílu v počtu fondů).
 
 2. **KONSENZUÁLNÍ NÁKUPY A NOVÉ POZICE**
-   - Tabulka: | Titul | Počet kupujících fondů | Přehled aktivit (Manažer a změna) | (Top 8 titulů)
+   - Tabulka: | Titul | Počet kupujících fondů | Přehled aktivit (Manažer a změna) | (vyber 8 až 9 nejvýznamnějších titulů z dat včetně velkých technologických a tržních lídrů)
    - Pod tabulkou 3 stručné odrážky s interpretací nákupních trendů.
 
 3. **DISTRIBUCE, REDUKCE A VÝBĚR ZISKŮ**
-   - Tabulka: | Titul | Počet prodávajících fondů | Rozsah redukce a hlavní prodejci | (Top 8 titulů)
+   - Tabulka: | Titul | Počet prodávajících fondů | Rozsah redukce a hlavní prodejci | (vyber 8 až 9 nejvýznamnějších titulů z dat včetně velkých technologických titulů jako Alphabet či NVIDIA, pokud jsou v datech)
    - Pod tabulkou 3 stručné odrážky k výběru zisků.
 
 4. **PŘEHLED KLÍČOVÝCH TAHŮ HLAVNÍCH SUBJEKTŮ**
-   - U 6–8 hlavních fondů/subjektů uveď přesně 1 stručnou větu (hlavní sázky, nákup vs. prodej). Bez odhadů AUM.
+   - U 8 hlavních fondů/subjektů uveď přesně 1 stručnou větu (hlavní sázky, nákup vs. prodej; rozlišuj novou pozici vs. navýšení). Bez odhadů AUM.
 
 5. **AKČNÍ VÝSTUP PRO TÝDENNÍ TRŽNÍ VÝHLED**
    - 5 stručných, konkrétních investičních tezí a titulů k prověření v Terminálu.
