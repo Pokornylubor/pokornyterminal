@@ -86,7 +86,7 @@ st.markdown("""
 current_lang = st.session_state.get("lang", "CZ")
 
 WATCHLIST_FILE = os.path.join(hlavni_slozka, "watchlist.json")
-ARCHIVE_FILE = os.path.join(hlavni_slozka, "lab_archive.json")
+ARCHIVE_FILE = os.path.join(hlavni_slozka, "ai_radar_archive.json")
 
 # --- DICTIONARY ---
 t = {

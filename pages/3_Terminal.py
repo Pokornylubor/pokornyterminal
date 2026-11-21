@@ -22,7 +22,7 @@ aktualni_slozka = os.path.dirname(os.path.abspath(__file__))
 hlavni_slozka = os.path.dirname(aktualni_slozka) if os.path.basename(aktualni_slozka) == "pages" else aktualni_slozka
 sys.path.append(hlavni_slozka)
 WATCHLIST_FILE = os.path.join(hlavni_slozka, "watchlist.json")
-ARCHIVE_FILE = os.path.join(hlavni_slozka, "lab_archive.json")
+MEMOS_FILE = os.path.join(hlavni_slozka, "terminal_memos.json")
 
 import menu
 menu.vykresli_menu()
@@ -33,6 +33,8 @@ USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:127.0) Gecko/20100101 Firefox/127.0",
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 ]
+
+SEC_HEADERS = {"User-Agent": "PokornyTerminal/1.0 (pokornyl98@gmail.com)"}
 
 def get_headers():
     return {
@@ -103,7 +105,7 @@ st.markdown("""
     border-bottom: 1px solid #1F2227;
 }
 
-/* STRUCTURED KEY FIGURES TABLE */
+/* STRUCTURED KEY FIGURES & STATEMENTS TABLE */
 .kf-wrap {
     width: 100%;
     overflow-x: auto;
@@ -129,7 +131,7 @@ st.markdown("""
     background-color: #0D0F12;
     white-space: nowrap;
 }
-.kf-table th:first-child { text-align: left; min-width: 220px; }
+.kf-table th:first-child { text-align: left; min-width: 230px; }
 .kf-table th.kf-ltm { background-color: #0E1F16; color: #22C55E; }
 .kf-table th.kf-est { color: #71717A; font-style: italic; }
 
@@ -185,18 +187,19 @@ t = {
         "desc": "INSTITUCIONÁLNÍ ČASOVÁ OSA VÝKAZŮ, VALUACE, KONSENZUS A ZPRÁVY.",
         "db_select": "DATABÁZE",
         "custom_tick": "VLASTNÍ TICKER",
-        "periodicity": "PERIODICITA MATICE:",
+        "periodicity": "PERIODICITA:",
         "annual": "Roční (Annual)",
         "quarterly": "Kvartální (Quarterly)",
         "loading": "STAHOVÁNÍ VÝKAZŮ...",
         "err_data": "DATA PRO TENTO TICKER NEJSOU DOSTUPNÁ.",
-        "tab_matrix": "FINANČNÍ MATICE & GRAFY",
-        "tab_val": "VALUACE & KPI",
+        "tab_ov": "OVERVIEW",
+        "tab_val": "VALUATION",
+        "tab_inc": "INCOME STATEMENT",
+        "tab_bs": "BALANCE SHEET",
+        "tab_cf": "CASH FLOW",
         "tab_ai": "AI ANALYTIK",
-        "tab_ana": "ANALYTICI & KONSENZUS",
-        "tab_earn": "EARNINGS & HISTORIE",
-        "tab_news": "NOVINKY & ČLÁNKY",
-        "tab_raw": "STRUKTUROVANÁ ROZVAHA",
+        "tab_ana": "ANALYTICI & EARNINGS",
+        "tab_news": "NOVINKY",
         "targets_h": "Wall Street Konsenzus & Cílové Ceny",
         "t_low": "Bear Target",
         "t_mean": "Konsenzus (Mean)",
@@ -237,8 +240,8 @@ t = {
         "matrix_h": "KEY FIGURES",
         "chart_metrics_lbl": "METRIKY V GRAFU (plné = historie · obrys = odhad)",
         "chart_ph": "Vyberte metriky pro zobrazení grafu...",
-        "arch_cnt": "v Archivu",
-        "kpi_h": "KPI Dashboard",
+        "arch_cnt": "mem v archivu",
+        "kpi_h": "KPI Dashboard & Valuace",
         "kpi_pe": "P/E (Trailing)",
         "kpi_fpe": "Forward P/E",
         "kpi_peg": "PEG Ratio",
@@ -264,8 +267,7 @@ t = {
         "kpi_ni": "LTM Čistý zisk",
         "kpi_fcf": "LTM FCF",
         "kpi_eps": "LTM EPS",
-        "bal_h": "Rozvaha",
-        "bal_na": "Rozvaha není k dispozici.",
+        "stmt_na": "Výkaz není pro tento ticker dostupný.",
         "est_q1": "Q+1E",
         "est_q2": "Q+2E",
         "earn_next_h": "Nadcházející kvartální report",
@@ -287,9 +289,9 @@ t = {
         "news_date": "Vydáno",
         "news_na": "Aktuálně nejsou dostupné žádné zprávy.",
         "ai_btn": "Vygenerovat AI Investiční Memo (z živých výkazů)",
-        "ai_save": "Uložit Investiční Memo (GitHub)",
-        "ai_saved_ok": "Investiční Memo uloženo do archivu a synchronizováno na GitHub.",
-        "ai_already_saved": "Toto Investiční Memo je již uložené v archivu.",
+        "ai_save": "Uložit do terminal_memos.json (GitHub)",
+        "ai_saved_ok": "Investiční Memo uloženo do terminal_memos.json a synchronizováno na GitHub.",
+        "ai_already_saved": "Toto Investiční Memo je již uložené.",
         "ai_saved_list": "ULOŽENÁ INVESTIČNÍ MEMA",
         "ai_load_btn": "Načíst",
         "ai_del_btn": "Smazat",
@@ -303,18 +305,19 @@ t = {
         "desc": "INSTITUTIONAL FINANCIAL STATEMENTS TIMELINE, VALUATION, CONSENSUS & NEWS.",
         "db_select": "DATABASE",
         "custom_tick": "CUSTOM TICKER",
-        "periodicity": "MATRIX PERIODICITY:",
+        "periodicity": "PERIODICITY:",
         "annual": "Annual",
         "quarterly": "Quarterly",
         "loading": "LOADING STATEMENTS...",
         "err_data": "DATA FOR THIS TICKER NOT AVAILABLE.",
-        "tab_matrix": "FINANCIAL MATRIX & CHARTS",
-        "tab_val": "VALUATION & KPIs",
+        "tab_ov": "OVERVIEW",
+        "tab_val": "VALUATION",
+        "tab_inc": "INCOME STATEMENT",
+        "tab_bs": "BALANCE SHEET",
+        "tab_cf": "CASH FLOW",
         "tab_ai": "AI ANALYST",
-        "tab_ana": "ANALYSTS & CONSENSUS",
-        "tab_earn": "EARNINGS & TRACK RECORD",
-        "tab_news": "NEWS & ARTICLES",
-        "tab_raw": "STRUCTURED BALANCE SHEET",
+        "tab_ana": "ANALYSTS & EARNINGS",
+        "tab_news": "NEWS",
         "targets_h": "Wall Street Consensus & Price Targets",
         "t_low": "Bear Target",
         "t_mean": "Consensus (Mean)",
@@ -355,8 +358,8 @@ t = {
         "matrix_h": "KEY FIGURES",
         "chart_metrics_lbl": "CHART METRICS (solid = history · outline = estimate)",
         "chart_ph": "Select metrics to display chart...",
-        "arch_cnt": "in Archive",
-        "kpi_h": "KPI Dashboard",
+        "arch_cnt": "saved memos",
+        "kpi_h": "KPI Dashboard & Valuation",
         "kpi_pe": "P/E (Trailing)",
         "kpi_fpe": "Forward P/E",
         "kpi_peg": "PEG Ratio",
@@ -382,8 +385,7 @@ t = {
         "kpi_ni": "LTM Net Income",
         "kpi_fcf": "LTM FCF",
         "kpi_eps": "LTM EPS",
-        "bal_h": "Balance Sheet",
-        "bal_na": "Balance sheet is not available.",
+        "stmt_na": "Statement not available for this ticker.",
         "est_q1": "Q+1E",
         "est_q2": "Q+2E",
         "earn_next_h": "Upcoming Earnings Report",
@@ -405,9 +407,9 @@ t = {
         "news_date": "Published",
         "news_na": "No news currently available.",
         "ai_btn": "Generate AI Investment Memo (from live statements)",
-        "ai_save": "Save Investment Memo (GitHub)",
-        "ai_saved_ok": "Investment Memo saved to archive and synced to GitHub.",
-        "ai_already_saved": "This Investment Memo is already saved in the archive.",
+        "ai_save": "Save to terminal_memos.json (GitHub)",
+        "ai_saved_ok": "Investment Memo saved to terminal_memos.json and synced to GitHub.",
+        "ai_already_saved": "This Investment Memo is already saved.",
         "ai_saved_list": "SAVED INVESTMENT MEMOS",
         "ai_load_btn": "Load",
         "ai_del_btn": "Delete",
@@ -437,10 +439,10 @@ def load_data():
     st.error(f"Soubor watchlist.json nebyl nalezen na cestě: {WATCHLIST_FILE}")
     st.stop()
 
-def load_archive():
-    if os.path.exists(ARCHIVE_FILE):
+def load_memos():
+    if os.path.exists(MEMOS_FILE):
         try:
-            with open(ARCHIVE_FILE, "r", encoding="utf-8") as f:
+            with open(MEMOS_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 if isinstance(data, list):
                     return data
@@ -448,9 +450,9 @@ def load_archive():
             pass
     return []
 
-def save_archive(archive_list, commit_msg="Terminal: Aktualizace investičních mem"):
-    with open(ARCHIVE_FILE, "w", encoding="utf-8") as f:
-        json.dump(archive_list, f, indent=4, ensure_ascii=False)
+def save_memos(memos_list, commit_msg="Terminal: Aktualizace terminal_memos.json"):
+    with open(MEMOS_FILE, "w", encoding="utf-8") as f:
+        json.dump(memos_list, f, indent=4, ensure_ascii=False)
     try:
         if "GITHUB_TOKEN" in st.secrets:
             token = st.secrets["GITHUB_TOKEN"]
@@ -460,7 +462,7 @@ def save_archive(archive_list, commit_msg="Terminal: Aktualizace investičních 
             subprocess.run(["git", "config", "--global", "user.email", "bot@pokornyterminal.cz"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             subprocess.run(["git", "config", "--global", "user.name", "Terminal Bot"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             subprocess.run(["git", "pull", "--rebase", remote_url, "main"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            subprocess.run(["git", "add", ARCHIVE_FILE], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(["git", "add", MEMOS_FILE], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             subprocess.run(["git", "commit", "-m", commit_msg], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             subprocess.run(["git", "push", remote_url, "HEAD:main"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except Exception:
@@ -515,18 +517,84 @@ def fmt_cell(val, unit_mode="B", is_pct=False, is_eps=False):
     except Exception: return str(val)
     if is_pct: return f"{val * 100:.1f}%"
     if is_eps: return f"{val:,.2f}"
-    if unit_mode == "M": return f"{val / 1e6:,.0f}"
-    return f"{val / 1e9:,.2f}"
+    if unit_mode == "M": return f"{val / 1e6:,.0f} M"
+    return f"{val / 1e9:,.2f} B"
 
-def format_val(val, currency_code, is_pct=False, is_eps=False, force_currency=False):
-    if val is None or pd.isna(val) or val == "-": return "-"
-    try: val = float(val)
-    except Exception: return str(val)
-    if is_pct: return f"{val * 100:+.1f} %"
-    if is_eps: return f"{val:.2f} {currency_code}"
-    if abs(val) >= 1e9: return f"{val / 1e9:,.2f} B" + (f" {currency_code}" if force_currency else "")
-    if abs(val) >= 1e6: return f"{val / 1e6:,.2f} M" + (f" {currency_code}" if force_currency else "")
-    return f"{val:,.2f}" + (f" {currency_code}" if force_currency else "")
+def render_statement_html(df, unit_mode="B", rate_fn=None):
+    if df is None or df.empty:
+        return None
+    cols_sorted = sorted(df.columns)
+    th_cells = ['<th>Položka / Line Item</th>'] + [f'<th>{c.strftime("%Y-%m-%d")}</th>' for c in cols_sorted]
+    rows_html = []
+    for idx_name in df.index:
+        tds = [f'<td>{idx_name}</td>']
+        for c in cols_sorted:
+            v = df.loc[idx_name, c]
+            r = rate_fn(c) if rate_fn else 1.0
+            is_eps_row = "eps" in str(idx_name).lower()
+            v_conv = (float(v) * r) if pd.notna(v) else None
+            tds.append(f'<td>{fmt_cell(v_conv, unit_mode=unit_mode, is_eps=is_eps_row)}</td>')
+        rows_html.append(f'<tr class="kf-row-main">{"".join(tds)}</tr>')
+    return f'<div class="kf-wrap"><table class="kf-table"><thead><tr>{"".join(th_cells)}</tr></thead><tbody>{"".join(rows_html)}</tbody></table></div>'
+
+# --- SEC EDGAR 10-YEAR BACKFILL (ZDARMA PRO US AKCIE) ---
+@st.cache_data(ttl=86400, show_spinner=False)
+def get_sec_cik_map():
+    try:
+        r = requests.get("https://www.sec.gov/files/company_tickers.json", headers=SEC_HEADERS, timeout=6)
+        if r.status_code == 200:
+            raw = r.json()
+            return {v["ticker"].upper(): str(v["cik_str"]).zfill(10) for v in raw.values()}
+    except Exception:
+        pass
+    return {}
+
+@st.cache_data(ttl=86400, show_spinner=False)
+def fetch_sec_annual_history(ticker):
+    cik_map = get_sec_cik_map()
+    cik = cik_map.get(ticker.upper())
+    if not cik:
+        return {}
+    try:
+        r = requests.get(f"https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json", headers=SEC_HEADERS, timeout=8)
+        if r.status_code != 200:
+            return {}
+        us_gaap = r.json().get("facts", {}).get("us-gaap", {})
+    except Exception:
+        return {}
+
+    tag_groups = {
+        "rev": ["RevenueFromContractWithCustomerExcludingAssessedTax", "Revenues", "SalesRevenueNet"],
+        "gp": ["GrossProfit"],
+        "ebit": ["OperatingIncomeLoss"],
+        "ni": ["NetIncomeLoss"],
+        "eps": ["EarningsPerShareDiluted"],
+        "ocf": ["NetCashProvidedByUsedInOperatingActivities"],
+        "capex": ["PaymentsToAcquirePropertyPlantAndEquipment"],
+        "cash": ["CashAndCashEquivalentsAtCarryingValue"],
+        "debt": ["LongTermDebtNoncurrent", "LongTermDebt"]
+    }
+
+    hist = {}
+    for key, tags in tag_groups.items():
+        unit_pref = "USD/shares" if key == "eps" else "USD"
+        for tag in tags:
+            units = us_gaap.get(tag, {}).get("units", {})
+            entries = units.get(unit_pref)
+            if not entries:
+                continue
+            for e in entries:
+                if e.get("form") == "10-K" and e.get("fp") == "FY" and e.get("fy") and e.get("val") is not None:
+                    fy = int(e["fy"])
+                    if 2016 <= fy <= 2025:
+                        lbl = f"FY{fy}"
+                        if lbl not in hist:
+                            hist[lbl] = {}
+                        if key not in hist[lbl]:
+                            hist[lbl][key] = float(e["val"])
+            if any(key in v for v in hist.values()):
+                break
+    return hist
 
 @st.cache_data(ttl=900, show_spinner=False)
 def load_ticker_bundle(ticker):
@@ -651,12 +719,10 @@ if final_tick:
         currency_code = info.get("financialCurrency") or info.get("currency") or fast.get("currency") or "USD"
         trading_currency = info.get("currency") or fast.get("currency") or "USD"
 
-        # Count saved archive items for this ticker
-        all_archive = load_archive()
-        arch_count = sum(1 for r in all_archive if str(r.get("tema", "")).upper() == final_tick)
-        arch_badge = f'<span class="term-arch-pill">{arch_count} {_["arch_cnt"]}</span>' if arch_count > 0 else ""
+        all_memos = load_memos()
+        memo_count = sum(1 for r in all_memos if str(r.get("tema", "")).upper() == final_tick)
+        arch_badge = f'<span class="term-arch-pill">{memo_count} {_["arch_cnt"]}</span>' if memo_count > 0 else ""
 
-        # --- INSTITUTIONAL TOP BAR ---
         mcap_str = f"{market_cap/1e9:,.2f}B {trading_currency}" if (market_cap and market_cap >= 1e9) else (f"{market_cap/1e6:,.1f}M {trading_currency}" if market_cap else "N/A")
         st.markdown(
             f'<div class="term-topbar">'
@@ -666,18 +732,24 @@ if final_tick:
             unsafe_allow_html=True
         )
 
-        # --- FX TRANSLATION ---
+        # --- FX & UNITS CONTROLS ---
+        c_u1, c_u2 = st.columns([3, 1.4])
         convert_to_usd = False
         display_currency = currency_code
         fx_hist = pd.DataFrame()
         latest_fx = 1.0
 
         if currency_code != "USD":
-            convert_to_usd = st.toggle(f"💱 {_['convert_usd'].replace('{curr}', currency_code)}", value=False)
+            convert_to_usd = c_u1.toggle(f"💱 {_['convert_usd'].replace('{curr}', currency_code)}", value=False)
             if convert_to_usd:
                 display_currency = "USD"
                 fx_hist = load_fx_history(currency_code)
                 if not fx_hist.empty: latest_fx = float(fx_hist['Close'].iloc[-1])
+
+        unit_choice = c_u2.radio(_["unit_lbl"], [_["unit_b"], _["unit_m"]], horizontal=True)
+        unit_mode = "B" if unit_choice == _["unit_b"] else "M"
+        unit_div = 1e9 if unit_mode == "B" else 1e6
+        unit_suffix = "B" if unit_mode == "B" else "M"
 
         def get_rate(d):
             if not convert_to_usd: return 1.0
@@ -725,7 +797,6 @@ if final_tick:
 
         eps_ltm = info.get("trailingEps") or get_ltm_from_quarterly(q_fin_for_kpi, ['Diluted EPS', 'Basic EPS'])
 
-        # Latest balance sheet for KPI & LTM
         latest_bs = bundle["bs_q"] if (bundle["bs_q"] is not None and not bundle["bs_q"].empty) else balance_sheet
         latest_cash = get_first_val(latest_bs, ['Cash Cash Equivalents And Short Term Investments', 'Cash And Cash Equivalents'])
         latest_debt = get_first_val(latest_bs, ['Total Debt'])
@@ -774,14 +845,45 @@ if final_tick:
             if ebit_0: roce = ebit_0 / capital_employed
         if net_income_ltm and total_assets > 0: roi = net_income_ltm / total_assets
 
-        # --- BUILD STRUCTURED MATRIX (VALUATION + INCOME + CASH FLOW) ---
+        # --- BUILD STRUCTURED MATRIX (SEC 10Y BACKFILL + YFINANCE + LTM + ESTIMATES) ---
         matrix_dict = {}
         est_col_labels = []
         last_hist_year = 2024
+
+        # 1. SEC EDGAR backfill pro starší roky (jen u ročního zobrazení v USD)
+        yf_years = set()
         if not financials.empty:
             hist_cols = sorted(financials.columns)
             last_hist_year = hist_cols[-1].year
-            for col in hist_cols:
+            yf_years = {f"FY{c.year}" for c in hist_cols}
+
+        if not is_quarterly and display_currency == "USD":
+            sec_hist = fetch_sec_annual_history(final_tick)
+            for fy_lbl in sorted(sec_hist.keys()):
+                if fy_lbl not in yf_years:
+                    s = sec_hist[fy_lbl]
+                    s_ocf = s.get("ocf")
+                    s_capex = s.get("capex")
+                    s_fcf = (s_ocf - abs(s_capex)) if (s_ocf is not None and s_capex is not None) else None
+                    matrix_dict[fy_lbl] = {
+                        _["r_mcap"]: None,
+                        _["r_cash"]: s.get("cash"),
+                        _["r_debt"]: s.get("debt"),
+                        _["r_ev"]: None,
+                        _["r_rev"]: s.get("rev"),
+                        _["r_gp"]: s.get("gp"),
+                        _["r_ebit"]: s.get("ebit"),
+                        _["r_ebitda"]: None,
+                        _["r_ni"]: s.get("ni"),
+                        _["r_eps"]: s.get("eps"),
+                        _["r_ocf"]: s_ocf,
+                        _["r_capex"]: abs(s_capex) if s_capex is not None else None,
+                        _["r_fcf"]: s_fcf
+                    }
+
+        # 2. YFinance aktuální historie
+        if not financials.empty:
+            for col in sorted(financials.columns):
                 rate = get_rate(col)
                 col_label = f"{col.year}-Q{col.quarter}" if is_quarterly else f"FY{col.year}"
                 c_cash = get_first_val(bs_period, ['Cash Cash Equivalents And Short Term Investments', 'Cash And Cash Equivalents'], col)
@@ -814,6 +916,7 @@ if final_tick:
                     _["r_fcf"]: c_fcf * rate if c_fcf is not None else None
                 }
 
+        # 3. LTM
         if not is_quarterly:
             rate = latest_fx if convert_to_usd else 1.0
             matrix_dict["LTM"] = {
@@ -832,6 +935,7 @@ if final_tick:
                 _["r_fcf"]: fcf * rate if fcf is not None else None
             }
 
+        # 4. Odhady analytiků
         try:
             rev_est = bundle["rev_est"]
             eps_est = bundle["eps_est"]
@@ -863,16 +967,14 @@ if final_tick:
                 if p_lbl in df_matrix.index:
                     df_matrix.loc[m_lbl] = pd.to_numeric(df_matrix.loc[p_lbl], errors='coerce') / rev_series
 
-        tab_matrix, tab_val, tab_ai, tab_ana, tab_earn, tab_news, tab_raw = st.tabs([
-            _["tab_matrix"], _["tab_val"], _["tab_ai"], _["tab_ana"], _["tab_earn"], _["tab_news"], _["tab_raw"]
+        # --- MAIN TABS (rozčleněno jako Lab) ---
+        tab_ov, tab_val, tab_inc, tab_bs, tab_cf, tab_ai, tab_ana, tab_news = st.tabs([
+            _["tab_ov"], _["tab_val"], _["tab_inc"], _["tab_bs"], _["tab_cf"], _["tab_ai"], _["tab_ana"], _["tab_news"]
         ])
 
-        with tab_matrix:
-            c_m1, c_m2 = st.columns([4, 1.3])
+        with tab_ov:
             chart_options = [m for m in [_["r_rev"], _["r_gp"], _["r_ebit"], _["r_ebitda"], _["r_ni"], _["r_ocf"], _["r_fcf"]] if m in df_matrix.index]
-            sel_metrics = c_m1.multiselect(_["chart_metrics_lbl"], chart_options, default=[], placeholder=_["chart_ph"])
-            unit_choice = c_m2.radio(_["unit_lbl"], [_["unit_b"], _["unit_m"]], horizontal=True)
-            unit_mode = "B" if unit_choice == _["unit_b"] else "M"
+            sel_metrics = st.multiselect(_["chart_metrics_lbl"], chart_options, default=[], placeholder=_["chart_ph"])
 
             color_map = {
                 _["r_rev"]: ("#22C55E", "rgba(34,197,94,0.12)"),
@@ -888,16 +990,17 @@ if final_tick:
                 chart_cols = list(df_matrix.columns)
                 fig = go.Figure()
                 for m in sel_metrics:
-                    vals = pd.to_numeric(df_matrix.loc[m, chart_cols], errors='coerce')
+                    vals = pd.to_numeric(df_matrix.loc[m, chart_cols], errors='coerce') / unit_div
                     solid_hex, est_fill = color_map.get(m, ("#22C55E", "rgba(34,197,94,0.12)"))
                     bar_colors = [est_fill if c in est_col_labels else solid_hex for c in chart_cols]
                     line_colors = [solid_hex if c in est_col_labels else "rgba(0,0,0,0)" for c in chart_cols]
                     line_widths = [1.8 if c in est_col_labels else 0 for c in chart_cols]
+                    fmt_hover = ",.2f" if unit_mode == "B" else ",.0f"
 
                     fig.add_trace(go.Bar(
                         x=chart_cols, y=vals, name=m,
                         marker=dict(color=bar_colors, line=dict(color=line_colors, width=line_widths)),
-                        hovertemplate="%{x}: %{y:,.2s} " + display_currency + "<extra>" + m + "</extra>"
+                        hovertemplate=f"%{{x}}: %{{y:{fmt_hover}}} {unit_suffix} {display_currency}<extra>{m}</extra>"
                     ))
 
                 fig.update_layout(
@@ -905,15 +1008,14 @@ if final_tick:
                     paper_bgcolor="#0D0F12", plot_bgcolor="#0D0F12",
                     margin=dict(l=10, r=10, t=24, b=10),
                     xaxis=dict(showgrid=False, tickfont=dict(family="JetBrains Mono", size=11, color="#A1A1AA")),
-                    yaxis=dict(showgrid=True, gridcolor="#1F2227", tickfont=dict(family="JetBrains Mono", size=11, color="#71717A")),
+                    yaxis=dict(showgrid=True, gridcolor="#1F2227", ticksuffix=f" {unit_suffix}", tickfont=dict(family="JetBrains Mono", size=11, color="#71717A")),
                     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0, font=dict(family="Inter", size=12))
                 )
                 st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
-            # --- RENDER STRUCTURED KEY FIGURES HTML TABLE ---
-            unit_tag = f"{display_currency} {'bn' if unit_mode == 'B' else 'm'}"
+            # --- STRUCTURED KEY FIGURES TABLE ---
             cols = list(df_matrix.columns)
-            th_cells = [f'<th>{_["matrix_h"]} ({unit_tag})</th>']
+            th_cells = [f'<th>{_["matrix_h"]} ({display_currency} {unit_suffix})</th>']
             for c in cols:
                 cls = ' class="kf-ltm"' if c == "LTM" else (' class="kf-est"' if c in est_col_labels else '')
                 th_cells.append(f'<th{cls}>{c}</th>')
@@ -964,13 +1066,10 @@ if final_tick:
                         tds.append(f'<td{td_cls}>{fmt_cell(val, unit_mode=unit_mode, is_pct=is_pct, is_eps=is_eps)}</td>')
                     tbody_rows.append(f'<tr class="{tr_cls}">{"".join(tds)}</tr>')
 
-            table_html = (
-                f'<div class="kf-wrap"><table class="kf-table">'
-                f'<thead><tr>{"".join(th_cells)}</tr></thead>'
-                f'<tbody>{"".join(tbody_rows)}</tbody>'
-                f'</table></div>'
+            st.markdown(
+                f'<div class="kf-wrap"><table class="kf-table"><thead><tr>{"".join(th_cells)}</tr></thead><tbody>{"".join(tbody_rows)}</tbody></table></div>',
+                unsafe_allow_html=True
             )
-            st.markdown(table_html, unsafe_allow_html=True)
 
         with tab_val:
             st.markdown(f'<div class="term-sec-label">{short_name} ({final_tick}) · {_["kpi_h"]}</div>', unsafe_allow_html=True)
@@ -980,8 +1079,8 @@ if final_tick:
                 if val is None or pd.isna(val): return "N/A"
                 if is_pct: return f"{val*100:.2f} %"
                 if is_curr:
-                    if abs(val) >= 1e9: return f"{val/1e9:.2f}B {curr_label}"
-                    if abs(val) >= 1e6: return f"{val/1e6:.2f}M {curr_label}"
+                    if abs(val) >= 1e9: return f"{val/1e9:.2f} B {curr_label}"
+                    if abs(val) >= 1e6: return f"{val/1e6:.2f} M {curr_label}"
                     return f"{val:,.2f} {curr_label}"
                 return f"{val:.2f}"
 
@@ -1021,6 +1120,24 @@ if final_tick:
             vkpi5.metric(_["kpi_fcf"], fmt_kpi(fcf * fx_m if fcf else None, is_curr=True, curr_label=display_currency))
             vkpi5.metric(_["kpi_eps"], fmt_kpi(eps_ltm, is_curr=True, curr_label=trading_currency))
 
+        with tab_inc:
+            st.markdown(f'<div class="term-sec-label">INCOME STATEMENT · {final_tick} ({display_currency} {unit_suffix})</div>', unsafe_allow_html=True)
+            inc_html = render_statement_html(financials, unit_mode=unit_mode, rate_fn=get_rate)
+            if inc_html: st.markdown(inc_html, unsafe_allow_html=True)
+            else: st.info(_["stmt_na"])
+
+        with tab_bs:
+            st.markdown(f'<div class="term-sec-label">BALANCE SHEET · {final_tick} ({display_currency} {unit_suffix})</div>', unsafe_allow_html=True)
+            bs_html = render_statement_html(bs_period, unit_mode=unit_mode, rate_fn=get_rate)
+            if bs_html: st.markdown(bs_html, unsafe_allow_html=True)
+            else: st.info(_["stmt_na"])
+
+        with tab_cf:
+            st.markdown(f'<div class="term-sec-label">CASH FLOW STATEMENT · {final_tick} ({display_currency} {unit_suffix})</div>', unsafe_allow_html=True)
+            cf_html = render_statement_html(cashflow, unit_mode=unit_mode, rate_fn=get_rate)
+            if cf_html: st.markdown(cf_html, unsafe_allow_html=True)
+            else: st.info(_["stmt_na"])
+
         with tab_ai:
             if not api_key or not selected_model:
                 st.warning(_["ai_no_key"])
@@ -1059,12 +1176,7 @@ Používej výhradně tato data:
                                 "typ": "INVESTIČNÍ MEMO",
                                 "tema": final_tick,
                                 "hlavni_nadpis": f"Investiční memo: {short_name} ({final_tick}) · {curr_price:,.2f} {trading_currency}",
-                                "rezim": "NEUTRAL",
-                                "sentiment_skore": 0.0,
-                                "co_se_stalo": memo_txt,
-                                "proc_to_hybe_trhem": "",
-                                "na_co_se_zamerit": "",
-                                "zdroje": []
+                                "obsah": memo_txt
                             }
                             st.session_state.term_ai_saved_id = None
                         except Exception as e:
@@ -1077,16 +1189,16 @@ Používej výhradně tato data:
                         f'<div class="term-memo-meta">{m_obj.get("datum", "")}  ·  INVESTIČNÍ MEMO  ·  {short_name} ({final_tick})</div>',
                         unsafe_allow_html=True
                     )
-                    st.markdown(m_obj.get("co_se_stalo", ""))
+                    st.markdown(m_obj.get("obsah", m_obj.get("co_se_stalo", "")))
                     st.markdown('</div>', unsafe_allow_html=True)
 
                     if st.session_state.term_ai_saved_id == m_obj["id"]:
                         st.info(_["ai_already_saved"])
                     else:
                         if st.button(f"💾 {_['ai_save']}"):
-                            archive = load_archive()
-                            archive.insert(0, m_obj)
-                            save_archive(archive, commit_msg=f"Terminal: Uloženo Investiční Memo {final_tick}")
+                            memos = load_memos()
+                            memos.insert(0, m_obj)
+                            save_memos(memos, commit_msg=f"Terminal: Uloženo Memo {final_tick}")
                             st.session_state.term_ai_saved_id = m_obj["id"]
                             st.success(_["ai_saved_ok"])
 
@@ -1112,7 +1224,7 @@ Používej výhradně tato data:
                     if not ans.startswith("⚠️"):
                         st.session_state.term_ai_chat.append({"role": "assistant", "content": ans})
 
-                saved_memos = [r for r in all_archive if r.get("typ") == "INVESTIČNÍ MEMO" and r.get("tema") == final_tick]
+                saved_memos = [r for r in all_memos if str(r.get("tema", "")).upper() == final_tick]
                 if saved_memos:
                     st.markdown("---")
                     st.markdown(f'<div class="term-sec-label">{_["ai_saved_list"]} ({final_tick}) · {len(saved_memos)}</div>', unsafe_allow_html=True)
@@ -1124,8 +1236,8 @@ Používej výhradně tato data:
                             st.session_state.term_ai_saved_id = sm.get("id")
                             st.rerun()
                         if c_m3.button(_["ai_del_btn"], key=f"del_m_{sm.get('id')}", use_container_width=True):
-                            new_arch = [r for r in all_archive if r.get("id") != sm.get("id")]
-                            save_archive(new_arch, commit_msg=f"Terminal: Smazáno Memo {final_tick}")
+                            new_m = [r for r in all_memos if r.get("id") != sm.get("id")]
+                            save_memos(new_m, commit_msg=f"Terminal: Smazáno Memo {final_tick}")
                             if st.session_state.term_ai_memo_obj and st.session_state.term_ai_memo_obj.get("id") == sm.get("id"):
                                 st.session_state.term_ai_memo_obj = None
                             st.rerun()
@@ -1145,7 +1257,7 @@ Používej výhradně tato data:
             c4.metric(_["t_rec"], rec_mean)
             c5.metric(_["t_num"], num_analysts)
 
-        with tab_earn:
+            st.markdown("---")
             st.subheader(_["earn_next_h"])
             try:
                 today_d = datetime.now(ZoneInfo("Europe/Prague")).date()
@@ -1222,17 +1334,3 @@ Používej výhradně tato data:
                     st.markdown("---")
             else:
                 st.info(_["news_na"])
-
-        with tab_raw:
-            st.subheader(f"{_['bal_h']} — {final_tick}")
-            if not balance_sheet.empty:
-                bs_display = balance_sheet.copy()
-                for col in bs_display.columns:
-                    rate = get_rate(col)
-                    bs_display[col] = bs_display[col] * rate if pd.notna(bs_display[col]).any() else bs_display[col]
-                bs_display.columns = [c.strftime("%Y-%m-%d") for c in bs_display.columns]
-                for col in bs_display.columns:
-                    bs_display[col] = bs_display[col].apply(lambda x: format_val(x, display_currency, force_currency=True))
-                st.table(bs_display)
-            else:
-                st.info(_["bal_na"])
