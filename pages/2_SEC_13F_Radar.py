@@ -235,7 +235,7 @@ def get_groq_available_models(api_klic):
     except Exception:
         return []
 
-def call_llm_api(messages, api_klic, provider, model_name, temperature=0.25, timeout=45, max_tokens=2600):
+def call_llm_api(messages, api_klic, provider, model_name, temperature=0.2, timeout=45, max_tokens=2600):
     url = "https://api.groq.com/openai/v1/chat/completions" if provider == "Groq" else "https://api.openai.com/v1/chat/completions"
     models_to_try = [model_name]
     if provider == "Groq":
@@ -391,7 +391,7 @@ def build_master_13f_aggregation(all_funds_dict, target_quarter=None):
 
     for v in own_map.values():
         v["Avg Weight %"] = round(v["_sum_w"] / max(1, v["Funds"]), 2)
-        v["Net Flow"] = v["Buyers"] - v["Sellers"]
+        v["Net_Fund_Count_Diff"] = v["Buyers"] - v["Sellers"]
         v["Managers"] = ", ".join(v["Managers"])
         del v["_sum_w"]
     for v in buy_map.values():
@@ -572,30 +572,34 @@ with tab_ai:
         if st.button(_["ai_gen_btn"], type="primary", use_container_width=True):
             now_dt = datetime.now(ZoneInfo("Europe/Prague"))
             datum_str = now_dt.strftime("%d. %m. %Y %H:%M")
-            lang_instr = "v čisté češtině bez anglických frází" if current_lang == "CZ" else "in clean institutional English"
-            prompt_13f = f"""Jsi Senior Equity Analyst & Portfolio Manager. Dnešní datum je {datum_str}.
-Na základě PŘESNĚ TĚCHTO 13F dat fondu {short_fund} (kvartál {active_meta.get('kvartal', '')}) vypracuj podrobný, hloubkový institucionální report {lang_instr} (rozsah alespoň 500–700 slov, začni rovnou bodem 1, nepoužívej vymyšlená čísla ani cizí tickery):
+            lang_instr = "spisovnou, přirozenou češtinou bez cizích slov v hlavičkách tabulek" if current_lang == "CZ" else "in clean institutional English"
+            prompt_13f = f"""Jsi seniorní institucionální akciový analytik a portfolio manažer. Dnešní datum je {datum_str}.
+Na základě PŘESNĚ TĚCHTO 13F dat subjektu {short_fund} (kvartál {active_meta.get('kvartal', '')}) vypracuj podrobný institucionální report {lang_instr} (rozsah cca 500–700 slov, začni rovnou bodem 1).
+
+PŘÍSNÁ PRAVIDLA:
+- Piš výhradně spisovnou češtinou, nikdy nepoužívej slova jako „Título“ ani zastaralé fráze („oživení po pandemii“, „metaverse“).
+- Neuváděj žádné odhady celkového AUM fondu.
+- „Buy 100 %“ znamená otevření zcela nové pozice v daném kvartálu.
+- Používej výhradně čísla z přiložených dat a nevymýšlej si cizí tickery.
 
 1. **STRUKTURA PORTFOLIA, KONCENTRACE & HLAVNÍ SÁZKY**
-   - Detailně rozeber počet pozic ({fund_summary_dict.get('total_positions', 0)}) a koncentraci v Top 5 ({fund_summary_dict.get('top5_concentration_pct', 0)} %) a Top 10 ({fund_summary_dict.get('top10_concentration_pct', 0)} %).
-   - Rozeber jednotlivě 5 až 7 největších pozic v portfoliu včetně jejich přesné váhy, dolarové hodnoty a co o investičním stylu fondu vypovídají.
+   - Rozeber počet pozic ({fund_summary_dict.get('total_positions', 0)}) a koncentraci v Top 5 ({fund_summary_dict.get('top5_concentration_pct', 0)} %) a Top 10 ({fund_summary_dict.get('top10_concentration_pct', 0)} %).
+   - Rozeber jednotlivě 5 až 7 největších pozic včetně jejich přesné váhy v portfoliu a co o investičním stylu vypovídají.
 
 2. **NEJDŮLEŽITĚJŠÍ NÁKUPY A NOVÉ POZICE (OFENZIVNÍ ALOKACE)**
-   - Podrobně rozeber všechny významné nové pozice a největší navýšení (`Add`), uveď konkrétní procenta změny, váhu v portfoliu i dolarovou hodnotu.
-   - Vysvětli investiční logiku, proč manažer v tomto čtvrtletí alokoval čerstvý kapitál právě do těchto titulů.
+   - Podrobně rozeber všechny významné nové pozice („Buy 100 %“) a největší navýšení („Add“), uveď přesná procenta změny a váhu v portfoliu.
 
-3. **VÝRAZNÉ REDUKCE A KOMPLETNÍ VÝSTUPY (DEFENZIVA & REALIZACE ZISKŮ)**
-   - Detailně rozeber největší redukce a prodeje, uveď přesná čísla a zhodnoť, zda jde o vybírání zisků po růstu, nebo o strukturální odchod ze sektoru.
+3. **VÝRAZNÉ REDUKCE A KOMPLETNÍ VÝSTUPY (REALIZACE ZISKŮ)**
+   - Detailně rozeber největší redukce a prodeje, uveď přesná čísla a zhodnoť, zda jde o vybírání zisků, nebo o odchod ze sektoru.
 
 4. **VALUAČNÍ PŘÍLEŽITOSTI & ZÁVĚR PRO INVESTORA**
-   - Porovnej nahlášené ceny (`RepCena`) s aktuální tržní cenou (`AktCena`) a vypíchni konkrétní tituly, které se nyní obchodují se slevou oproti ceně, za kterou nakupoval tento fond.
-   - Shrň hlavní strategický signál fondu pro další kvartál.
+   - Porovnej nahlášené ceny (`RepCena`) s aktuální tržní cenou (`AktCena`) a vypíchni tituly, které se nyní obchodují pod nahlášenou cenou.
 
 Data 13F:
 {fund_json_str}"""
             with st.spinner(_["ai_spin"]):
                 try:
-                    memo_txt = call_llm_api([{"role": "user", "content": prompt_13f}], api_key, model_provider, selected_model, temperature=0.25, timeout=45, max_tokens=2600)
+                    memo_txt = call_llm_api([{"role": "user", "content": prompt_13f}], api_key, model_provider, selected_model, temperature=0.2, timeout=45, max_tokens=2600)
                     rep_id = f"{now_dt.strftime('%Y%m%d_%H%M%S')}_13F_{active_cik}"
                     st.session_state.sec_ai_memo = {
                         "id": rep_id,
@@ -672,12 +676,12 @@ Data 13F:
             with st.chat_message("assistant"):
                 with st.spinner(_["ai_spin"]):
                     lang_reply = "Odpovídej čistou češtinou, podrobně a věcně." if current_lang == "CZ" else "Answer in clean, detailed English."
-                    msgs = [{"role": "system", "content": f"Jsi Senior Equity Analyst. Máš přesný výtah 13F portfolia fondu {short_fund}: {fund_json_str}. {lang_reply}"}]
+                    msgs = [{"role": "system", "content": f"Jsi Senior Equity Analyst. Máš přesný výtah 13F portfolia subjektu {short_fund}: {fund_json_str}. {lang_reply}"}]
                     for m in st.session_state.sec_ai_chat[-6:-1]:
                         msgs.append({"role": m["role"], "content": m["content"]})
                     msgs.append({"role": "user", "content": q_13f})
                     try:
-                        ans = call_llm_api(msgs, api_key, model_provider, selected_model, temperature=0.25, timeout=30, max_tokens=1200)
+                        ans = call_llm_api(msgs, api_key, model_provider, selected_model, temperature=0.2, timeout=30, max_tokens=1200)
                     except Exception as e:
                         ans = f"AI Error ({e})."
                     st.markdown(ans)
@@ -714,7 +718,7 @@ with tab_master:
         st.info(_["m_no_funds"])
     else:
         active_q = all_quarters[0] if all_quarters else ""
-        st.caption(f"Agregováno **{len(funds_meta_list)}** fondů výhradně za nejnovější kvartál **{active_q}** ze složky `sec_data/`.")
+        st.caption(f"Agregováno **{len(funds_meta_list)}** subjektů výhradně za nejnovější kvartál **{active_q}** ze složky `sec_data/`.")
         mc1, mc2, mc3 = st.columns(3)
         with mc1:
             st.markdown(f'<div class="sec-sec-label">{_["m_top_own"]}</div>', unsafe_allow_html=True)
@@ -738,37 +742,49 @@ with tab_master:
                 datum_str = now_dt.strftime("%d. %m. %Y %H:%M")
                 q_label = active_q or now_dt.strftime("%Y")
 
-                own_lines = "\n".join([f"- {r['Stock']}: {r['Funds']} fondů | Prům. váha {r['Avg Weight %']}% | Net Flow {r['Net Flow']:+d} ({r['Managers']})" for _, r in df_own.head(15).iterrows()]) if not df_own.empty else "-"
-                buy_lines = "\n".join([f"- {r['Stock']}: {r['Buy/Add Count']}x nákup ({r['Managers']})" for _, r in df_buy.head(15).iterrows()]) if not df_buy.empty else "-"
-                sell_lines = "\n".join([f"- {r['Stock']}: {r['Sell/Reduce Count']}x prodej ({r['Managers']})" for _, r in df_sell.head(15).iterrows()]) if not df_sell.empty else "-"
+                own_lines = "\n".join([f"- {r['Stock']}: drží {r['Funds']} subjektů | průměrná váha v PTF {r['Avg Weight %']}% | čistý rozdíl počtu fondů (kupující mínus prodávající) = {r['Net_Fund_Count_Diff']:+d} fondů ({r['Managers']})" for _, r in df_own.head(15).iterrows()]) if not df_own.empty else "-"
+                buy_lines = "\n".join([f"- {r['Stock']}: {r['Buy/Add Count']}x nákup/navýšení ({r['Managers']})" for _, r in df_buy.head(15).iterrows()]) if not df_buy.empty else "-"
+                sell_lines = "\n".join([f"- {r['Stock']}: {r['Sell/Reduce Count']}x prodej/redukce ({r['Managers']})" for _, r in df_sell.head(15).iterrows()]) if not df_sell.empty else "-"
                 funds_lines_txt = "\n".join(funds_compact_lines)
 
-                lang_instr = "v čisté češtině bez anglických frází" if current_lang == "CZ" else "in clean institutional English"
-                master_prompt = f"""Jsi Chief Investment Officer (CIO) a připravuješ obsáhlý, hloubkový čtvrtletní Master 13F report napříč {len(funds_meta_list)} sledovanými institucionálními fondy výhradně za kvartál {q_label}.
-Report musí být dostatečně detailní a analytický (rozsah cca 800–1100 slov), aby sloužil jako plnohodnotný podklad pro týdenní tržní výhledy.
+                lang_instr = "výhradně spisovnou, přirozenou češtinou" if current_lang == "CZ" else "in clean institutional English"
+                master_prompt = f"""Jsi seniorní institucionální akciový analytik. Tvým úkolem je vytvořit podrobný, strukturovaný „MASTER 13F SOUHRN“ pro čtvrtletí {q_label} (data zveřejněná v listopadu 2026) napříč {len(funds_meta_list)} sledovanými subjekty výhradně na základě níže přiložených dat z hlášení 13F.
+Report musí být detailní a analytický (rozsah cca 800–1100 slov), aby sloužil jako plnohodnotný podklad pro týdenní tržní výhledy. Začni rovnou bodem 1.
 
-PŘÍSNÁ PRAVIDLA KONZISTENCE:
-- Nikdy si neprotiřeč: Pokud je akcie mezi nejčastěji drženými, ale má záporný Net Flow (více prodávajících než kupujících), napiš jasně, že jde o historicky drženou jádrovou pozici, ze které ale v {q_label} fondy vybírají zisky. Nikdy netvrď, že do ní kapitál přitéká, pokud je v tabulce prodejů.
-- Používej výhradně přesná čísla, váhy a názvy ze zadaných dat. Nevymýšlej si vlastní procenta ani cizí tickery (pokud si nejsi 100% jistý tickerem, napiš jen název firmy z dat).
-- Rozlišuj „Nová pozice (New/Buy)“ od „Navýšení (Add)“ – nikdy nespojuj 100% novou pozici s procentuálním navýšením u téhož fondu.
-- Piš {lang_instr}, začni rovnou bodem 1:
+PŘÍSNÁ PRAVIDLA PRO ZPRACOVÁNÍ DAT (NIKDY NEPORUŠUJ):
+1. JAZYK: Piš {lang_instr}. Nikdy nepoužívej cizí slova v hlavičkách tabulek (vždy piš „Titul“, nikdy „Título“).
+2. DEFINICE METRIK (ZÁKAZ ZÁMĚNY JEDNOTEK):
+   - Hodnota „čistý rozdíl počtu fondů“ (`Net_Fund_Count_Diff`) je POČET KUPUJÍCÍCH FONDŮ MÍNUS POČET PRODÁVAJÍCÍCH FONDŮ. NIKDY k tomuto číslu nepřidávej znak procenta (%)! Příklad: -2 znamená „čistý odliv 2 fondů“, nikoliv „-2 %“.
+   - Procenta (%) uváděj POUZE u změny velikosti pozice konkrétního fondu (např. Add 435.53 %, Reduce -30.47 %) nebo u váhy v portfoliu.
+   - „Buy 100 %“ znamená otevření zcela nové pozice v daném kvartálu.
+   - Položka „NVDIA“ nebo „NVIDIA“ v seznamu subjektů znamená korporátní 13F hlášení samotné společnosti NVIDIA (jejich strategické investice), nikoliv investiční fond.
+3. ZÁKAZ ZASTARALÝCH FRÁZÍ A HALUCINACÍ:
+   - Píšeš v listopadu 2026. Nikdy nepoužívej zastaralé fráze jako „oživení po pandemii“ nebo „metaverse“.
+   - Nevymýšlej si vlastní čísla ani důvody obchodů, které nevyplývají z dat. Neuváděj žádné odhady celkového AUM.
+   - Nepopleť sektory: Alphabet, Apple, Amazon, Microsoft, NVIDIA jsou technologie/komunikace; Visa, Mastercard, Bank of America, Capital One, American Express jsou finanční sektor; GE Aerospace je průmysl; Humana, Rhythm Pharmaceuticals jsou zdravotnictví.
+4. VNITŘNÍ KONZISTENCE:
+   - Textový komentář v sekci 1 musí 100% odpovídat číslům v tabulkách v sekci 2 a 3. Pokud je akcie v tabulce prodejů (např. NVIDIA, Visa, Alphabet, Moody's), nesmíš v úvodu tvrdit, že do ní instituce nalévají kapitál – popiš ji jako historicky drženou jádrovou pozici, u které v {q_label} probíhá výběr zisků.
+
+POŽADOVANÁ STRUKTURA VÝSTUPU:
 
 1. **MAKRO & SEKTOROVÉ TRENDY SMART MONEY ({q_label})**
-   - Detailní rozbor čistých kapitálových toků (Net Flow): kam instituce přesouvají čerstvý kapitál a z jakých sektorů stahují expozici.
-   - Zhodnoť chování u Big Techu / polovodičů oproti defenzivním a cyklickým sektorům.
+   - Podrobně shrň hlavní rotaci kapitálu podle přiložených dat (odkud kapitál odtéká vs. kam přitéká).
+   - U klíčových titulů správně uveď rozdíl v počtu fondů (např. „čistý tok -2 fondy“), nikoliv v procentech.
 
-2. **KONSENZUÁLNÍ NÁKUPY A NOVÉ POZICE (DETAILNÍ ROZBOR)**
-   - Rozeber podrobně nejvíce nakupované tituly, uveď přesně, které fondy je nakupovaly a s jakou aktivitou.
-   - Vysvětli investiční tezi, proč se na těchto titulech shodlo více manažerů najednou.
+2. **KONSENZUÁLNÍ NÁKUPY A NOVÉ POZICE**
+   - Vytvoř přehlednou tabulku se sloupci: | Titul | Počet kupujících fondů | Přehled aktivit (Manažer a změna) |
+   - Zahrň všechny tituly s největším počtem nákupů (3 a více subjektů).
+   - Pod tabulku přidej 4–6 odrážek s věcnou interpretací hlavních nákupních trendů (bez klišé).
 
 3. **DISTRIBUCE, REDUKCE A VÝBĚR ZISKŮ**
-   - Rozeber nejvíce prodávané tituly, uveď konkrétní fondy a rozliš, zda jde o částečnou redukci přerostlé pozice, nebo o kompletní výstup.
+   - Vytvoř přehlednou tabulku se sloupci: | Titul | Počet prodávajících fondů | Rozsah redukce a hlavní prodejci |
+   - Zahrň tituly s největším počtem prodejů (3 a více subjektů) a doplň stručný komentář, kde fondy realizují zisky.
 
-4. **PŘEHLED KLÍČOVÝCH TAHŮ JEDNOTLIVÝCH MANAŽERŮ**
-   - Vypíchni nejzajímavější tahy u hlavních sledovaných fondů (včetně počtu pozic a hlavních sázek).
+4. **PŘEHLED KLÍČOVÝCH TAHŮ VYBRANÝCH MANAŽERŮ A SUBJEKTŮ**
+   - U každého z hlavních sledovaných subjektů uveď výstižný souhrn jeho hlavního směru v {q_label} (hlavní sázky, nákupy vs. prodeje). Neuváděj žádné odhady AUM.
 
 5. **AKČNÍ VÝSTUP PRO TÝDENNÍ TRŽNÍ VÝHLED**
-   - 5 konkrétních investičních tezí a titulů k hlubší fundamentální a valuační prověrce v Terminálu včetně jasného zdůvodnění.
+   - 5 konkrétních investičních tezí a titulů k hlubší fundamentální a valuační prověrce v Terminálu včetně jasného zdůvodnění na základě dat.
 
 NEJČASTĚJI DRŽENÉ AKCIE ({q_label}):
 {own_lines}
@@ -779,12 +795,12 @@ NEJVÍCE NAKUPOVANÉ / NOVÉ POZICE ({q_label}):
 NEJVÍCE PRODÁVANÉ / REDUKOVANÉ POZICE ({q_label}):
 {sell_lines}
 
-PŘEHLED JEDNOTLIVÝCH FONDŮ ({q_label}):
+PŘEHLED JEDNOTLIVÝCH SUBJEKTŮ ({q_label}):
 {funds_lines_txt}"""
 
                 with st.spinner(_["m_spin"]):
                     try:
-                        master_txt = call_llm_api([{"role": "user", "content": master_prompt}], api_key, model_provider, selected_model, temperature=0.25, timeout=50, max_tokens=2800)
+                        master_txt = call_llm_api([{"role": "user", "content": master_prompt}], api_key, model_provider, selected_model, temperature=0.2, timeout=50, max_tokens=2800)
                         rep_id = f"{now_dt.strftime('%Y%m%d_%H%M%S')}_MASTER_13F"
                         st.session_state.sec_master_obj = {
                             "id": rep_id,
@@ -792,7 +808,7 @@ PŘEHLED JEDNOTLIVÝCH FONDŮ ({q_label}):
                             "typ": "MASTER 13F",
                             "kvartal": q_label,
                             "pocet_fondu": len(funds_meta_list),
-                            "hlavni_nadpis": f"Master 13F Souhrn ({q_label} · {len(funds_meta_list)} fondů)",
+                            "hlavni_nadpis": f"Master 13F Souhrn ({q_label} · {len(funds_meta_list)} subjektů)",
                             "obsah": master_txt
                         }
                         st.session_state.sec_master_saved_id = None
@@ -803,7 +819,7 @@ PŘEHLED JEDNOTLIVÝCH FONDŮ ({q_label}):
                 mo = st.session_state.sec_master_obj
                 st.markdown(
                     f'<div class="sec-memo-box">'
-                    f'<div class="sec-memo-meta">{mo.get("datum", "")}  ·  MASTER 13F SOUHRN  ·  {mo.get("kvartal", "")} ({mo.get("pocet_fondu", "")} fondů)</div>',
+                    f'<div class="sec-memo-meta">{mo.get("datum", "")}  ·  MASTER 13F SOUHRN  ·  {mo.get("kvartal", "")} ({mo.get("pocet_fondu", "")} subjektů)</div>',
                     unsafe_allow_html=True
                 )
                 st.markdown(mo.get("obsah", ""))
