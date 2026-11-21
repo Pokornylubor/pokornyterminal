@@ -742,14 +742,14 @@ with tab_master:
                 datum_str = now_dt.strftime("%d. %m. %Y %H:%M")
                 q_label = active_q or now_dt.strftime("%Y")
 
-                own_lines = "\n".join([f"- {r['Stock']}: drží {r['Funds']} subjektů | průměrná váha v PTF {r['Avg Weight %']}% | čistý rozdíl počtu fondů (kupující mínus prodávající) = {r['Net_Fund_Count_Diff']:+d} fondů ({r['Managers']})" for _, r in df_own.head(15).iterrows()]) if not df_own.empty else "-"
-                buy_lines = "\n".join([f"- {r['Stock']}: {r['Buy/Add Count']}x nákup/navýšení ({r['Managers']})" for _, r in df_buy.head(15).iterrows()]) if not df_buy.empty else "-"
-                sell_lines = "\n".join([f"- {r['Stock']}: {r['Sell/Reduce Count']}x prodej/redukce ({r['Managers']})" for _, r in df_sell.head(15).iterrows()]) if not df_sell.empty else "-"
+                own_lines = "\n".join([f"- {r['Stock']}: drží {r['Funds']} subjektů | průměrná váha v PTF {r['Avg Weight %']}% | čistý rozdíl počtu fondů (kupující mínus prodávající) = {r['Net_Fund_Count_Diff']:+d} fondů ({r['Managers']})" for _, r in df_own.head(12).iterrows()]) if not df_own.empty else "-"
+                buy_lines = "\n".join([f"- {r['Stock']}: {r['Buy/Add Count']}x nákup/navýšení ({r['Managers']})" for _, r in df_buy.head(10).iterrows()]) if not df_buy.empty else "-"
+                sell_lines = "\n".join([f"- {r['Stock']}: {r['Sell/Reduce Count']}x prodej/redukce ({r['Managers']})" for _, r in df_sell.head(10).iterrows()]) if not df_sell.empty else "-"
                 funds_lines_txt = "\n".join(funds_compact_lines)
 
                 lang_instr = "výhradně spisovnou, přirozenou češtinou" if current_lang == "CZ" else "in clean institutional English"
                 master_prompt = f"""Jsi seniorní institucionální akciový analytik. Tvým úkolem je vytvořit podrobný, strukturovaný „MASTER 13F SOUHRN“ pro čtvrtletí {q_label} (data zveřejněná v listopadu 2026) napříč {len(funds_meta_list)} sledovanými subjekty výhradně na základě níže přiložených dat z hlášení 13F.
-Report musí být detailní a analytický (rozsah cca 800–1100 slov), aby sloužil jako plnohodnotný podklad pro týdenní tržní výhledy. Začni rovnou bodem 1.
+Report musí být kompletní až do bodu 5 a nesmí být useknutý (začni rovnou bodem 1).
 
 PŘÍSNÁ PRAVIDLA PRO ZPRACOVÁNÍ DAT (NIKDY NEPORUŠUJ):
 1. JAZYK: Piš {lang_instr}. Nikdy nepoužívej cizí slova v hlavičkách tabulek (vždy piš „Titul“, nikdy „Título“).
@@ -773,15 +773,15 @@ POŽADOVANÁ STRUKTURA VÝSTUPU:
 
 2. **KONSENZUÁLNÍ NÁKUPY A NOVÉ POZICE**
    - Vytvoř přehlednou tabulku se sloupci: | Titul | Počet kupujících fondů | Přehled aktivit (Manažer a změna) |
-   - Zahrň všechny tituly s největším počtem nákupů (3 a více subjektů).
-   - Pod tabulku přidej 4–6 odrážek s věcnou interpretací hlavních nákupních trendů (bez klišé).
+   - Zahrň Top 10 titulů s největším počtem nákupů.
+   - Pod tabulku přidej 4–5 stručných odrážek s věcnou interpretací hlavních nákupních trendů.
 
 3. **DISTRIBUCE, REDUKCE A VÝBĚR ZISKŮ**
    - Vytvoř přehlednou tabulku se sloupci: | Titul | Počet prodávajících fondů | Rozsah redukce a hlavní prodejci |
-   - Zahrň tituly s největším počtem prodejů (3 a více subjektů) a doplň stručný komentář, kde fondy realizují zisky.
+   - Zahrň Top 10 titulů s největším počtem prodejů a doplň stručný komentář, kde fondy realizují zisky.
 
 4. **PŘEHLED KLÍČOVÝCH TAHŮ VYBRANÝCH MANAŽERŮ A SUBJEKTŮ**
-   - U každého z hlavních sledovaných subjektů uveď výstižný souhrn jeho hlavního směru v {q_label} (hlavní sázky, nákupy vs. prodeje). Neuváděj žádné odhady AUM.
+   - U hlavních sledovaných subjektů uveď stručný souhrn (1–2 věty na subjekt) jejich hlavního směru v {q_label} (hlavní sázky, nákupy vs. prodeje). Neuváděj žádné odhady AUM.
 
 5. **AKČNÍ VÝSTUP PRO TÝDENNÍ TRŽNÍ VÝHLED**
    - 5 konkrétních investičních tezí a titulů k hlubší fundamentální a valuační prověrce v Terminálu včetně jasného zdůvodnění na základě dat.
