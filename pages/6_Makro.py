@@ -3,9 +3,10 @@ import pandas as pd
 import yfinance as yf
 import os
 import sys
+import calendar
 import requests
 import plotly.graph_objects as go
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # --- INITIAL SETUP ---
 st.set_page_config(page_title="POKORNY TERMINAL | MACRO", layout="wide", initial_sidebar_state="collapsed")
@@ -68,8 +69,9 @@ t = {
         "comp_period": "Časový horizont:",
         "loading": "Načítání makroekonomických dat...",
         "fed_title": "Pravděpodobnost cílové sazby (CME FedWatch Model)",
+        "fed_sel_mtg": "Zasedání FOMC:",
         "fed_current_bracket": "Aktuální pásmo sazeb FEDu:",
-        "fed_next": "Nejbližší zasedání FOMC:",
+        "fed_next": "Zasedání FOMC:",
         "fed_days": "Zbývá dní:",
         "fed_y": "Pravděpodobnost (%)",
         "fed_x": "Cílová sazba (v bps)",
@@ -78,8 +80,9 @@ t = {
         "f_1d": "1 DEN",
         "f_1w": "1 TÝDEN",
         "f_1m": "1 MĚSÍC",
-        "fed_curr_lbl": "Aktuální cílová sazba je",
+        "fed_curr_lbl": "Aktuální cílové pásmo je",
         "fed_curr_tbl": " (Aktuální)",
+        "fed_err": "Nepodařilo se stáhnout měsíční Fed Funds futures kontrakty z CBOT.",
         "chart_yc": "Spread výnosové křivky (10Y minus 3M)",
         "chart_vix": "Index strachu (VIX)",
         "sys_risk": "Systémová rizika",
@@ -88,8 +91,8 @@ t = {
 **1. Výnosová křivka (Spread 10Y - 3M)**
 Základní ukazatel zdraví ekonomiky. Výnos krátkodobých dluhopisů vyšší než 10Y znamená inverzi.
 
-**2. Očekávání sazeb FEDu**
-Pravděpodobnosti implikované z futures kontraktů (ZQ=F). Neukazuje oficiální sazbu, ale tržní očekávání.
+**2. Očekávání sazeb FEDu (CME Metodika)**
+Pravděpodobnosti vypočítané přímo z měsíčních 30-Day Fed Funds futures kontraktů na CBOT (`ZQ*.CBT`) s váženým průměrem dnů před a po zasedání FOMC.
 
 **3. Fear & Greed Index**
 Agregovaný sentiment trhu. <25: Extreme Fear (příležitost k akumulaci). >75: Extreme Greed (zvýšené riziko korekce).
@@ -146,8 +149,9 @@ Pokud S&P roste a RSP klesá, trh je tažen úzkou skupinou firem.
         "comp_period": "Time horizon:",
         "loading": "Loading macroeconomic data...",
         "fed_title": "Target Rate Probabilities (CME FedWatch Model)",
+        "fed_sel_mtg": "FOMC Meeting:",
         "fed_current_bracket": "Current FED Target Bracket:",
-        "fed_next": "Next FOMC:",
+        "fed_next": "FOMC Meeting:",
         "fed_days": "Days remaining:",
         "fed_y": "Probability (%)",
         "fed_x": "Target Rate (in bps)",
@@ -156,8 +160,9 @@ Pokud S&P roste a RSP klesá, trh je tažen úzkou skupinou firem.
         "f_1d": "1 DAY",
         "f_1w": "1 WEEK",
         "f_1m": "1 MONTH",
-        "fed_curr_lbl": "Current target rate is",
+        "fed_curr_lbl": "Current target range is",
         "fed_curr_tbl": " (Current)",
+        "fed_err": "Could not load monthly CBOT Fed Funds futures contracts.",
         "chart_yc": "Yield Curve Spread (10Y minus 3M)",
         "chart_vix": "VIX History",
         "sys_risk": "Systemic Risks",
@@ -166,8 +171,8 @@ Pokud S&P roste a RSP klesá, trh je tažen úzkou skupinou firem.
 **1. Yield Curve (10Y - 3M Spread)**
 Primary economic health indicator. 3M > 10Y implies inversion.
 
-**2. FED Rate Expectations**
-Implied probabilities from futures (ZQ=F). Market expectations, not official rates.
+**2. FED Rate Expectations (CME Methodology)**
+Implied probabilities calculated from monthly CBOT 30-Day Fed Funds futures (`ZQ*.CBT`) using day-count weighting before and after the FOMC meeting.
 
 **3. Fear & Greed Index**
 Aggregated market sentiment. <25: Extreme Fear. >75: Extreme Greed.
@@ -217,33 +222,143 @@ FOMC_DATES = [
     datetime(2027, 10, 27), datetime(2027, 12, 8)
 ]
 
+FUTURES_MONTH_CODES = {
+    1: "F", 2: "G", 3: "H", 4: "J", 5: "K", 6: "M",
+    7: "N", 8: "Q", 9: "U", 10: "V", 11: "X", 12: "Z"
+}
+
+def zq_ticker_for(year, month):
+    return f"ZQ{FUTURES_MONTH_CODES[month]}{str(year)[-2:]}.CBT"
+
 def safe_iloc(df, steps_back):
     if len(df) > steps_back:
-        return df['Close'].iloc[-(steps_back+1)]
+        return float(df['Close'].iloc[-(steps_back+1)])
     return None
 
-def calc_fed_probs(implied_rate):
-    lower_bound = (implied_rate // 0.25) * 0.25
-    mid_point = lower_bound + 0.125
-    
-    if implied_rate >= mid_point:
-        prob_move = (implied_rate - mid_point) / 0.25
-        prob_stay = 1.0 - prob_move
-        return {
-            "current_target": f"{int(lower_bound*100)}-{int((lower_bound+0.25)*100)}",
-            "next_target": f"{int((lower_bound+0.25)*100)}-{int((lower_bound+0.50)*100)}",
-            "prob_stay": prob_stay * 100,
-            "prob_move": prob_move * 100
-        }
-    else:
-        prob_move = (mid_point - implied_rate) / 0.25
-        prob_stay = 1.0 - prob_move
-        return {
-            "current_target": f"{int(lower_bound*100)}-{int((lower_bound+0.25)*100)}",
-            "next_target": f"{int((lower_bound-0.25)*100)}-{int(lower_bound*100)}",
-            "prob_stay": prob_stay * 100,
-            "prob_move": prob_move * 100
-        }
+@st.cache_data(ttl=1800, show_spinner=False)
+def fetch_cme_fedwatch_data():
+    """
+    Přesná replika CME FedWatch:
+    1. Určí aktuální cílové pásmo z aktuálního měsíčního ZQ kontraktu (kde v měsíci bez FOMC leží EFFR na středu pásma).
+    2. Pro vybrané FOMC zasedání stáhne příslušný měsíční ZQ kontrakt (a předchozí měsíc).
+    3. Spočítá vážený průměr dnů v měsíci před rozhodnutím FOMC a po něm (změna platí den po zasedání).
+    """
+    today = datetime.now()
+    future_meetings = [d for d in FOMC_DATES if d.date() >= today.date()]
+    if not future_meetings:
+        return None
+
+    # Stáhneme futures pro aktuální měsíc a pro následujících 6 zasedání
+    months_needed = {(today.year, today.month)}
+    for m_dt in future_meetings[:6]:
+        months_needed.add((m_dt.year, m_dt.month))
+        prev_m_dt = m_dt.replace(day=1) - timedelta(days=1)
+        months_needed.add((prev_m_dt.year, prev_m_dt.month))
+
+    zq_hist = {}
+    for (y, m) in sorted(months_needed):
+        sym = zq_ticker_for(y, m)
+        try:
+            h = yf.Ticker(sym, session=session).history(period="3mo")
+            if not h.empty:
+                zq_hist[(y, m)] = 100.0 - h['Close']
+        except Exception:
+            pass
+
+    if not zq_hist:
+        return None
+
+    # Určení aktuálního cílového pásma Fedu (zaokrouhleno na nejbližší 0.25 % pásmo kolem EFFR)
+    curr_series = zq_hist.get((today.year, today.month))
+    if curr_series is None or curr_series.empty:
+        first_key = sorted(zq_hist.keys())[0]
+        curr_series = zq_hist[first_key]
+    effr_now = float(curr_series.iloc[-1])
+
+    # Pásmo má šířku 0.25 %, střed je lower + 0.125 -> lower = round((effr - 0.125) / 0.25) * 0.25
+    curr_lower = round((effr_now - 0.125) / 0.25) * 0.25
+    curr_mid = curr_lower + 0.125
+
+    def get_rate_at_offset(series, offset):
+        if series is None or series.empty:
+            return None
+        if offset == 0:
+            return float(series.iloc[-1])
+        if len(series) > offset:
+            return float(series.iloc[-(offset + 1)])
+        return float(series.iloc[0])
+
+    meetings_output = []
+    running_mids = {0: curr_mid, 1: curr_mid, 5: curr_mid, 21: curr_mid}
+
+    for mtg in future_meetings[:6]:
+        s_mtg = zq_hist.get((mtg.year, mtg.month))
+        if s_mtg is None or s_mtg.empty:
+            continue
+
+        days_in_month = calendar.monthrange(mtg.year, mtg.month)[1]
+        # Zasedání končí v den mtg.day; nová sazba vstupuje v platnost následující den
+        days_before = mtg.day
+        days_after = days_in_month - days_before
+
+        # Zjistíme, zda v témže měsíci nebylo dřívější zasedání (zpravidla není, FOMC zasedá 8x ročně)
+        prev_m_dt = mtg.replace(day=1) - timedelta(days=1)
+        s_prev = zq_hist.get((prev_m_dt.year, prev_m_dt.month))
+
+        snap_probs = {}
+        for off in (0, 1, 5, 21):
+            r_month = get_rate_at_offset(s_mtg, off)
+            if r_month is None:
+                continue
+
+            # Počáteční sazba před tímto zasedáním
+            if (mtg.year, mtg.month) == (today.year, today.month) and off == 0:
+                r_start = curr_mid
+            elif s_prev is not None and not s_prev.empty:
+                r_prev_val = get_rate_at_offset(s_prev, off)
+                # Zaokrouhlíme předchozí měsíc na nejbližší 25bps střed pásma (pokud v předchozím měsíci nebylo FOMC, rovná se přesně středu)
+                r_start = round((r_prev_val - 0.125) / 0.25) * 0.25 + 0.125
+            else:
+                r_start = running_mids[off]
+
+            # CME rovnice: r_month = (days_before * r_start + days_after * r_end) / days_in_month
+            if days_after > 0:
+                r_end = (r_month * days_in_month - days_before * r_start) / days_after
+            else:
+                r_end = r_month
+
+            running_mids[off] = r_end
+
+            # Převod r_end na pravděpodobnosti sousedních 25 bps pásem (CME Binomický strom)
+            end_lower = (r_end // 0.25) * 0.25
+            end_mid_low = end_lower + 0.125
+            if r_end >= end_mid_low:
+                b1_low = end_lower
+                b2_low = end_lower + 0.25
+                p2 = (r_end - end_mid_low) / 0.25
+                p1 = 1.0 - p2
+            else:
+                b1_low = end_lower - 0.25
+                b2_low = end_lower
+                p2 = (r_end - (b1_low + 0.125)) / 0.25
+                p1 = 1.0 - p2
+
+            p1 = max(0.0, min(1.0, p1)) * 100.0
+            p2 = max(0.0, min(1.0, p2)) * 100.0
+
+            lbl1 = f"{int(round(b1_low*100))}-{int(round((b1_low+0.25)*100))}"
+            lbl2 = f"{int(round(b2_low*100))}-{int(round((b2_low+0.25)*100))}"
+            snap_probs[off] = {lbl1: p1, lbl2: p2}
+
+        meetings_output.append({
+            "date": mtg,
+            "date_str": mtg.strftime("%d. %m. %Y"),
+            "curr_bracket": f"{int(round(curr_lower*100))}-{int(round((curr_lower+0.25)*100))}",
+            "curr_lower": curr_lower,
+            "probs": snap_probs
+        })
+
+    return meetings_output
 
 @st.cache_data(ttl=3600)
 def fetch_fng():
@@ -293,14 +408,6 @@ def fetch_macro_data():
                 perf[_["p_3y"]] = safe_iloc(hist, 252*3)
                 perf[_["p_5y"]] = safe_iloc(hist, 252*5)
                 
-                if key == "FED":
-                    data["FED_hist"] = {
-                        "now": current_price,
-                        "1d": prev_price,
-                        "1w": perf[_["p_1w"]] if perf[_["p_1w"]] else current_price,
-                        "1m": perf[_["p_1m"]] if perf[_["p_1m"]] else current_price
-                    }
-                
                 calculated_perf = {}
                 for p_key, p_val in perf.items():
                     if p_val is not None:
@@ -323,6 +430,7 @@ def fetch_macro_data():
 with st.spinner(_["loading"]):
     macro_data, macro_history = fetch_macro_data()
     fng_score, fng_rating = fetch_fng()
+    fedwatch_meetings = fetch_cme_fedwatch_data()
 
 if macro_data:
     tab_dash, tab_analysis, tab_fed = st.tabs([_["tab_dash"], _["tab_analysis"], _["tab_fed"]])
@@ -552,48 +660,61 @@ if macro_data:
     with tab_fed:
         st.subheader(_["fed_title"])
         
-        if "FED_hist" in macro_data:
-            f_hist = macro_data["FED_hist"]
-            probs_now = calc_fed_probs(f_hist["now"])
-            probs_1d = calc_fed_probs(f_hist["1d"])
-            probs_1w = calc_fed_probs(f_hist["1w"])
-            probs_1m = calc_fed_probs(f_hist["1m"])
+        if fedwatch_meetings:
+            mtg_labels = [m["date_str"] for m in fedwatch_meetings]
+            sel_mtg_str = st.radio(_["fed_sel_mtg"], mtg_labels, horizontal=True)
+            sel_mtg = next(m for m in fedwatch_meetings if m["date_str"] == sel_mtg_str)
 
             today = datetime.now()
-            next_meeting = next((d for d in FOMC_DATES if d >= today), None)
-            
+            days_left = max(0, (sel_mtg["date"].date() - today.date()).days)
+
             mc1, mc2 = st.columns(2)
-            if next_meeting:
-                days_left = (next_meeting - today).days
-                mtg_str = next_meeting.strftime("%d. %m. %Y")
-                mc1.info(f"**{_['fed_next']}** {mtg_str}")
-                mc2.warning(f"**{_['fed_days']}** {days_left}")
-            
-            st.markdown(f"<div style='text-align: center; margin-top: 20px; margin-bottom: 5px; font-size: 16px; color: #ECEFF1;'>{_['fed_curr_lbl']} {probs_now['current_target']}</div>", unsafe_allow_html=True)
-            
+            mc1.info(f"**{_['fed_next']}** {sel_mtg['date_str']}")
+            mc2.warning(f"**{_['fed_days']}** {days_left}")
+
+            curr_b = sel_mtg["curr_bracket"]
+            st.markdown(f"<div style='text-align: center; margin-top: 20px; margin-bottom: 5px; font-size: 16px; color: #ECEFF1;'>{_['fed_curr_lbl']} <b>{curr_b} bps</b></div>", unsafe_allow_html=True)
+
+            probs_map = sel_mtg["probs"]
+            all_brackets = sorted(
+                {b for snap in probs_map.values() for b in snap.keys()},
+                key=lambda x: int(x.split("-")[0])
+            )
+
+            now_snap = probs_map.get(0, {})
+            x_vals = all_brackets
+            y_vals = [now_snap.get(b, 0.0) for b in x_vals]
+
             fig_fed = go.Figure()
             fig_fed.add_trace(go.Bar(
-                x=[probs_now["current_target"], probs_now["next_target"]],
-                y=[probs_now["prob_stay"], probs_now["prob_move"]],
-                text=[f"{probs_now['prob_stay']:.1f}%", f"{probs_now['prob_move']:.1f}%"],
+                x=x_vals,
+                y=y_vals,
+                text=[f"{v:.1f}%" for v in y_vals],
                 textposition='outside',
-                marker_color='#2980B9'
+                marker_color=['#22C55E' if b == curr_b else '#2980B9' for b in x_vals]
             ))
 
             fig_fed.update_layout(
-                template="plotly_dark", 
-                height=350,
-                yaxis=dict(title=_["fed_y"], range=[0, 105], ticksuffix="%"),
-                xaxis=dict(title=_["fed_x"]),
+                template="plotly_dark",
+                height=360,
+                yaxis=dict(title=_["fed_y"], range=[0, 110], ticksuffix="%"),
+                xaxis=dict(title=_["fed_x"], type="category"),
                 margin=dict(l=0, r=0, t=10, b=0)
             )
             st.plotly_chart(fig_fed, use_container_width=True, config={'displayModeBar': False})
 
-            df_fed_prob = pd.DataFrame({
-                _["f_tgt"]: [f"{probs_now['current_target']}{_['fed_curr_tbl']}", probs_now["next_target"]],
-                _["f_now"]: [f"{probs_now['prob_stay']:.1f}%", f"{probs_now['prob_move']:.1f}%"],
-                _["f_1d"]: [f"{probs_1d['prob_stay']:.1f}%", f"{probs_1d['prob_move']:.1f}%"],
-                _["f_1w"]: [f"{probs_1w['prob_stay']:.1f}%", f"{probs_1w['prob_move']:.1f}%"],
-                _["f_1m"]: [f"{probs_1m['prob_stay']:.1f}%", f"{probs_1m['prob_move']:.1f}%"]
-            })
-            st.table(df_fed_prob.set_index(_["f_tgt"]))
+            rows_tbl = []
+            for b in all_brackets:
+                lbl_b = f"{b}{_['fed_curr_tbl']}" if b == curr_b else b
+                rows_tbl.append({
+                    _["f_tgt"]: lbl_b,
+                    _["f_now"]: f"{probs_map.get(0, {}).get(b, 0.0):.1f}%",
+                    _["f_1d"]: f"{probs_map.get(1, {}).get(b, 0.0):.1f}%",
+                    _["f_1w"]: f"{probs_map.get(5, {}).get(b, 0.0):.1f}%",
+                    _["f_1m"]: f"{probs_map.get(21, {}).get(b, 0.0):.1f}%"
+                })
+
+            df_fed_prob = pd.DataFrame(rows_tbl).set_index(_["f_tgt"])
+            st.table(df_fed_prob)
+        else:
+            st.warning(_["fed_err"])
