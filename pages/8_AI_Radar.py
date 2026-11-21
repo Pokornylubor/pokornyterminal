@@ -7,6 +7,7 @@ import sys
 import subprocess
 import xml.etree.ElementTree as ET
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 # --- INITIAL SETUP ---
 st.set_page_config(page_title="POKORNY TERMINAL | AI RADAR", layout="wide", initial_sidebar_state="collapsed")
@@ -99,15 +100,18 @@ t = {
         "mode_stock": "AKCIE (Ticker)",
         "macro_preset": "TRŽNÍ OKRUH",
         "macro_custom": "VLASTNÍ TÉMA (volitelné)",
-        "macro_ph": "např. US tariffs China, earnings season, EURUSD ECB...",
+        "macro_ph": "Zadejte vlastní téma...",
         "tick_db": "DATABÁZE",
         "tick_cust": "VLASTNÍ TICKER",
+        "tick_ph": "Vyhledat...",
+        "db_ph": "Vybrat...",
         "btn_ai": "Vygenerovat report",
         "btn_save": "Uložit do Archivu (GitHub)",
         "saved_ok": "Report uložen do Archivu a synchronizován na GitHub.",
         "already_saved": "Tento report je již uložený v Archivu.",
         "spin_search": "Stahování datového toku...",
         "spin_ai": "AI syntetizuje datový tok...",
+        "spin_chat": "AI formuluje odpověď...",
         "err_api": "AI API klíč nebo model nebyl nalezen. Zkontrolujte GROQ_API_KEY v Secrets a Nastavení.",
         "err_ai": "Chyba AI enginu:",
         "err_news": "Žádné aktuální zprávy nebyly nalezeny.",
@@ -121,12 +125,23 @@ t = {
         "chat_ph": "Zeptejte se na detaily, valuaci nebo historický kontext...",
         "lib_empty": "Archiv je zatím prázdný. Vygenerujte report v záložce Generátor a uložte ho.",
         "lib_filter": "FILTR",
+        "lib_all": "Vše",
+        "lib_macro_lbl": "MARKET BRIEF",
+        "lib_stock_lbl": "AKCIE",
+        "lib_saved_h": "ULOŽENÉ REPORTY",
         "lib_search": "HLEDAT V ARCHIVU",
         "lib_search_ph": "Ticker, téma nebo klíčové slovo...",
         "lib_open": "Číst →",
         "lib_del": "Smazat",
         "lib_deleted": "Report byl odstraněn z Archivu.",
-        "lib_back": "← Zpět do Archivu"
+        "lib_back": "← Zpět do Archivu",
+        "presets": {
+            "US Trh & Indexy (S&P 500, Nasdaq)": "S&P 500 Nasdaq stock market today Wall Street",
+            "FED, Inflace & Dluhopisy": "Federal Reserve interest rates CPI inflation treasury yields",
+            "AI & Polovodiče": "AI semiconductors Nvidia data center chip stocks",
+            "Zlato, Ropa & Komodity": "gold price XAUUSD crude oil commodities market",
+            "Makro & Měny (USD, EUR)": "global macro economy EURUSD central banks markets"
+        }
     },
     "EN": {
         "title": "AI SENTIMENT & MARKET BRIEF",
@@ -138,15 +153,18 @@ t = {
         "mode_stock": "EQUITY (Ticker)",
         "macro_preset": "MARKET FOCUS",
         "macro_custom": "CUSTOM TOPIC (optional)",
-        "macro_ph": "e.g. US tariffs China, earnings season, EURUSD ECB...",
+        "macro_ph": "Enter custom topic...",
         "tick_db": "DATABASE",
         "tick_cust": "CUSTOM TICKER",
+        "tick_ph": "Search...",
+        "db_ph": "Select...",
         "btn_ai": "Generate Report",
         "btn_save": "Save to Archive (GitHub)",
         "saved_ok": "Report saved to Archive and synced to GitHub.",
         "already_saved": "This report is already saved in the Archive.",
         "spin_search": "Fetching data feed...",
         "spin_ai": "AI is synthesizing data feed...",
+        "spin_chat": "AI is generating response...",
         "err_api": "AI API key or model not found. Check GROQ_API_KEY in Secrets and Settings.",
         "err_ai": "AI Engine Error:",
         "err_news": "No current news found.",
@@ -160,23 +178,27 @@ t = {
         "chat_ph": "Ask about details, valuation, or historical context...",
         "lib_empty": "Archive is empty. Generate a report in the Generator tab and save it.",
         "lib_filter": "FILTER",
+        "lib_all": "All",
+        "lib_macro_lbl": "MARKET BRIEF",
+        "lib_stock_lbl": "EQUITY",
+        "lib_saved_h": "SAVED REPORTS",
         "lib_search": "SEARCH ARCHIVE",
         "lib_search_ph": "Ticker, topic, or keyword...",
         "lib_open": "Read →",
         "lib_del": "Delete",
         "lib_deleted": "Report removed from Archive.",
-        "lib_back": "← Back to Archive"
+        "lib_back": "← Back to Archive",
+        "presets": {
+            "US Market & Indices (S&P 500, Nasdaq)": "S&P 500 Nasdaq stock market today Wall Street",
+            "FED, Inflation & Bonds": "Federal Reserve interest rates CPI inflation treasury yields",
+            "AI & Semiconductors": "AI semiconductors Nvidia data center chip stocks",
+            "Gold, Oil & Commodities": "gold price XAUUSD crude oil commodities market",
+            "Macro & FX (USD, EUR)": "global macro economy EURUSD central banks markets"
+        }
     }
 }
 _ = t.get(current_lang, t["CZ"])
-
-MACRO_PRESETS = {
-    "US Trh & Indexy (S&P 500, Nasdaq)": "S&P 500 Nasdaq stock market today Wall Street",
-    "FED, Inflace & Dluhopisy": "Federal Reserve interest rates CPI inflation treasury yields",
-    "AI & Polovodiče": "AI semiconductors Nvidia data center chip stocks",
-    "Zlato, Ropa & Komodity": "gold price XAUUSD crude oil commodities market",
-    "Makro & Geopolitika (USD, EUR)": "global macro economy EURUSD tariffs geopolitics markets"
-}
+MACRO_PRESETS = _["presets"]
 
 st.title(_["title"])
 st.caption(_["desc"])
@@ -244,7 +266,7 @@ for key, default in [
     if key not in st.session_state:
         st.session_state[key] = default
 
-# --- DIRECT HTTP AI CALL (stabilní na Streamlit Cloudu) ---
+# --- DIRECT HTTP AI CALL ---
 def call_llm_api(messages, api_klic, provider, model_name, temperature=0.2, timeout=30):
     url = "https://api.groq.com/openai/v1/chat/completions" if provider == "Groq" else "https://api.openai.com/v1/chat/completions"
     headers = {
@@ -352,7 +374,7 @@ def chat_s_ai(otazka, report_obj, historie, api_klic, provider, model_name, lang
     try:
         return call_llm_api(messages, api_klic, provider, model_name, temperature=0.3, timeout=25)
     except Exception as e:
-        return f"⚠️ Chyba spojení s AI ({e})."
+        return f"⚠️ AI Error ({e})."
 
 def vykresli_report_kartu(rep):
     skore = float(rep.get("sentiment_skore", 0.0))
@@ -372,7 +394,7 @@ def vykresli_report_kartu(rep):
     html_card = (
         f'<div class="brief-article">'
         f'<div class="brief-meta">{rep.get("datum", "")}  ·  {rep.get("typ", "")}  ·  {rep.get("tema", "")}</div>'
-        f'<h1 class="brief-headline">{rep.get("hlavni_nadpis", "Analýza trhu")}</h1>'
+        f'<h1 class="brief-headline">{rep.get("hlavni_nadpis", "")}</h1>'
         f'<span class="brief-badge" style="background-color:{badge_bg}; color:{badge_fg};">{rezim}   {skore:+.2f}</span>'
         f'<hr class="brief-divider" />'
         f'<div class="brief-sec-label">{_["what_happened"]}</div>'
@@ -411,10 +433,8 @@ with tab_gen:
             search_query = MACRO_PRESETS[preset_name]
     else:
         c1, c2 = st.columns([1.2, 1.2])
-        ph_text = "Vyhledat..." if current_lang == "CZ" else "Search..."
-        ph_db = "Vybrat..." if current_lang == "CZ" else "Select..."
-        custom_val = c1.text_input(_["tick_cust"], placeholder=ph_text)
-        dropdown_val = c2.selectbox(_["tick_db"], tickers, index=None, placeholder=ph_db)
+        custom_val = c1.text_input(_["tick_cust"], placeholder=_["tick_ph"])
+        dropdown_val = c2.selectbox(_["tick_db"], tickers, index=None, placeholder=_["db_ph"])
         vybrany_ticker = custom_val.strip().upper() if custom_val.strip() else dropdown_val
         target_label = vybrany_ticker
         search_query = vybrany_ticker
@@ -431,7 +451,7 @@ with tab_gen:
                 with st.spinner(_["spin_ai"]):
                     analyza = generuj_ai_report(target_label, typ_str, agregovany_text, api_key, model_provider, selected_model, current_lang)
                     if "error" not in analyza:
-                        now_dt = datetime.now()
+                        now_dt = datetime.now(ZoneInfo("Europe/Prague"))
                         rep_id = f"{now_dt.strftime('%Y%m%d_%H%M%S')}_{'MACRO' if is_macro else target_label}"
                         st.session_state.lab_current_report = {
                             "id": rep_id,
@@ -475,7 +495,7 @@ with tab_gen:
             with st.chat_message("user"):
                 st.markdown(prompt)
             with st.chat_message("assistant"):
-                with st.spinner("AI formuluje odpověď..."):
+                with st.spinner(_["spin_chat"]):
                     odpoved = chat_s_ai(prompt, rep, st.session_state.lab_chat[:-1], api_key, model_provider, selected_model, current_lang)
                     st.markdown(odpoved)
             if not odpoved.startswith("⚠️"):
@@ -515,19 +535,23 @@ with tab_lib:
                 with st.chat_message("user"):
                     st.markdown(prompt_lib)
                 with st.chat_message("assistant"):
-                    with st.spinner("AI formuluje odpověď..."):
+                    with st.spinner(_["spin_chat"]):
                         odpoved = chat_s_ai(prompt_lib, selected_rep, st.session_state.lib_chat[:-1], api_key, model_provider, selected_model, current_lang)
                         st.markdown(odpoved)
                 if not odpoved.startswith("⚠️"):
                     st.session_state.lib_chat.append({"role": "assistant", "content": odpoved})
         else:
             f1, f2 = st.columns([1.2, 2.8])
-            typ_filtr = f1.selectbox(_["lib_filter"], ["Vše", "MARKET BRIEF", "AKCIE"])
+            filtr_opts = [_["lib_all"], _["lib_macro_lbl"], _["lib_stock_lbl"]]
+            typ_filtr = f1.selectbox(_["lib_filter"], filtr_opts)
             hledat = f2.text_input(_["lib_search"], placeholder=_["lib_search_ph"]).strip().lower()
 
             filtered = []
             for r in archive:
-                if typ_filtr != "Vše" and r.get("typ") != typ_filtr:
+                r_typ = r.get("typ", "")
+                if typ_filtr == _["lib_macro_lbl"] and r_typ != "MARKET BRIEF":
+                    continue
+                if typ_filtr == _["lib_stock_lbl"] and r_typ not in ("AKCIE", "EQUITY"):
                     continue
                 if hledat:
                     haystack = f"{r.get('tema', '')} {r.get('hlavni_nadpis', '')} {r.get('co_se_stalo', '')}".lower()
@@ -535,7 +559,7 @@ with tab_lib:
                         continue
                 filtered.append(r)
 
-            st.markdown(f'<div class="brief-sec-label">ULOŽENÉ REPORTY · {len(filtered)}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="brief-sec-label">{_["lib_saved_h"]} · {len(filtered)}</div>', unsafe_allow_html=True)
             for item in filtered:
                 skore = float(item.get("sentiment_skore", 0.0))
                 rezim = item.get("rezim", "NEUTRAL").upper()
