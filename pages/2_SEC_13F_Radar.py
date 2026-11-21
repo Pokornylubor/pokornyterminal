@@ -751,15 +751,17 @@ with tab_master:
                 master_prompt = f"""Jsi seniorní institucionální akciový analytik. Tvým úkolem je vytvořit hutný, analyticky přesný a kompletní „MASTER 13F SOUHRN“ pro čtvrtletí {q_label} (data zveřejněná v listopadu 2026) napříč {len(funds_meta_list)} sledovanými subjekty výhradně na základě níže přiložených dat z hlášení 13F.
 Celý výstup musí mít rozsah cca 700–800 slov, aby se bezpečně dokončil až do posledního slova bodu 5 bez useknutí (začni rovnou bodem 1).
 
-PŘÍSNÁ PRAVIDLA:
-1. JAZYK A OBDOBÍ: Piš {lang_instr}. Analyzuješ výhradně čtvrtletí {q_label} – vždy v celém textu uváděj přesně toto období ({q_label}) a nikdy ho nezaměňuj za jiné čtvrtletí. Nikdy nepoužívej cizí slova v hlavičkách tabulek (vždy „Titul“, nikdy „Título“).
-2. DEFINICE METRIK (ZÁKAZ ZÁMĚNY JEDNOTEK A ROLÍ):
+PŘÍSNÁ PRAVIDLA (DODRŽUJ DO POSLEDNÍHO SLOVA V CELÉM TEXTU):
+1. JAZYK A OBDOBÍ: Piš {lang_instr}. Analyzuješ výhradně čtvrtletí {q_label} – vždy v celém textu uváděj přesně toto období ({q_label}) a nikdy ho nezaměňuj za jiné čtvrtletí. V hlavičkách tabulek vždy piš „Titul“, nikdy „Título“.
+2. ZAKÁZANÁ SLOVA A SEKTOROVÁ PŘESNOST:
+   - ZAKÁZANÁ SLOVA: Nikdy v textu nepoužij slova „metaverse“, „pandemie“ ani „po pandemii“.
+   - SEKTORY: Než zařadíš firmu do sektoru, ověř si její reálný byznys (např. polovodiče/úložiště/software jsou technologie a hardware, nikdy energetika; pojišťovny a nemocnice jsou zdravotnictví, nikdy energetika; banky a karty jsou finance).
+3. DEFINICE METRIK (ZÁKAZ ZÁMĚNY JEDNOTEK A ROLÍ):
    - „Čistý rozdíl počtu fondů“ (`Net_Fund_Count_Diff`) je POČET KUPUJÍCÍCH FONDŮ MÍNUS POČET PRODÁVAJÍCÍCH FONDŮ. NIKDY k němu nepřidávej znak %!
    - Procenta (%) uváděj POUZE u změny pozice konkrétního fondu nebo váhy v portfoliu.
-   - Rozlišuj striktně „Buy 100 %“ (= otevření zcela nové pozice) od „Add“ (= navýšení již držené pozice, např. Add 435.53 % není nová pozice, ale navýšení).
+   - STRIKTNÍ ROZLIŠENÍ „Buy 100 %“ VS. „Add“: Jako „novou pozici“ smíš označit VÝHRADNĚ záznam se štítkem „Buy 100 %“. Pokud má manažer u titulu štítek „Add“ (jakékoliv procento), jde o „navýšení stávající pozice“, NIKDY o novou pozici!
    - Přísně rozlišuj SUBJEKT (manažer/firma podávající 13F hlášení) a TITUL (držená akcie v portfoliu). Pokud je podavatelem hlášení samotná firma (korporátní 13F), jde o její investiční portfolio, nikdy nepřipisuj držbu akcii samotné.
-3. ZÁKAZ HALUCINACÍ: Nepoužívej zastaralé fráze („pandemie“, „metaverse“), neuváděj odhady AUM a pečlivě ověřuj sektorové zařazení každé firmy (nezaměňuj zdravotnictví, energetiku, průmysl, finance a technologie).
-4. KONZISTENCE: Komentář v bodě 1 musí 100% odpovídat tabulkám v bodech 2 a 3. Pokud je akcie v tabulce prodejů, popiš ji v úvodu jako historicky drženou jádrovou pozici, kde probíhá výběr zisků.
+4. KONZISTENCE: Komentář v bodě 1 a odrážky v bodě 5 musí 100% odpovídat tabulkám v bodech 2 a 3. Pokud je akcie v tabulce prodejů, popiš ji v úvodu jako historicky drženou jádrovou pozici, kde probíhá výběr zisků. Bez odhadů AUM.
 
 POŽADOVANÁ STRUKTURA VÝSTUPU:
 
@@ -775,10 +777,11 @@ POŽADOVANÁ STRUKTURA VÝSTUPU:
    - Pod tabulkou 3 stručné odrážky k výběru zisků.
 
 4. **PŘEHLED KLÍČOVÝCH TAHŮ HLAVNÍCH SUBJEKTŮ**
-   - U 8 hlavních fondů/subjektů uveď přesně 1 stručnou větu (hlavní sázky, nákup vs. prodej; rozlišuj novou pozici vs. navýšení). Bez odhadů AUM.
+   - U 8 hlavních fondů/subjektů uveď přesně 1 stručnou větu (hlavní sázky, nákup vs. prodej; přísně rozlišuj novou pozici `Buy 100 %` vs. navýšení `Add`). Bez odhadů AUM.
 
 5. **AKČNÍ VÝSTUP PRO TÝDENNÍ TRŽNÍ VÝHLED**
-   - 5 stručných, konkrétních investičních tezí a titulů k prověření v Terminálu.
+   - 5 stručných, konkrétních investičních tezí a titulů k prověření v Terminálu (včetně tickeru v závorce; hlídej soulad s tabulkami a nepoužívej zakázaná slova).
+
 
 NEJČASTĚJI DRŽENÉ AKCIE ({q_label}):
 {own_lines}
