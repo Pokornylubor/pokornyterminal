@@ -93,8 +93,8 @@ t = {
         "warn_nodata": "DATA PRO TENTO REPORT NEJSOU STAŽENA. KLIKNĚTE NA 'VYNUTIT AKTUALIZACI'.",
         "ai_no_key": "Pro AI analýzu nastavte GROQ_API_KEY v Secrets a vyberte model v Nastavení.",
         "ai_sel_first": "Nejdříve vyberte fond v záložce PORTFOLIO (13F).",
-        "ai_gen_btn": "Vygenerovat AI 13F shrnutí fondu",
-        "ai_spin": "AI analyzuje 13F pozice, koncentraci a rotaci kapitálu...",
+        "ai_gen_btn": "Vygenerovat hloubkovou AI 13F analýzu fondu",
+        "ai_spin": "AI zpracovává detailní rozbor 13F pozic, valuací a rotace kapitálu...",
         "ai_save": "Uložit do sec_13f_archive.json (GitHub)",
         "ai_saved_ok": "Analýza uložena do sec_13f_archive.json a synchronizována na GitHub.",
         "ai_already_saved": "Tato 13F analýza je již uložená.",
@@ -105,8 +105,8 @@ t = {
         "ai_saved_list": "ULOŽENÉ 13F ANALÝZY",
         "ai_load": "Načíst",
         "ai_del": "Smazat",
-        "m_btn": "Vygenerovat Master 13F souhrn všech fondů (AI)",
-        "m_spin": "Agregace všech fondů a generování Master 13F reportu...",
+        "m_btn": "Vygenerovat detailní Master 13F report všech fondů (AI)",
+        "m_spin": "Agregace všech fondů a generování hloubkového Master 13F reportu...",
         "m_copy_lbl": "PODKLAD PRO TÝDENNÍ TRŽNÍ VÝHLED (KOPÍROVATELNÝ MARKDOWN)",
         "m_saved_list": "ULOŽENÉ MASTER 13F SOUHRNY",
         "m_no_funds": "Ve složce sec_data/ zatím nejsou staženy žádné 13F reporty.",
@@ -133,8 +133,8 @@ t = {
         "warn_nodata": "DATA FOR THIS REPORT NOT DOWNLOADED YET. CLICK 'FORCE UPDATE'.",
         "ai_no_key": "Configure GROQ_API_KEY in Secrets and select a model in Settings.",
         "ai_sel_first": "Select a fund in the PORTFOLIO (13F) tab first.",
-        "ai_gen_btn": "Generate AI 13F Fund Summary",
-        "ai_spin": "AI is analyzing 13F positions, concentration and capital rotation...",
+        "ai_gen_btn": "Generate Deep AI 13F Fund Analysis",
+        "ai_spin": "AI is generating deep 13F position, valuation and capital rotation analysis...",
         "ai_save": "Save to sec_13f_archive.json (GitHub)",
         "ai_saved_ok": "Analysis saved to sec_13f_archive.json and synced to GitHub.",
         "ai_already_saved": "This 13F analysis is already saved.",
@@ -145,8 +145,8 @@ t = {
         "ai_saved_list": "SAVED 13F ANALYSES",
         "ai_load": "Load",
         "ai_del": "Delete",
-        "m_btn": "Generate Master 13F Synthesis Across All Funds (AI)",
-        "m_spin": "Aggregating all funds and generating Master 13F report...",
+        "m_btn": "Generate Comprehensive Master 13F Synthesis Across All Funds (AI)",
+        "m_spin": "Aggregating all funds and generating comprehensive Master 13F report...",
         "m_copy_lbl": "EXPORT FOR WEEKLY MARKET OUTLOOK (COPYABLE MARKDOWN)",
         "m_saved_list": "SAVED MASTER 13F SYNTHESES",
         "m_no_funds": "No downloaded 13F reports found in sec_data/ yet.",
@@ -235,7 +235,7 @@ def get_groq_available_models(api_klic):
     except Exception:
         return []
 
-def call_llm_api(messages, api_klic, provider, model_name, temperature=0.2, timeout=35, max_tokens=1100):
+def call_llm_api(messages, api_klic, provider, model_name, temperature=0.25, timeout=45, max_tokens=2800):
     url = "https://api.groq.com/openai/v1/chat/completions" if provider == "Groq" else "https://api.openai.com/v1/chat/completions"
     models_to_try = [model_name]
     if provider == "Groq":
@@ -288,20 +288,23 @@ def extract_fund_summary_dict(fund_name, meta, df):
     top10 = round(float(df_c["_pct"].head(10).sum()), 2)
 
     def row_to_item(r):
+        val_num = float(r["Value"]) if pd.notna(r.get("Value")) else None
         return {
             "stock": str(r.get(stock_col, "")),
             "pct_portfolio": round(float(r.get("_pct", 0.0)), 2),
             "activity": str(r.get("RecentActivity", "")),
-            "value_usd": float(r["Value"]) if pd.notna(r.get("Value")) else None,
+            "value_formatted": format_aum(val_num),
+            "reported_price": round(float(r["ReportedPrice*"]), 2) if pd.notna(r.get("ReportedPrice*")) else None,
+            "current_price": round(float(r["Current Price"]), 2) if pd.notna(r.get("Current Price")) else None,
             "vs_reported_pct": round(float(r["+/-Reported Price"]), 2) if pd.notna(r.get("+/-Reported Price")) else None
         }
 
     top_15 = [row_to_item(r) for _, r in df_c.head(15).iterrows()]
 
     act_col = df_c["RecentActivity"].astype(str) if "RecentActivity" in df_c.columns else pd.Series([""] * len(df_c))
-    new_pos = [row_to_item(r) for _, r in df_c[act_col.str.contains("New|Buy", case=False, na=False)].head(10).iterrows()]
-    adds = [row_to_item(r) for _, r in df_c[act_col.str.contains("Add", case=False, na=False)].head(10).iterrows()]
-    reduces = [row_to_item(r) for _, r in df_c[act_col.str.contains("Reduce|Sell", case=False, na=False)].head(10).iterrows()]
+    new_pos = [row_to_item(r) for _, r in df_c[act_col.str.contains("New|Buy", case=False, na=False)].head(12).iterrows()]
+    adds = [row_to_item(r) for _, r in df_c[act_col.str.contains("Add", case=False, na=False)].head(12).iterrows()]
+    reduces = [row_to_item(r) for _, r in df_c[act_col.str.contains("Reduce|Sell", case=False, na=False)].head(12).iterrows()]
 
     return {
         "fund": fund_name,
@@ -335,26 +338,51 @@ def build_master_13f_aggregation(all_funds_dict, target_quarter=None):
             continue
 
     if not raw_funds:
-        return [], [], pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+        return [], [], [], pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
     all_quarters = sorted({m.get("kvartal", "") for _, m, _ in raw_funds if m.get("kvartal")}, reverse=True)
     use_q = target_quarter if target_quarter in all_quarters else (all_quarters[0] if all_quarters else None)
 
     own_map, buy_map, sell_map = {}, {}, {}
     funds_meta_list = []
+    funds_breakdown = []
 
     for f_name, meta, df in raw_funds:
         if use_q and meta.get("kvartal") != use_q:
             continue
         stock_col = get_stock_col(df)
         short_f = f_name.split("(")[0].strip()
-        funds_meta_list.append({"fund": short_f, "quarter": meta.get("kvartal", ""), "positions": len(df)})
 
-        for _, r in df.iterrows():
+        df_f = df.copy()
+        df_f["_pct"] = pd.to_numeric(df_f.get("% of Portfolio", 0), errors="coerce").fillna(0.0)
+        df_f = df_f.sort_values("_pct", ascending=False)
+        f_aum = float(pd.to_numeric(df_f["Value"], errors="coerce").sum()) if "Value" in df_f.columns else 0.0
+
+        funds_meta_list.append({
+            "fund": short_f,
+            "quarter": meta.get("kvartal", ""),
+            "aum": format_aum(f_aum),
+            "positions": len(df_f)
+        })
+
+        act_s = df_f["RecentActivity"].astype(str) if "RecentActivity" in df_f.columns else pd.Series([""] * len(df_f))
+        top_5_str = [f"{r[stock_col]} ({r['_pct']:.1f}%)" for _, r in df_f.head(5).iterrows()]
+        buys_str = [f"{r[stock_col]} [{r['RecentActivity']}, {r['_pct']:.1f}%]" for _, r in df_f[act_s.str.contains("Buy|Add|New", case=False, na=False)].head(5).iterrows()]
+        sells_str = [f"{r[stock_col]} [{r['RecentActivity']}, {r['_pct']:.1f}%]" for _, r in df_f[act_s.str.contains("Reduce|Sell", case=False, na=False)].head(5).iterrows()]
+
+        funds_breakdown.append({
+            "fund": short_f,
+            "aum": format_aum(f_aum),
+            "top_5_holdings": top_5_str,
+            "key_buys_adds": buys_str,
+            "key_reduces_sells": sells_str
+        })
+
+        for _, r in df_f.iterrows():
             stk = str(r.get(stock_col, "")).strip()
             if not stk or stk.lower() == "nan":
                 continue
-            pct = float(r["% of Portfolio"]) if pd.notna(r.get("% of Portfolio")) else 0.0
+            pct = float(r["_pct"])
             act = str(r.get("RecentActivity", "")).strip()
 
             if stk not in own_map:
@@ -383,15 +411,15 @@ def build_master_13f_aggregation(all_funds_dict, target_quarter=None):
         v["Managers"] = ", ".join(v["Managers"])
         del v["_sum_w"]
     for v in buy_map.values():
-        v["Managers"] = ", ".join(v["Managers"][:5])
+        v["Managers"] = ", ".join(v["Managers"][:6])
     for v in sell_map.values():
-        v["Managers"] = ", ".join(v["Managers"][:5])
+        v["Managers"] = ", ".join(v["Managers"][:6])
 
     df_own = pd.DataFrame(sorted(own_map.values(), key=lambda x: (x["Funds"], x["Avg Weight %"]), reverse=True)[:20])
     df_buy = pd.DataFrame(sorted(buy_map.values(), key=lambda x: x["Buy/Add Count"], reverse=True)[:20])
     df_sell = pd.DataFrame(sorted(sell_map.values(), key=lambda x: x["Sell/Reduce Count"], reverse=True)[:20])
 
-    return all_quarters, funds_meta_list, df_own, df_buy, df_sell
+    return all_quarters, funds_meta_list, funds_breakdown, df_own, df_buy, df_sell
 
 # --- LOAD DATA & SETTINGS ---
 app_data = load_full_watchlist()
@@ -567,17 +595,28 @@ with tab_ai:
             datum_str = now_dt.strftime("%d. %m. %Y %H:%M")
             lang_instr = "v čisté češtině bez anglických frází" if current_lang == "CZ" else "in clean institutional English"
             prompt_13f = f"""Jsi Senior Equity Analyst & Portfolio Manager. Dnešní datum je {datum_str}.
-Na základě PŘESNĚ TĚCHTO 13F dat fondu {short_fund} (kvartál {active_meta.get('kvartal', '')}, spravovaný objem {fund_summary_dict.get('total_13f_aum', 'N/A')}) vypracuj stručné institucionální shrnutí {lang_instr} (začni rovnou bodem 1, nepoužívej vymyšlená čísla ani cizí tickery):
-1. **KONCENTRACE & HLAVNÍ SÁZKY** (spravovaný objem, Top 5/10 koncentrace, klíčové pozice)
-2. **NEJDŮLEŽITĚJŠÍ NÁKUPY A NOVÉ POZICE** (kde manažer otevírá nové teze nebo výrazně navyšuje)
-3. **VÝRAZNÉ REDUKCE A PRODEJE** (kde vybírá zisky nebo snižuje expozici)
-4. **SEKTOROVÁ ROTACE & ZÁVĚR PRO INVESTORA** (hlavní signál z tohoto kvartálu + zajímavé příležitosti, kde je aktuální cena pod nahlášenou cenou)
+Na základě PŘESNĚ TĚCHTO 13F dat fondu {short_fund} (kvartál {active_meta.get('kvartal', '')}, spravovaný objem {fund_summary_dict.get('total_13f_aum', 'N/A')}) vypracuj podrobný, hloubkový institucionální report {lang_instr} (rozsah alespoň 500–700 slov, začni rovnou bodem 1, nepoužívej vymyšlená čísla ani cizí tickery):
+
+1. **STRUKTURA PORTFOLIA, KONCENTRACE & HLAVNÍ SÁZKY**
+   - Detailně rozeber celkové spravované 13F AUM ({fund_summary_dict.get('total_13f_aum', 'N/A')}), počet pozic ({fund_summary_dict.get('total_positions', 0)}) a koncentraci v Top 5 ({fund_summary_dict.get('top5_concentration_pct', 0)} %) a Top 10 ({fund_summary_dict.get('top10_concentration_pct', 0)} %).
+   - Rozeber jednotlivě 5 až 7 největších pozic v portfoliu včetně jejich přesné váhy, dolarové hodnoty a co o investičním stylu fondu vypovídají.
+
+2. **NEJDŮLEŽITĚJŠÍ NÁKUPY A NOVÉ POZICE (OFENZIVNÍ ALOKACE)**
+   - Podrobně rozeber všechny významné nové pozice a největší navýšení (`Add`), uveď konkrétní procenta změny, váhu v portfoliu i dolarovou hodnotu.
+   - Vysvětli investiční logiku, proč manažer v tomto čtvrtletí alokoval čerstvý kapitál právě do těchto titulů.
+
+3. **VÝRAZNÉ REDUKCE A KOMPLETNÍ VÝSTUPY (DEFENZIVA & REALIZACE ZISKŮ)**
+   - Detailně rozeber největší redukce a prodeje, uveď přesná čísla a zhodnoť, zda jde o vybírání zisků po růstu, nebo o strukturální odchod ze sektoru.
+
+4. **VALUAČNÍ PŘÍLEŽITOSTI & ZÁVĚR PRO INVESTORA**
+   - Porovnej nahlášené ceny (`reported_price`) s aktuální tržní cenou (`current_price` / `vs_reported_pct`) a vypíchni konkrétní tituly, které se nyní obchodují se slevou oproti ceně, za kterou nakupoval tento fond.
+   - Shrň hlavní strategický signál fondu pro další kvartál.
 
 Data 13F:
 {fund_json_str}"""
             with st.spinner(_["ai_spin"]):
                 try:
-                    memo_txt = call_llm_api([{"role": "user", "content": prompt_13f}], api_key, model_provider, selected_model, temperature=0.2, timeout=35, max_tokens=1100)
+                    memo_txt = call_llm_api([{"role": "user", "content": prompt_13f}], api_key, model_provider, selected_model, temperature=0.25, timeout=45, max_tokens=2800)
                     rep_id = f"{now_dt.strftime('%Y%m%d_%H%M%S')}_13F_{active_cik}"
                     st.session_state.sec_ai_memo = {
                         "id": rep_id,
@@ -653,13 +692,13 @@ Data 13F:
                 st.markdown(q_13f)
             with st.chat_message("assistant"):
                 with st.spinner(_["ai_spin"]):
-                    lang_reply = "Odpovídej čistou češtinou, stručně a k věci." if current_lang == "CZ" else "Answer in clean, concise English."
+                    lang_reply = "Odpovídej čistou češtinou, podrobně a věcně." if current_lang == "CZ" else "Answer in clean, detailed English."
                     msgs = [{"role": "system", "content": f"Jsi Senior Equity Analyst. Máš přesný výtah 13F portfolia fondu {short_fund}: {fund_json_str}. {lang_reply}"}]
                     for m in st.session_state.sec_ai_chat[-6:-1]:
                         msgs.append({"role": m["role"], "content": m["content"]})
                     msgs.append({"role": "user", "content": q_13f})
                     try:
-                        ans = call_llm_api(msgs, api_key, model_provider, selected_model, temperature=0.25, timeout=25, max_tokens=650)
+                        ans = call_llm_api(msgs, api_key, model_provider, selected_model, temperature=0.25, timeout=30, max_tokens=1200)
                     except Exception as e:
                         ans = f"AI Error ({e})."
                     st.markdown(ans)
@@ -690,7 +729,7 @@ Data 13F:
                     st.rerun()
 
 with tab_master:
-    all_quarters, funds_meta_list, df_own, df_buy, df_sell = build_master_13f_aggregation(ALL_FUNDS)
+    all_quarters, funds_meta_list, funds_breakdown, df_own, df_buy, df_sell = build_master_13f_aggregation(ALL_FUNDS)
 
     if not funds_meta_list:
         st.info(_["m_no_funds"])
@@ -725,28 +764,42 @@ with tab_master:
                     "total_funds_analyzed": len(funds_meta_list),
                     "most_owned_consensus": df_own.head(15).to_dict(orient="records") if not df_own.empty else [],
                     "most_bought_or_new": df_buy.head(15).to_dict(orient="records") if not df_buy.empty else [],
-                    "most_sold_or_reduced": df_sell.head(15).to_dict(orient="records") if not df_sell.empty else []
+                    "most_sold_or_reduced": df_sell.head(15).to_dict(orient="records") if not df_sell.empty else [],
+                    "individual_funds_highlights": funds_breakdown
                 }
                 lang_instr = "v čisté češtině bez anglických frází" if current_lang == "CZ" else "in clean institutional English"
-                master_prompt = f"""Jsi Chief Investment Officer (CIO) a připravuješ čtvrtletní Master 13F report napříč {len(funds_meta_list)} sledovanými fondy výhradně za kvartál {q_label}.
+                master_prompt = f"""Jsi Chief Investment Officer (CIO) a připravuješ obsáhlý, hloubkový čtvrtletní Master 13F report napříč {len(funds_meta_list)} sledovanými institucionálními fondy výhradně za kvartál {q_label}.
+Report musí být dostatečně detailní a analytický (rozsah cca 800–1100 slov), aby sloužil jako plnohodnotný podklad pro týdenní tržní výhledy.
 
 PŘÍSNÁ PRAVIDLA KONZISTENCE:
 - Nikdy si neprotiřeč: Pokud je akcie mezi nejčastěji drženými, ale má záporný Net Flow (více prodávajících než kupujících), napiš jasně, že jde o historicky drženou jádrovou pozici, ze které ale v {q_label} fondy vybírají zisky. Nikdy netvrď, že do ní kapitál přitéká, pokud je v tabulce prodejů.
-- Používej výhradně přesná čísla a názvy ze zadaného JSONu. Nevymýšlej si vlastní procenta ani cizí tickery (pokud si nejsi 100% jistý tickerem, napiš jen název firmy z dat).
+- Používej výhradně přesná čísla, váhy a názvy ze zadaného JSONu. Nevymýšlej si vlastní procenta ani cizí tickery (pokud si nejsi 100% jistý tickerem, napiš jen název firmy z dat).
 - Rozlišuj „Nová pozice (New/Buy)“ od „Navýšení (Add)“ – nikdy nespojuj 100% novou pozici s procentuálním navýšením u téhož fondu.
 - Piš {lang_instr}, začni rovnou bodem 1:
 
-1. **HLAVNÍ TRENDY SMART MONEY ({q_label})** (čistá rotace kapitálu podle Net Flow)
-2. **KONSENZUÁLNÍ NÁKUPY A NOVÉ POZICE** (tituly s nejvyšším počtem kupujících)
-3. **DISTRIBUCE A VÝBĚR ZISKŮ** (tituly s nejvyšším počtem prodávajících)
-4. **AKČNÍ VÝSTUP PRO TÝDENNÍ TRŽNÍ VÝHLED** (3–5 konkrétních bodů k prověření v Terminálu)
+1. **MAKRO & SEKTOROVÉ TRENDY SMART MONEY ({q_label})**
+   - Detailní rozbor čistých kapitálových toků (Net Flow): kam instituce přesouvají čerstvý kapitál a z jakých sektorů stahují expozici.
+   - Zhodnoť chování u Big Techu / polovodičů oproti defenzivním a cyklickým sektorům.
+
+2. **KONSENZUÁLNÍ NÁKUPY A NOVÉ POZICE (DETAILNÍ ROZBOR)**
+   - Rozeber podrobně nejvíce nakupované tituly, uveď přesně, které fondy je nakupovaly, s jakou aktivitou a jakou váhou v portfoliu.
+   - Vysvětli investiční tezi, proč se na těchto titulech shodlo více manažerů najednou.
+
+3. **DISTRIBUCE, REDUKCE A VÝBĚR ZISKŮ**
+   - Rozeber nejvíce prodávané tituly, uveď konkrétní fondy a rozliš, zda jde o částečnou redukci přerostlé pozice, nebo o kompletní výstup.
+
+4. **PŘEHLED KLÍČOVÝCH TAHŮ JEDNOTLIVÝCH MANAŽERŮ**
+   - Vypíchni nejzajímavější tahy u hlavních sledovaných fondů z pole `individual_funds_highlights` (včetně jejich spravovaného objemu AUM a hlavních sázek).
+
+5. **AKČNÍ VÝSTUP PRO TÝDENNÍ TRŽNÍ VÝHLED**
+   - 5 konkrétních investičních tezí a titulů k hlubší fundamentální a valuační prověrce v Terminálu včetně jasného zdůvodnění.
 
 Agregovaná 13F data za {q_label}:
 {json.dumps(master_payload, ensure_ascii=False, default=str)}"""
 
                 with st.spinner(_["m_spin"]):
                     try:
-                        master_txt = call_llm_api([{"role": "user", "content": master_prompt}], api_key, model_provider, selected_model, temperature=0.2, timeout=40, max_tokens=1300)
+                        master_txt = call_llm_api([{"role": "user", "content": master_prompt}], api_key, model_provider, selected_model, temperature=0.25, timeout=50, max_tokens=3200)
                         rep_id = f"{now_dt.strftime('%Y%m%d_%H%M%S')}_MASTER_13F"
                         st.session_state.sec_master_obj = {
                             "id": rep_id,
