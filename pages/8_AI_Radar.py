@@ -7,10 +7,9 @@ import sys
 import subprocess
 import xml.etree.ElementTree as ET
 from datetime import datetime
-from openai import OpenAI
 
 # --- INITIAL SETUP ---
-st.set_page_config(page_title="POKORNY TERMINAL | AI.Lab", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="POKORNY TERMINAL | AI RADAR", layout="wide", initial_sidebar_state="collapsed")
 
 aktualni_slozka = os.path.dirname(os.path.abspath(__file__))
 hlavni_slozka = os.path.dirname(aktualni_slozka) if os.path.basename(aktualni_slozka) == "pages" else aktualni_slozka
@@ -19,110 +18,67 @@ sys.path.append(hlavni_slozka)
 import menu
 menu.vykresli_menu()
 
-# --- LAB EDITORIAL CSS (Brycht.app inspired) ---
+# --- FULL-WIDTH EDITORIAL CSS ---
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
-/* Globální typografie pro Lab */
-.stApp {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-}
+.stApp { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
 
-.lab-header {
-    display: flex;
-    align-items: baseline;
-    gap: 14px;
-    padding-bottom: 14px;
-    border-bottom: 1px solid #1F2227;
-    margin-bottom: 24px;
-}
-.lab-logo {
-    font-family: 'Inter', sans-serif;
-    font-size: 1.75rem;
-    font-weight: 700;
-    color: #22C55E;
-    letter-spacing: -0.03em;
-}
-.lab-sub {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.75rem;
-    color: #71717A;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-}
-
-/* Editorial Report Card */
-.lab-article {
-    max-width: 860px;
+.brief-article {
+    width: 100%;
     margin: 12px 0 24px 0;
     padding: 28px 32px;
     background-color: #0D0F12;
     border: 1px solid #1F2227;
     border-radius: 6px;
 }
-.lab-meta {
+.brief-meta {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.76rem;
+    font-size: 0.78rem;
     color: #71717A;
     text-transform: uppercase;
     letter-spacing: 0.06em;
     margin-bottom: 10px;
 }
-.lab-headline {
+.brief-headline {
     font-family: 'Inter', sans-serif;
-    font-size: 1.85rem;
+    font-size: 1.75rem;
     font-weight: 700;
     color: #F4F4F5;
     line-height: 1.25;
-    letter-spacing: -0.025em;
-    margin: 0 0 16px 0;
+    letter-spacing: -0.02em;
+    margin: 0 0 14px 0;
 }
-.lab-badge {
+.brief-badge {
     display: inline-block;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.75rem;
+    font-size: 0.76rem;
     font-weight: 600;
-    padding: 3px 9px;
+    padding: 3px 10px;
     border-radius: 3px;
     letter-spacing: 0.05em;
-    margin-bottom: 22px;
+    margin-bottom: 18px;
 }
-.lab-divider {
-    border: none;
-    border-top: 1px solid #1F2227;
-    margin: 20px 0;
-}
-.lab-sec-label {
+.brief-divider { border: none; border-top: 1px solid #1F2227; margin: 18px 0; }
+.brief-sec-label {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.72rem;
+    font-size: 0.74rem;
     font-weight: 600;
     color: #71717A;
     text-transform: uppercase;
-    letter-spacing: 0.1em;
-    margin: 22px 0 8px 0;
+    letter-spacing: 0.09em;
+    margin: 20px 0 8px 0;
 }
-.lab-body {
+.brief-body {
     font-family: 'Inter', sans-serif;
     font-size: 0.98rem;
-    line-height: 1.72;
+    line-height: 1.7;
     color: #D4D4D8;
     margin: 0;
 }
-
-/* Library List Row */
-.lab-lib-row {
-    padding: 14px 0;
-    border-bottom: 1px solid #1F2227;
-}
-.lab-lib-title {
-    font-family: 'Inter', sans-serif;
-    font-size: 1.08rem;
-    font-weight: 600;
-    color: #F4F4F5;
-    margin-top: 4px;
-    letter-spacing: -0.01em;
-}
+.brief-lib-row { padding: 14px 0; border-bottom: 1px solid #1F2227; }
+.brief-lib-title { font-family: 'Inter', sans-serif; font-size: 1.06rem; font-weight: 600; color: #F4F4F5; margin-top: 4px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -134,9 +90,10 @@ ARCHIVE_FILE = os.path.join(hlavni_slozka, "lab_archive.json")
 # --- DICTIONARY ---
 t = {
     "CZ": {
-        "sub": "MARKET BRIEF · EQUITY RESEARCH · LIBRARY",
+        "title": "AI SENTIMENT & MARKET BRIEF",
+        "desc": "SYNTÉZA TRŽNÍCH ZPRÁV, MAKRO REŽIM (RISK-ON / RISK-OFF) A ARCHIV REPORTŮ.",
         "tab_gen": "GENERÁTOR",
-        "tab_lib": "LIBRARY (ARCHIVE)",
+        "tab_lib": "ARCHIV REPORTŮ",
         "mode_lbl": "REŽIM ANALÝZY",
         "mode_macro": "MARKET BRIEF (Trh & Makro)",
         "mode_stock": "AKCIE (Ticker)",
@@ -146,9 +103,9 @@ t = {
         "tick_db": "DATABÁZE",
         "tick_cust": "VLASTNÍ TICKER",
         "btn_ai": "Vygenerovat report",
-        "btn_save": "Uložit do Library (GitHub)",
-        "saved_ok": "Report uložen do Library a synchronizován na GitHub.",
-        "already_saved": "Tento report je již uložený v Library.",
+        "btn_save": "Uložit do Archivu (GitHub)",
+        "saved_ok": "Report uložen do Archivu a synchronizován na GitHub.",
+        "already_saved": "Tento report je již uložený v Archivu.",
         "spin_search": "Stahování datového toku...",
         "spin_ai": "AI syntetizuje datový tok...",
         "err_api": "AI API klíč nebo model nebyl nalezen. Zkontrolujte GROQ_API_KEY v Secrets a Nastavení.",
@@ -162,19 +119,20 @@ t = {
         "no_time": "Neznámý čas",
         "chat_h": "Dotazy k tomuto reportu",
         "chat_ph": "Zeptejte se na detaily, valuaci nebo historický kontext...",
-        "lib_empty": "Library je zatím prázdná. Vygenerujte report v záložce Generátor a uložte ho.",
+        "lib_empty": "Archiv je zatím prázdný. Vygenerujte report v záložce Generátor a uložte ho.",
         "lib_filter": "FILTR",
-        "lib_search": "HLEDAT V LIBRARY",
+        "lib_search": "HLEDAT V ARCHIVU",
         "lib_search_ph": "Ticker, téma nebo klíčové slovo...",
         "lib_open": "Číst →",
         "lib_del": "Smazat",
-        "lib_deleted": "Report byl odstraněn z Library.",
-        "lib_back": "← Zpět do Library"
+        "lib_deleted": "Report byl odstraněn z Archivu.",
+        "lib_back": "← Zpět do Archivu"
     },
     "EN": {
-        "sub": "MARKET BRIEF · EQUITY RESEARCH · LIBRARY",
+        "title": "AI SENTIMENT & MARKET BRIEF",
+        "desc": "MARKET NEWS SYNTHESIS, MACRO REGIME (RISK-ON / RISK-OFF) & REPORT ARCHIVE.",
         "tab_gen": "GENERATOR",
-        "tab_lib": "LIBRARY (ARCHIVE)",
+        "tab_lib": "REPORT ARCHIVE",
         "mode_lbl": "ANALYSIS MODE",
         "mode_macro": "MARKET BRIEF (Macro & Market)",
         "mode_stock": "EQUITY (Ticker)",
@@ -184,9 +142,9 @@ t = {
         "tick_db": "DATABASE",
         "tick_cust": "CUSTOM TICKER",
         "btn_ai": "Generate Report",
-        "btn_save": "Save to Library (GitHub)",
-        "saved_ok": "Report saved to Library and synced to GitHub.",
-        "already_saved": "This report is already saved in the Library.",
+        "btn_save": "Save to Archive (GitHub)",
+        "saved_ok": "Report saved to Archive and synced to GitHub.",
+        "already_saved": "This report is already saved in the Archive.",
         "spin_search": "Fetching data feed...",
         "spin_ai": "AI is synthesizing data feed...",
         "err_api": "AI API key or model not found. Check GROQ_API_KEY in Secrets and Settings.",
@@ -200,14 +158,14 @@ t = {
         "no_time": "Unknown Time",
         "chat_h": "Questions about this report",
         "chat_ph": "Ask about details, valuation, or historical context...",
-        "lib_empty": "Library is empty. Generate a report in the Generator tab and save it.",
+        "lib_empty": "Archive is empty. Generate a report in the Generator tab and save it.",
         "lib_filter": "FILTER",
-        "lib_search": "SEARCH LIBRARY",
+        "lib_search": "SEARCH ARCHIVE",
         "lib_search_ph": "Ticker, topic, or keyword...",
         "lib_open": "Read →",
         "lib_del": "Delete",
-        "lib_deleted": "Report removed from Library.",
-        "lib_back": "← Back to Library"
+        "lib_deleted": "Report removed from Archive.",
+        "lib_back": "← Back to Archive"
     }
 }
 _ = t.get(current_lang, t["CZ"])
@@ -220,13 +178,9 @@ MACRO_PRESETS = {
     "Makro & Geopolitika (USD, EUR)": "global macro economy EURUSD tariffs geopolitics markets"
 }
 
-# --- HEADER ---
-st.markdown(f"""
-<div class="lab-header">
-    <span class="lab-logo">Lab</span>
-    <span class="lab-sub">{_['sub']}</span>
-</div>
-""", unsafe_allow_html=True)
+st.title(_["title"])
+st.caption(_["desc"])
+st.markdown("---")
 
 # --- DATA HELPERS ---
 def load_app_data():
@@ -249,7 +203,7 @@ def load_archive():
             pass
     return []
 
-def save_archive(archive_list, commit_msg="AI.Lab: Aktualizace Library"):
+def save_archive(archive_list, commit_msg="AI Radar: Aktualizace archivu"):
     with open(ARCHIVE_FILE, "w", encoding="utf-8") as f:
         json.dump(archive_list, f, indent=4, ensure_ascii=False)
     try:
@@ -290,7 +244,23 @@ for key, default in [
     if key not in st.session_state:
         st.session_state[key] = default
 
-# --- NEWS & AI ENGINES ---
+# --- DIRECT HTTP AI CALL (stabilní na Streamlit Cloudu) ---
+def call_llm_api(messages, api_klic, provider, model_name, temperature=0.2, timeout=30):
+    url = "https://api.groq.com/openai/v1/chat/completions" if provider == "Groq" else "https://api.openai.com/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {api_klic}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": model_name,
+        "messages": messages,
+        "temperature": temperature
+    }
+    resp = requests.post(url, headers=headers, json=payload, timeout=timeout)
+    if resp.status_code != 200:
+        raise RuntimeError(f"HTTP {resp.status_code}: {resp.text[:250]}")
+    return resp.json()["choices"][0]["message"]["content"]
+
 @st.cache_data(ttl=600)
 def fetch_news(query_str, is_ticker=True):
     news_list = []
@@ -334,40 +304,27 @@ def fetch_news(query_str, is_ticker=True):
     return news_list
 
 def generuj_ai_report(tema, typ, zpravy_text, api_klic, provider, model_name, lang):
-    if provider == "Groq":
-        client = OpenAI(api_key=api_klic, base_url="https://api.groq.com/openai/v1", max_retries=3)
-    else:
-        client = OpenAI(api_key=api_klic, max_retries=3)
-
     jazyk_vyzva = "v češtině (Czech)" if lang == "CZ" else "in English"
     kontext_role = "overall equity/macro market brief" if typ == "MARKET BRIEF" else f"specific equity ticker {tema}"
 
-    prompt = f"""
-    You are an elite quantitative hedge fund analyst writing an institutional brief for {kontext_role} ({tema}).
-    Read the following recent news headlines and synthesize them into one sharp, high-signal market update.
-    Return STRICTLY valid JSON.
-    News Data:
-    {zpravy_text}
-    
-    JSON Structure:
-    {{
-        "hlavni_nadpis": "One punchy, institutional headline summarizing the key takeaway {jazyk_vyzva}.",
-        "rezim": "RISK-ON" or "RISK-OFF" or "NEUTRAL",
-        "sentiment_skore": <float between -1.0 (strong Risk-Off) and 1.0 (strong Risk-On)>,
-        "co_se_stalo": "Executive summary of key events in 3-5 crisp sentences {jazyk_vyzva}.",
-        "proc_to_hybe_trhem": "Fundamental & liquidity impact analysis (rates, margins, DCF, positioning) {jazyk_vyzva}.",
-        "na_co_se_zamerit": "2-3 concrete catalysts or levels to watch next {jazyk_vyzva}."
-    }}
-    Output raw JSON only.
-    """
+    prompt = f"""You are an elite quantitative hedge fund analyst writing an institutional brief for {kontext_role} ({tema}).
+Read the following recent news headlines and synthesize them into one sharp, high-signal market update.
+Return STRICTLY valid JSON.
+News Data:
+{zpravy_text}
+
+JSON Structure:
+{{
+    "hlavni_nadpis": "One punchy, institutional headline summarizing the key takeaway {jazyk_vyzva}.",
+    "rezim": "RISK-ON" or "RISK-OFF" or "NEUTRAL",
+    "sentiment_skore": <float between -1.0 (strong Risk-Off) and 1.0 (strong Risk-On)>,
+    "co_se_stalo": "Executive summary of key events in 3-5 crisp sentences {jazyk_vyzva}.",
+    "proc_to_hybe_trhem": "Fundamental & liquidity impact analysis (rates, margins, DCF, positioning) {jazyk_vyzva}.",
+    "na_co_se_zamerit": "2-3 concrete catalysts or levels to watch next as plain text {jazyk_vyzva}."
+}}
+Output raw JSON only."""
     try:
-        response = client.chat.completions.create(
-            model=model_name,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.1,
-            timeout=25.0
-        )
-        vysledek = response.choices[0].message.content.strip()
+        vysledek = call_llm_api([{"role": "user", "content": prompt}], api_klic, provider, model_name, temperature=0.1, timeout=30).strip()
         if vysledek.startswith("```"):
             vysledek = vysledek.strip("`").replace("json\n", "", 1).strip()
         return json.loads(vysledek)
@@ -375,11 +332,6 @@ def generuj_ai_report(tema, typ, zpravy_text, api_klic, provider, model_name, la
         return {"error": str(e)}
 
 def chat_s_ai(otazka, report_obj, historie, api_klic, provider, model_name, lang):
-    if provider == "Groq":
-        client = OpenAI(api_key=api_klic, base_url="[https://api.groq.com/openai/v1](https://api.groq.com/openai/v1)", max_retries=3)
-    else:
-        client = OpenAI(api_key=api_klic, max_retries=3)
-        
     jazyk_vyzva = "Odpovídej v češtině." if lang == "CZ" else "Answer in English."
     analyza_str = json.dumps({
         "tema": report_obj.get("tema"),
@@ -398,10 +350,9 @@ def chat_s_ai(otazka, report_obj, historie, api_klic, provider, model_name, lang
     messages.append({"role": "user", "content": otazka})
     
     try:
-        response = client.chat.completions.create(model=model_name, messages=messages, temperature=0.3, timeout=15.0)
-        return response.choices[0].message.content
+        return call_llm_api(messages, api_klic, provider, model_name, temperature=0.3, timeout=25)
     except Exception as e:
-        return f"⚠️ Výpadek spojení s AI ({e})."
+        return f"⚠️ Chyba spojení s AI ({e})."
 
 def vykresli_report_kartu(rep):
     skore = float(rep.get("sentiment_skore", 0.0))
@@ -413,26 +364,25 @@ def vykresli_report_kartu(rep):
     else:
         badge_bg, badge_fg = "rgba(161,161,170,0.14)", "#A1A1AA"
 
-    watch_html = ""
-    if rep.get("na_co_se_zamerit"):
-        watch_html = f"""
-        <div class="lab-sec-label">{_['watch_next']}</div>
-        <p class="lab-body">{rep.get('na_co_se_zamerit', '')}</p>
-        """
+    watch_val = rep.get("na_co_se_zamerit", "")
+    if isinstance(watch_val, list):
+        watch_val = " ".join([str(x) for x in watch_val])
+    watch_html = f'<div class="brief-sec-label">{_["watch_next"]}</div><p class="brief-body">{watch_val}</p>' if watch_val else ""
 
-    st.markdown(f"""
-    <div class="lab-article">
-        <div class="lab-meta">{rep.get('datum', '')}  ·  {rep.get('typ', '')}  ·  {rep.get('tema', '')}</div>
-        <h1 class="lab-headline">{rep.get('hlavni_nadpis', 'Analýza trhu')}</h1>
-        <span class="lab-badge" style="background-color:{badge_bg}; color:{badge_fg};">{rezim}   {skore:+.2f}</span>
-        <hr class="lab-divider" />
-        <div class="lab-sec-label">{_['what_happened']}</div>
-        <p class="lab-body">{rep.get('co_se_stalo', '')}</p>
-        <div class="lab-sec-label">{_['why_move']}</div>
-        <p class="lab-body">{rep.get('proc_to_hybe_trhem', '')}</p>
-        {watch_html}
-    </div>
-    """, unsafe_allow_html=True)
+    html_card = (
+        f'<div class="brief-article">'
+        f'<div class="brief-meta">{rep.get("datum", "")}  ·  {rep.get("typ", "")}  ·  {rep.get("tema", "")}</div>'
+        f'<h1 class="brief-headline">{rep.get("hlavni_nadpis", "Analýza trhu")}</h1>'
+        f'<span class="brief-badge" style="background-color:{badge_bg}; color:{badge_fg};">{rezim}   {skore:+.2f}</span>'
+        f'<hr class="brief-divider" />'
+        f'<div class="brief-sec-label">{_["what_happened"]}</div>'
+        f'<p class="brief-body">{rep.get("co_se_stalo", "")}</p>'
+        f'<div class="brief-sec-label">{_["why_move"]}</div>'
+        f'<p class="brief-body">{rep.get("proc_to_hybe_trhem", "")}</p>'
+        f'{watch_html}'
+        f'</div>'
+    )
+    st.markdown(html_card, unsafe_allow_html=True)
 
     if rep.get("zdroje"):
         with st.expander(_["sources"]):
@@ -442,9 +392,6 @@ def vykresli_report_kartu(rep):
 # --- MAIN TABS ---
 tab_gen, tab_lib = st.tabs([_["tab_gen"], _["tab_lib"]])
 
-# ==========================================
-# TAB 1: GENERÁTOR
-# ==========================================
 with tab_gen:
     mode = st.radio(_["mode_lbl"], [_["mode_macro"], _["mode_stock"]], horizontal=True)
     is_macro = (mode == _["mode_macro"])
@@ -514,11 +461,11 @@ with tab_gen:
             if st.button(_["btn_save"]):
                 archive = load_archive()
                 archive.insert(0, rep)
-                save_archive(archive, commit_msg=f"AI.Lab: Uložen report {rep['tema']}")
+                save_archive(archive, commit_msg=f"AI Radar: Uložen report {rep['tema']}")
                 st.session_state.lab_saved_id = rep["id"]
                 st.success(_["saved_ok"])
 
-        st.markdown(f"<div class='lab-sec-label'>{_['chat_h']}</div>", unsafe_allow_html=True)
+        st.markdown(f'<div class="brief-sec-label">{_["chat_h"]}</div>', unsafe_allow_html=True)
         for msg in st.session_state.lab_chat:
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
@@ -534,9 +481,6 @@ with tab_gen:
             if not odpoved.startswith("⚠️"):
                 st.session_state.lab_chat.append({"role": "assistant", "content": odpoved})
 
-# ==========================================
-# TAB 2: LIBRARY (ARCHIVE)
-# ==========================================
 with tab_lib:
     archive = load_archive()
 
@@ -553,7 +497,7 @@ with tab_lib:
                 st.rerun()
             if col_del.button(_["lib_del"], use_container_width=True):
                 new_archive = [r for r in archive if r.get("id") != selected_rep["id"]]
-                save_archive(new_archive, commit_msg=f"AI.Lab: Smazán report {selected_rep.get('tema')}")
+                save_archive(new_archive, commit_msg=f"AI Radar: Smazán report {selected_rep.get('tema')}")
                 st.session_state.lib_selected_id = None
                 st.session_state.lib_chat = []
                 st.success(_["lib_deleted"])
@@ -561,7 +505,7 @@ with tab_lib:
 
             vykresli_report_kartu(selected_rep)
 
-            st.markdown(f"<div class='lab-sec-label'>{_['chat_h']}</div>", unsafe_allow_html=True)
+            st.markdown(f'<div class="brief-sec-label">{_["chat_h"]}</div>', unsafe_allow_html=True)
             for msg in st.session_state.lib_chat:
                 with st.chat_message(msg["role"]):
                     st.markdown(msg["content"])
@@ -591,7 +535,7 @@ with tab_lib:
                         continue
                 filtered.append(r)
 
-            st.markdown(f"<div class='lab-sec-label'>LATEST IN THE LIBRARY · {len(filtered)}</div>", unsafe_allow_html=True)
+            st.markdown(f'<div class="brief-sec-label">ULOŽENÉ REPORTY · {len(filtered)}</div>', unsafe_allow_html=True)
             for item in filtered:
                 skore = float(item.get("sentiment_skore", 0.0))
                 rezim = item.get("rezim", "NEUTRAL").upper()
@@ -599,17 +543,18 @@ with tab_lib:
 
                 c_info, c_btn = st.columns([6, 1])
                 with c_info:
-                    st.markdown(f"""
-                    <div class="lab-lib-row">
-                        <div class="lab-meta" style="margin-bottom:4px;">
-                            {item.get('datum', '')}  ·  {item.get('typ', '')}  ·  {item.get('tema', '')}  · 
-                            <span style="color:{badge_color}; font-weight:600;">{rezim} {skore:+.2f}</span>
-                        </div>
-                        <div class="lab-lib-title">{item.get('hlavni_nadpis', '')}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                    row_html = (
+                        f'<div class="brief-lib-row">'
+                        f'<div class="brief-meta" style="margin-bottom:4px;">'
+                        f'{item.get("datum", "")}  ·  {item.get("typ", "")}  ·  {item.get("tema", "")}  ·  '
+                        f'<span style="color:{badge_color}; font-weight:600;">{rezim} {skore:+.2f}</span>'
+                        f'</div>'
+                        f'<div class="brief-lib-title">{item.get("hlavni_nadpis", "")}</div>'
+                        f'</div>'
+                    )
+                    st.markdown(row_html, unsafe_allow_html=True)
                 with c_btn:
-                    st.markdown("<div style='padding-top:18px;'></div>", unsafe_allow_html=True)
+                    st.markdown('<div style="padding-top:18px;"></div>', unsafe_allow_html=True)
                     if st.button(_["lib_open"], key=f"open_{item.get('id')}", use_container_width=True):
                         st.session_state.lib_selected_id = item.get("id")
                         st.session_state.lib_chat = []
