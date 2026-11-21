@@ -1,16 +1,1 @@
-[
-    {
-        "id": "20261121_201550_MEMO_AMZN",
-        "datum": "21. 11. 2026 20:15",
-        "typ": "INVESTIČNÍ MEMO",
-        "tema": "AMZN",
-        "hlavni_nadpis": "Investiční memo: Amazon.com, Inc. (AMZN) · 246.82 USD",
-        "obsah": "1. **KVALITA BYZNYSU & MARŽE**\nSpolečnost vykazuje robustní a konzistentní růst tržeb, který se v posledních třech letech ustálil na úrovni přibližně 11–12 % meziročně, s očekávaným zrychlením na 15,7 % pro rok 2026. Provozní páka funguje výrazně ve prospěch akcionářů: provozní marže (EBIT) vzrostla z 2,4 % v roce 2022 na 13,1 % v aktuálním období (LTM), což dokládá efektivitu škálování byznysu. Ačkoliv návratnost investovaného kapitálu (ROIC) na úrovni 23,9 % signalizuje vysokou kvalitu kapitálu, konverze volného cash flowu (FCF) je v současnosti negativní (-4,4 %). Tento stav je přímým důsledkem masivních kapitálových výdajů (CapEx), které dosáhly 196 miliard dolarů v LTM, a naznačuje, že společnost investuje agresivně do budoucnosti na úkor krátkodobé likvidity.\n\n2. **VALUACE & MARGIN OF SAFETY**\nValuační metriky naznačují, že titul je oceňován relativně přiměřeně vzhledem k jeho růstovému potenciálu. Aktuční P/E poměr 19,95x je nižší než Forward P/E 22,59x, což odráží očekávaný nárůst zisku. Poměr PEG 1,15 indikuje, že cena akcie je v souladu s očekávaným růstem zisku, aniž by byla extrémně nadhodnocená. EV/EBITDA na úrovni 15,57x je v kontextu technologického giganta s takovou provozní pákou akceptovatelné. Hlavním rizikem pro margin of safety je však absence kladného FCF, což ztěžuje použití metriky P/FCF a nutí investory spoléhat se na dlouhodobé fundamenty a očekávání budoucího cash flowu, nikoliv na aktuální generování hotovosti.\n\n3. **ROZVAHA & RIZIKA**\nRozvaha vykazuje mírně zvýšené zadlužení, přičemž poměr dluhu k vlastnímu kapitálu (Debt/Equity) dosáhl 0,37. Celkový dluh v LTM činí 271,9 miliardy dolarů, což je sice vysoká absolutní částka, ale v poměru k tržbám a EBITDA zůstává v rozumných mezích. Likvidita je napjatá, neboť aktuální poměr (Current Ratio) 0,989 znamená, že krátkodobé závazky mírně převyšují krátkodobá aktiva. Hlavní hrozbou je tedy závislost na externím financování nebo refinancování dluhu v období, kdy volný cash flow je negativní. Investoři musí sledovat, zda masivní investice do infrastruktury (CapEx) přinesou očekávaný nárůst efektivnosti, který by umožnil návrat k generování kladného FCF bez dalšího zvyšování dluhu.\n\n4. **VERDIKT ANALYTIKA**\nPostoj: **Koupit (Buy)** s důrazem na dlouhodobý horizont.\nKlíčové číslo k sledování: **Kapitálové výdaje (CapEx) a jejich vliv na volný cash flow (FCF)**.\nOdůvodnění: Přestože je aktuální FCF negativní, fundamentální zlepšení provozních marží a očekávaný růst tržeb o 15,7 % v roce 2026 podporují investiční tezi. Klíčovým faktorem bude schopnost společnosti transformovat vysoké investice do infrastruktury do efektivnějšího provozu, což by mělo vést k normalizaci FCF v následujících čtvrtletích. Pokud se CapEx stabilizuje nebo sníží bez ztráty růstového tempa, otevře se prostor pro další re-rating valuace.",
-        "chat": [
-            {
-                "role": "user",
-                "content": "co si myslis jak rostou ty revenues?"
-            }
-        ]
-    }
-]
+[]
