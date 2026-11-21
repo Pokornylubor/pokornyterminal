@@ -1,1 +1,76 @@
-[]
+[
+    {
+        "id": "20261121_191916_MACRO",
+        "datum": "21. 11. 2026 19:19",
+        "typ": "MARKET BRIEF",
+        "tema": "AI & Polovodiče",
+        "hlavni_nadpis": "AI cyklus vstupuje do fáze selektivní konsolidace: Regulační tlak na Nvidia vs. retailový apetit k data center akciovým titulům",
+        "rezim": "NEUTRAL",
+        "sentiment_skore": 0.35,
+        "co_se_stalo": "Trh s umělou inteligencí a polovodiči prochází fází divergence, kde se silný retailový zájem o akcie AI data center střetává s rostoucími regulačními bariérami. Spojené státy aktivně uzavírají mezeru v exportním embargu na čipy Nvidia do Číny, což omezuje geografický rozsah růstu pro lídra trhu. Zatímco institucionální analytici (Barron's, McKinsey) varují před oddělením skutečných výherců od čistého hype, retailové toky (Yahoo Finance, Motley Fool) zůstávají agresivně nakloněny nákupu ETF a specifických titulů. Nvidia drží pozici all-time high, což signalizuje, že trh zatím ignoruje geopolitická rizika ve prospěch fundamentálního růstu poptávky po výpočetním výkonu.",
+        "proc_to_hybe_trhem": "Z pohledu DCF a marží je klíčové oddělit strukturu hodnoty: Zatímco čistý 'hype' kolem AI se může vyprazdňovat, reálná kapitalizace (CapEx) do data centerů podporuje udržitelné příjmy pro dodavatele infrastruktury. Regulační tlak na export do Číny vytváří bifurkaci v ceně akcí – tituly s vysokou expozicí do Asie čelí diskontu, zatímco ty zaměřené na severoamerický a evropský trh mohou profitovat z přerozdělení poptávky. Likvidita zůstává podporována retailovým přílivem do ETF, což tlumí korekce, ale zvyšuje křehkost trhu vůči jakémukoli negativnímu makroekonomickému šoku nebo selhání v dodavatelském řetězci.",
+        "na_co_se_zamerit": "1. Monitorovat oficiální vyhlášky USA k uzavření 'loophole' v exportu čipů do Číny a okamžitou reakci na marži u Nvidia a TSMC. 2. Sledovat divergence mezi cenou akcí Nvidia a cenou akcí sekundárních hráčů (AMD, Intel) jako indikátor rotace z lídra do odvětví. 3. Analyzovat toky do AI ETF vs. jednotlivé akcie data center operátorů pro odhalení změn v institucionálním vs. retailovém sentimentu.",
+        "zdroje": [
+            {
+                "title": "3 AI Data Center Stocks Retail Investors Are Watching After Nvidia News - Yahoo Finance",
+                "link": "https://news.google.com/rss/articles/CBMikAFBVV95cUxNRUdPNlEwQ1NTY0Z3NEVsMHdQUlVOS19vX0I3b19IR0J5NjgtX0luQnBxYXhFbzhycURBSFZHTXV4b2VMTzQ3N0FFT3JsZ3ZQZU4wUWlxVnJtLTZaUlVzMVFPdi1DZVczNTdWRDY5ZC0xMUhLbjhaNzl3a0pxMEFDeEw5NS1scW9Ed1BXdXNGSXM?oc=5",
+                "publisher": "Google News",
+                "pub_time_str": "Wed, 18 Nov 2026 01:11"
+            },
+            {
+                "title": "The Best AI Stocks to Buy Now - Morningstar",
+                "link": "https://news.google.com/rss/articles/CBMiaEFVX3lxTE5MSWticmVUcmhzVVpBMWg0bFpvRGpXR1FIdzhKMmVOdVVETlV0MzVfemFuMzBwX3Q2Ykh4TFRjakstUDZVX2N6NEpsSWxZZU54bTZnQmNMal9Fdkw3ei04N2htZldJYkhl?oc=5",
+                "publisher": "Google News",
+                "pub_time_str": "Wed, 04 Nov 2026 08:00"
+            },
+            {
+                "title": "Best AI Stocks to Buy in 2026: 10 Top Picks & How to Invest - The Motley Fool",
+                "link": "https://news.google.com/rss/articles/CBMilwFBVV95cUxQcTN4SWRQbVZpY1lwSnJjN3YxWmY5LU5Qck5ia2psWWRwcWplZ0RGTFo3ZmJrZDZ1S1RQZFF2NUcwOTh0NXA3NlM0a25ieHhPWHprdTBmbWxzY2FtdHRIMlpSY1pzcTU5ZkhfN0wtcF9UeDg4WnZVYTZPSkRtcDNZaUJ1djdPQ1RVRkVQeVFUTnJrMFJ5VXdj?oc=5",
+                "publisher": "Google News",
+                "pub_time_str": "Mon, 09 Nov 2026 08:00"
+            },
+            {
+                "title": "Chip Stocks 2026: Identifying the Semiconductor Winners vs. AI Hype - Barron's",
+                "link": "https://news.google.com/rss/articles/CBMimgFBVV95cUxPaVFkbXZPOS0wNWlYazJmYzBVU2hLSk1PdTA1cnVoVEZBaS1weElxR2NjTVRSRnA5Qzl0ekN4eXBVT2JSN1p4Z0hHZ3kwUEhYcWtxeVRDMmpKNWtzWHpSVms2V1dZUjhiQ2VIbkJfaWtDWmlpQzNOQTlJZ0k3Mmw4X0gwaU9TdklCUlVyVjZqNTZJSnUtM2dHRWVR?oc=5",
+                "publisher": "Google News",
+                "pub_time_str": "Mon, 01 Jun 2026 07:00"
+            },
+            {
+                "title": "Top 30+ AI Chip Makers: NVIDIA & Its Competitors - AIMultiple",
+                "link": "https://news.google.com/rss/articles/CBMiTkFVX3lxTE9UYlQtNjVDT09maWxpR0pGbEU0MGxYaDdad1VzYnp6cXBTcjc4RlY0TXJ0SVVvb0NTU19DdkVCbFFOVjk1MUNmdUg4UjhEdw?oc=5",
+                "publisher": "Google News",
+                "pub_time_str": "Tue, 13 Oct 2026 07:00"
+            },
+            {
+                "title": "The U.S. banned Nvidia's best chips from going to China. Now it's trying to close a crucial loophole - CNBC",
+                "link": "https://news.google.com/rss/articles/CBMigwFBVV95cUxPeWJpVjNJOUI4aGhPa05XTERJZkExbFpwNnA4LW91MVA1TnQ1RVhhZm44czFRSmJIZ2tZX29zOC14Y1RLNmlxeWxzZ2l6UUwyNVE3WDVjM3RuczFsMTB4dXEtMFBKT2NiNGxMaG92SF9RVEhmVXp6UmNqYlRGZTFsSnZtZ9IBiAFBVV95cUxPUGhwUXl6NlowWGJNTVNaTUF0WlB5c0RjRUlXYjUybGpzYVNwQmVlQ3BvZlFkaWZndVNyZ2ZjZnQ5ZkJtWURNVnRIRUZncEQ1ZHVHUklwcEdkQ1EwX2F5bVl6ZDJpNnltbWExRkN0SVVpUGg3V3JMZkZOSF8yVkI4X0dYNHNWbUdS?oc=5",
+                "publisher": "Google News",
+                "pub_time_str": "Wed, 19 Aug 2026 07:00"
+            },
+            {
+                "title": "The next era of semiconductor value creation - McKinsey & Company",
+                "link": "https://news.google.com/rss/articles/CBMirAFBVV95cUxPMGJSbnUxVHo4ZW50MGRiblFkcV9rUFY4ZzBOTWoyWTBub2k4QjVzZmNCWnFaNEdDSVo3WF8xYkF2TmVCaDNSeWlxS19idE9vdm83QlE1MlA2U0ZBcGd0YVdEc3ZoOUF1V1R2dWYyRFVpM3hISjdXWGZLNzFoeUZkZjFfek1yVDc3YVFBZ3dobXkybm5wd01mamF0NGpjbTN1SXNnOVdYbG1EQURQ?oc=5",
+                "publisher": "Google News",
+                "pub_time_str": "Mon, 30 Mar 2026 07:00"
+            },
+            {
+                "title": "3 AI Chip Stocks To Watch After Nvidia Stock Hit A Fresh All Time High - Yahoo Finance",
+                "link": "https://news.google.com/rss/articles/CBMijwFBVV95cUxOSGtKSEV2U3hSYWE5djM3VUZKVEpqYmRZTENGZWtqT3JhMkdHLW5pYk1hY0ZoZlB3WFJGaHU1WFJ2Sm1RNHJCLV94US1JcFlPRzkyN3VPTm9SbFVFT0xQc1E1eDZjZ1hLMnV4VGd2N0xpTEd6TjhoN3h2blpUR1NGMjV1YzRXR3h5cHhxSFRDMA?oc=5",
+                "publisher": "Google News",
+                "pub_time_str": "Fri, 02 Oct 2026 07:00"
+            },
+            {
+                "title": "2026 Global Semiconductor Industry Outlook - Deloitte",
+                "link": "https://news.google.com/rss/articles/CBMiyAFBVV95cUxNalJ5QUZsY19UbVJDWDM5LUdnMDZ5RkxBS2dQU0lXQng2ZmpvSndFQi1CdV9jT0FTSmNvUEZXdG1kMnZMLXVFQVpnVzlDSncxZjE1VHE3S0pBUzJOWGdoRUs4WG9DLVkwV3VLTkdCMUs5VzZyUmNYX2JVQVJ6X21uSkI1VGZVZGJhZkFSNFlMZTVmZTdqVk5SczRFbUowSFlsME9Hd29xSUZBSFJMX3FOM3FKdkJEQ3B5cHY1dVRmUTlVTFFPb1NSNg?oc=5",
+                "publisher": "Google News",
+                "pub_time_str": "Thu, 05 Feb 2026 08:00"
+            },
+            {
+                "title": "5 Best Artificial Intelligence (AI) ETFs to Buy in 2026 - The Motley Fool",
+                "link": "https://news.google.com/rss/articles/CBMiogFBVV95cUxQYzA2Wld0QkFFTkVjZGlIQ3JfdklNNS1SeUVIb21TMFlFZTc4ejB1UWZqN3FLT2FlWVhEeW5QOFM1STZCM0kxRE9lcERjRTY4ZjlDZFNLaVNiSDVZMDhMdjEwbUQ2WG9XeUZ5M2hBeENWaENUbE5tTE1tU2tBS0x5TV9Gak8wVUlMTmlqRl85SkQzSnJmMGd0T1JaelpWS3lvVWc?oc=5",
+                "publisher": "Google News",
+                "pub_time_str": "Tue, 10 Nov 2026 08:00"
+            }
+        ]
+    }
+]
