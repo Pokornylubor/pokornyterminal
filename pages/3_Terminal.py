@@ -4,7 +4,10 @@ import yfinance as yf
 import json
 import os
 import sys
+import random
 import requests
+import urllib.request
+import urllib.error
 import xml.etree.ElementTree as ET
 import plotly.graph_objects as go
 
@@ -19,6 +22,20 @@ WATCHLIST_FILE = os.path.join(hlavni_slozka, "watchlist.json")
 
 import menu
 menu.vykresli_menu()
+
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:127.0) Gecko/20100101 Firefox/127.0",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+]
+
+def get_headers():
+    return {
+        "User-Agent": random.choice(USER_AGENTS),
+        "Accept": "application/rss+xml, application/xml, text/xml, */*",
+        "Accept-Language": "en-US,en;q=0.9"
+    }
 
 # --- CLEAN EDITORIAL CSS ---
 st.markdown("""
@@ -272,7 +289,7 @@ data = load_data()
 all_tickers = list(dict.fromkeys(data.get("portfolio", []) + data.get("watchlist", [])))
 saved_settings = data.get("settings", {})
 
-api_key = st.secrets.get("GROQ_API_KEY", "")
+api_key = str(st.secrets.get("GROQ_API_KEY", "")).strip()
 model_provider = st.session_state.get("ai_provider", saved_settings.get("ai_provider", "Groq"))
 selected_model = st.session_state.get("ai_model", saved_settings.get("ai_model", ""))
 
@@ -295,14 +312,31 @@ if final_tick != st.session_state.term_ai_ticker:
     st.session_state.term_ai_memo = None
     st.session_state.term_ai_chat = []
 
+# --- NATIVE URLLIB AI CALL ---
 def call_llm_api(messages, api_klic, provider, model_name, temperature=0.2, timeout=30):
     url = "[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)" if provider == "Groq" else "[https://api.openai.com/v1/chat/completions](https://api.openai.com/v1/chat/completions)"
-    headers = {"Authorization": f"Bearer {api_klic}", "Content-Type": "application/json"}
-    payload = {"model": model_name, "messages": messages, "temperature": temperature}
-    resp = requests.post(url, headers=headers, json=payload, timeout=timeout)
-    if resp.status_code != 200:
-        raise RuntimeError(f"HTTP {resp.status_code}: {resp.text[:250]}")
-    return resp.json()["choices"][0]["message"]["content"]
+    payload = json.dumps({
+        "model": model_name,
+        "messages": messages,
+        "temperature": temperature
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {api_klic}",
+            "Content-Type": "application/json",
+            "User-Agent": random.choice(USER_AGENTS)
+        },
+        method="POST"
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            return data["choices"][0]["message"]["content"]
+    except urllib.error.HTTPError as e:
+        err_body = e.read().decode("utf-8", errors="ignore")[:250]
+        raise RuntimeError(f"HTTP {e.code}: {err_body}")
 
 def format_val(val, currency_code, is_pct=False, is_eps=False, force_currency=False):
     if val is None or pd.isna(val) or val == "-": return "-"
@@ -314,13 +348,59 @@ def format_val(val, currency_code, is_pct=False, is_eps=False, force_currency=Fa
     if abs(val) >= 1e6: return f"{val / 1e6:,.2f} M" + (f" {currency_code}" if force_currency else "")
     return f"{val:,.2f}" + (f" {currency_code}" if force_currency else "")
 
-@st.cache_data(ttl=600)
+# --- CACHED YFINANCE BUNDLE (zabraňuje blokaci při přepínání záložek a chatu) ---
+@st.cache_data(ttl=900, show_spinner=False)
+def load_ticker_bundle(ticker):
+    tkr = yf.Ticker(ticker)
+    bundle = {
+        "info": {}, "fast": {}, "hist_price": 0.0,
+        "fin_a": pd.DataFrame(), "fin_q": pd.DataFrame(),
+        "cf_a": pd.DataFrame(), "cf_q": pd.DataFrame(),
+        "bs": pd.DataFrame(), "rev_est": None, "eps_est": None,
+        "cal": None, "eh": None
+    }
+    try: bundle["info"] = tkr.info or {}
+    except Exception: pass
+    try: bundle["fast"] = dict(tkr.fast_info)
+    except Exception: pass
+    try:
+        h = tkr.history(period="5d")
+        if not h.empty: bundle["hist_price"] = float(h["Close"].iloc[-1])
+    except Exception: pass
+    try: bundle["fin_a"] = tkr.financials
+    except Exception: pass
+    try: bundle["fin_q"] = tkr.quarterly_financials
+    except Exception: pass
+    try: bundle["cf_a"] = tkr.cashflow
+    except Exception: pass
+    try: bundle["cf_q"] = tkr.quarterly_cashflow
+    except Exception: pass
+    try: bundle["bs"] = tkr.balance_sheet
+    except Exception: pass
+    try: bundle["rev_est"] = tkr.revenue_estimate
+    except Exception: pass
+    try: bundle["eps_est"] = tkr.earnings_estimate
+    except Exception: pass
+    try: bundle["cal"] = tkr.calendar
+    except Exception: pass
+    try: bundle["eh"] = tkr.earnings_history
+    except Exception: pass
+    return bundle
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def load_fx_history(currency_code):
+    try:
+        return yf.Ticker(f"{currency_code}USD=X").history(period="10y")
+    except Exception:
+        return pd.DataFrame()
+
+@st.cache_data(ttl=900, show_spinner=False)
 def fetch_ticker_news(ticker):
     articles = []
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'}
+    # 1. Google News RSS
     try:
         rss_url = f"[https://news.google.com/rss/search?q=](https://news.google.com/rss/search?q=){ticker}+stock+news&hl=en-US&gl=US&ceid=US:en"
-        rss_resp = requests.get(rss_url, headers=headers, timeout=6)
+        rss_resp = requests.get(rss_url, headers=get_headers(), timeout=8)
         if rss_resp.status_code == 200:
             root = ET.fromstring(rss_resp.content)
             for item in root.findall('.//item')[:12]:
@@ -332,41 +412,62 @@ def fetch_ticker_news(ticker):
                 try: dt_str = pd.to_datetime(pubDate).strftime("%d. %m. %Y %H:%M")
                 except Exception: dt_str = pubDate[:22] if len(pubDate) > 22 else pubDate
                 articles.append({"title": title, "link": link, "date": dt_str, "publisher": publisher})
+            if articles:
+                return articles
     except Exception:
         pass
+
+    # 2. Yahoo Finance RSS fallback
+    try:
+        yf_rss = f"[https://feeds.finance.yahoo.com/rss/2.0/headline?s=](https://feeds.finance.yahoo.com/rss/2.0/headline?s=){ticker}®ion=US&lang=en-US"
+        r2 = requests.get(yf_rss, headers=get_headers(), timeout=8)
+        if r2.status_code == 200:
+            root = ET.fromstring(r2.content)
+            for item in root.findall('.//item')[:12]:
+                title = item.find('title').text if item.find('title') is not None else "N/A"
+                link = item.find('link').text if item.find('link') is not None else "#"
+                pubDate = item.find('pubDate').text if item.find('pubDate') is not None else "N/A"
+                try: dt_str = pd.to_datetime(pubDate).strftime("%d. %m. %Y %H:%M")
+                except Exception: dt_str = pubDate[:22] if len(pubDate) > 22 else pubDate
+                articles.append({"title": title, "link": link, "date": dt_str, "publisher": "Yahoo Finance"})
+            if articles:
+                return articles
+    except Exception:
+        pass
+
+    # 3. yfinance.news fallback
+    try:
+        yf_news = yf.Ticker(ticker).news
+        if yf_news:
+            for n in yf_news[:10]:
+                content = n.get("content", n)
+                title = content.get("title")
+                link = content.get("canonicalUrl", {}).get("url", n.get("link", "#"))
+                pubDate = content.get("pubDate", "N/A")
+                if title:
+                    dt_str = pubDate[:16].replace("T", " ") if isinstance(pubDate, str) and len(pubDate) > 16 else str(pubDate)
+                    articles.append({"title": title, "link": link, "date": dt_str, "publisher": "Yahoo Finance"})
+    except Exception:
+        pass
+
     return articles
 
 if final_tick:
     with st.spinner(f"{_['loading']} {final_tick}..."):
-        tkr = yf.Ticker(final_tick)
-        try: info = tkr.info or {}
-        except Exception: info = {}
+        bundle = load_ticker_bundle(final_tick)
+        info = bundle["info"]
+        fast = bundle["fast"]
 
-        # Fallback cena & marketCap z fast_info / history (když Yahoo omezí info)
-        fast = {}
-        try: fast = dict(tkr.fast_info)
-        except Exception: pass
-
-        curr_price = info.get("currentPrice") or info.get("regularMarketPrice") or fast.get("lastPrice") or fast.get("regularMarketPreviousClose")
-        if not curr_price:
-            try:
-                h = tkr.history(period="5d")
-                if not h.empty: curr_price = float(h["Close"].iloc[-1])
-            except Exception:
-                curr_price = 0.0
-
+        curr_price = info.get("currentPrice") or info.get("regularMarketPrice") or fast.get("lastPrice") or fast.get("regularMarketPreviousClose") or bundle["hist_price"] or 0.0
         market_cap = info.get("marketCap") or fast.get("marketCap")
         shares_out = info.get("sharesOutstanding") or fast.get("shares")
         if not market_cap and curr_price and shares_out:
             market_cap = curr_price * shares_out
 
         is_quarterly = (period_type == _["quarterly"])
-        try: financials = tkr.quarterly_financials if is_quarterly else tkr.financials
-        except Exception: financials = pd.DataFrame()
-        try: cashflow = tkr.quarterly_cashflow if is_quarterly else tkr.cashflow
-        except Exception: cashflow = pd.DataFrame()
-        try: balance_sheet = tkr.balance_sheet
-        except Exception: balance_sheet = pd.DataFrame()
+        financials = bundle["fin_q"] if is_quarterly else bundle["fin_a"]
+        cashflow = bundle["cf_q"] if is_quarterly else bundle["cf_a"]
+        balance_sheet = bundle["bs"]
 
         if financials is None or financials.empty:
             st.error(_["err_data"])
@@ -386,11 +487,9 @@ if final_tick:
             convert_to_usd = st.toggle(f"💱 {_['convert_usd'].replace('{curr}', currency_code)}", value=False)
             if convert_to_usd:
                 display_currency = "USD"
-                try:
-                    fx_hist = yf.Ticker(f"{currency_code}USD=X").history(period="10y")
-                    if not fx_hist.empty: latest_fx = float(fx_hist['Close'].iloc[-1])
-                except Exception:
-                    pass
+                fx_hist = load_fx_history(currency_code)
+                if not fx_hist.empty:
+                    latest_fx = float(fx_hist['Close'].iloc[-1])
 
         def get_rate(d):
             if not convert_to_usd: return 1.0
@@ -404,8 +503,8 @@ if final_tick:
             except Exception:
                 return latest_fx
 
-        q_fin_for_kpi = tkr.quarterly_financials if not is_quarterly else financials
-        q_cf_for_kpi = tkr.quarterly_cashflow if not is_quarterly else cashflow
+        q_fin_for_kpi = bundle["fin_q"]
+        q_cf_for_kpi = bundle["cf_q"]
 
         def get_ltm_from_quarterly(df, keys):
             if df is None or df.empty: return None
@@ -430,7 +529,6 @@ if final_tick:
 
         eps_ltm = info.get("trailingEps") or get_ltm_from_quarterly(q_fin_for_kpi, ['Diluted EPS', 'Basic EPS'])
 
-        # Balance sheet metrics + fallbacks
         calc_debt_eq, roic, roce, roi = None, None, None, None
         total_debt, stockholders_eq, total_assets, current_assets, current_liab, inventory = 0, 0, 0, 0, 0, 0
         if balance_sheet is not None and not balance_sheet.empty:
@@ -516,8 +614,8 @@ if final_tick:
             }
 
         try:
-            rev_est = tkr.revenue_estimate
-            eps_est = tkr.earnings_estimate
+            rev_est = bundle["rev_est"]
+            eps_est = bundle["eps_est"]
             est_keys = [("0q", _["est_q1"]), ("+1q", _["est_q2"])] if is_quarterly else [("0y", f"{last_hist_year + 1}E"), ("+1y", f"{last_hist_year + 2}E")]
             for k, label in est_keys:
                 rate = latest_fx if convert_to_usd else 1.0
@@ -662,7 +760,7 @@ if final_tick:
                 kpi_json_str = json.dumps(kpi_summary, ensure_ascii=False, default=str)
 
                 if st.button(_["ai_btn"], type="primary", use_container_width=True):
-                    lang_instr = "v češtině" if current_lang == "CZ" else "in English"
+                    lang_instr = "v čisté češtině bez anglických frází" if current_lang == "CZ" else "in clean institutional English"
                     memo_prompt = f"""Jsi Senior Equity Analyst & Portfolio Manager. Na základě PŘESNĚ TĚCHTO finančních dat vypracuj stručné institucionální investiční memo {lang_instr}:
 1. **KVALITA BYZNYSU & MARŽE** (trend tržeb, provozní páka, FCF konverze, ROIC)
 2. **VALUACE & MARGIN OF SAFETY** (zhodnocení P/E, Forward P/E, EV/EBITDA, P/FCF vůči růstu)
@@ -693,7 +791,7 @@ Používej výhradně tato data:
                         st.markdown(q_term)
                     with st.chat_message("assistant"):
                         with st.spinner(_["ai_spin"]):
-                            lang_reply = "Odpovídej v češtině." if current_lang == "CZ" else "Answer in English."
+                            lang_reply = "Odpovídej čistou češtinou." if current_lang == "CZ" else "Answer in clean English."
                             msgs = [{"role": "system", "content": f"Jsi Senior Equity Analyst. Máš přesná finanční data firmy {short_name} ({final_tick}): {kpi_json_str}. Odpovídej konkrétně a opírej se o čísla. {lang_reply}"}]
                             for m in st.session_state.term_ai_chat[:-1]:
                                 msgs.append({"role": m["role"], "content": m["content"]})
@@ -722,13 +820,13 @@ Používej výhradně tato data:
         with tab_earn:
             st.subheader(_["earn_next_h"])
             try:
-                cal = tkr.calendar
+                cal = bundle["cal"]
                 next_date = cal['Earnings Date'][0] if (isinstance(cal, dict) and 'Earnings Date' in cal and len(cal['Earnings Date']) > 0) else None
                 if next_date:
                     eps_est_val, rev_est_val = None, None
                     try:
-                        eps_est_val = tkr.earnings_estimate.loc["0q", "avg"]
-                        rev_est_val = tkr.revenue_estimate.loc["0q", "avg"]
+                        eps_est_val = bundle["eps_est"].loc["0q", "avg"]
+                        rev_est_val = bundle["rev_est"].loc["0q", "avg"]
                     except Exception:
                         pass
                     ec1, ec2, ec3 = st.columns(3)
@@ -744,7 +842,7 @@ Používej výhradně tato data:
             st.markdown("---")
             st.subheader(_["earn_hist_h"])
             try:
-                eh = tkr.earnings_history
+                eh = bundle["eh"]
                 if eh is not None and not eh.empty:
                     df_eh = eh.copy()
                     if isinstance(df_eh.index, pd.DatetimeIndex):
