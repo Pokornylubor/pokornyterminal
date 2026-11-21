@@ -211,6 +211,15 @@ def save_13f_archive(archive_list, commit_msg="13F: Aktualizace sec_13f_archive.
         json.dump(archive_list, f, indent=4, ensure_ascii=False)
     git_sync_file(ARCHIVE_13F_FILE, commit_msg)
 
+def format_aum(val):
+    if val is None or pd.isna(val) or val <= 0:
+        return "N/A"
+    if val >= 1e9:
+        return f"${val / 1e9:,.2f} B"
+    if val >= 1e6:
+        return f"${val / 1e6:,.2f} M"
+    return f"${val:,.0f}"
+
 # --- GROQ / OPENAI DYNAMIC API ---
 @st.cache_data(ttl=3600, show_spinner=False)
 def get_groq_available_models(api_klic):
@@ -274,6 +283,7 @@ def extract_fund_summary_dict(fund_name, meta, df):
     else:
         df_c["_pct"] = 0.0
 
+    total_aum = float(pd.to_numeric(df_c["Value"], errors="coerce").sum()) if "Value" in df_c.columns else 0.0
     top5 = round(float(df_c["_pct"].head(5).sum()), 2)
     top10 = round(float(df_c["_pct"].head(10).sum()), 2)
 
@@ -297,6 +307,7 @@ def extract_fund_summary_dict(fund_name, meta, df):
         "fund": fund_name,
         "quarter": meta.get("kvartal", "N/A"),
         "report_date": meta.get("report_date", "N/A"),
+        "total_13f_aum": format_aum(total_aum),
         "total_positions": int(len(df_c)),
         "top5_concentration_pct": top5,
         "top10_concentration_pct": top10,
@@ -306,12 +317,8 @@ def extract_fund_summary_dict(fund_name, meta, df):
         "major_reduces_sells": reduces
     }
 
-def build_master_13f_aggregation(all_funds_dict):
-    own_map = {}
-    buy_map = {}
-    sell_map = {}
-    funds_meta_list = []
-
+def build_master_13f_aggregation(all_funds_dict, target_quarter=None):
+    raw_funds = []
     for f_name, raw_cik in all_funds_dict.items():
         cik = str(raw_cik).zfill(10)
         csv_p = os.path.join(SEC_DATA_DIR, f"{cik}.csv")
@@ -322,41 +329,57 @@ def build_master_13f_aggregation(all_funds_dict):
             with open(meta_p, "r", encoding="utf-8") as fm:
                 meta = json.load(fm)
             df = pd.read_csv(csv_p)
-            if df.empty:
-                continue
-            stock_col = get_stock_col(df)
-            short_f = f_name.split("(")[0].strip()
-            funds_meta_list.append({"fund": short_f, "quarter": meta.get("kvartal", ""), "positions": len(df)})
-
-            for _, r in df.iterrows():
-                stk = str(r.get(stock_col, "")).strip()
-                if not stk or stk.lower() == "nan":
-                    continue
-                pct = float(r["% of Portfolio"]) if pd.notna(r.get("% of Portfolio")) else 0.0
-                act = str(r.get("RecentActivity", ""))
-
-                if stk not in own_map:
-                    own_map[stk] = {"Stock": stk, "Funds": 0, "Avg Weight %": 0.0, "_sum_w": 0.0, "Managers": []}
-                own_map[stk]["Funds"] += 1
-                own_map[stk]["_sum_w"] += pct
-                if len(own_map[stk]["Managers"]) < 5:
-                    own_map[stk]["Managers"].append(short_f)
-
-                if any(k in act for k in ("Buy", "Add", "New")):
-                    if stk not in buy_map:
-                        buy_map[stk] = {"Stock": stk, "Buy/Add Count": 0, "Managers": []}
-                    buy_map[stk]["Buy/Add Count"] += 1
-                    buy_map[stk]["Managers"].append(f"{short_f} ({act})")
-                elif any(k in act for k in ("Reduce", "Sell")):
-                    if stk not in sell_map:
-                        sell_map[stk] = {"Stock": stk, "Sell/Reduce Count": 0, "Managers": []}
-                    sell_map[stk]["Sell/Reduce Count"] += 1
-                    sell_map[stk]["Managers"].append(f"{short_f} ({act})")
+            if not df.empty:
+                raw_funds.append((f_name, meta, df))
         except Exception:
             continue
 
+    if not raw_funds:
+        return [], [], pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+
+    all_quarters = sorted({m.get("kvartal", "") for _, m, _ in raw_funds if m.get("kvartal")}, reverse=True)
+    use_q = target_quarter if target_quarter in all_quarters else (all_quarters[0] if all_quarters else None)
+
+    own_map, buy_map, sell_map = {}, {}, {}
+    funds_meta_list = []
+
+    for f_name, meta, df in raw_funds:
+        if use_q and meta.get("kvartal") != use_q:
+            continue
+        stock_col = get_stock_col(df)
+        short_f = f_name.split("(")[0].strip()
+        funds_meta_list.append({"fund": short_f, "quarter": meta.get("kvartal", ""), "positions": len(df)})
+
+        for _, r in df.iterrows():
+            stk = str(r.get(stock_col, "")).strip()
+            if not stk or stk.lower() == "nan":
+                continue
+            pct = float(r["% of Portfolio"]) if pd.notna(r.get("% of Portfolio")) else 0.0
+            act = str(r.get("RecentActivity", "")).strip()
+
+            if stk not in own_map:
+                own_map[stk] = {"Stock": stk, "Funds": 0, "Avg Weight %": 0.0, "_sum_w": 0.0, "Buyers": 0, "Sellers": 0, "Managers": []}
+            own_map[stk]["Funds"] += 1
+            own_map[stk]["_sum_w"] += pct
+            if len(own_map[stk]["Managers"]) < 5:
+                own_map[stk]["Managers"].append(short_f)
+
+            if any(k in act for k in ("Buy", "Add", "New")):
+                own_map[stk]["Buyers"] += 1
+                if stk not in buy_map:
+                    buy_map[stk] = {"Stock": stk, "Buy/Add Count": 0, "Managers": []}
+                buy_map[stk]["Buy/Add Count"] += 1
+                buy_map[stk]["Managers"].append(f"{short_f} ({act})")
+            elif any(k in act for k in ("Reduce", "Sell")):
+                own_map[stk]["Sellers"] += 1
+                if stk not in sell_map:
+                    sell_map[stk] = {"Stock": stk, "Sell/Reduce Count": 0, "Managers": []}
+                sell_map[stk]["Sell/Reduce Count"] += 1
+                sell_map[stk]["Managers"].append(f"{short_f} ({act})")
+
     for v in own_map.values():
         v["Avg Weight %"] = round(v["_sum_w"] / max(1, v["Funds"]), 2)
+        v["Net Flow"] = v["Buyers"] - v["Sellers"]
         v["Managers"] = ", ".join(v["Managers"])
         del v["_sum_w"]
     for v in buy_map.values():
@@ -368,7 +391,7 @@ def build_master_13f_aggregation(all_funds_dict):
     df_buy = pd.DataFrame(sorted(buy_map.values(), key=lambda x: x["Buy/Add Count"], reverse=True)[:20])
     df_sell = pd.DataFrame(sorted(sell_map.values(), key=lambda x: x["Sell/Reduce Count"], reverse=True)[:20])
 
-    return funds_meta_list, df_own, df_buy, df_sell
+    return all_quarters, funds_meta_list, df_own, df_buy, df_sell
 
 # --- LOAD DATA & SETTINGS ---
 app_data = load_full_watchlist()
@@ -479,10 +502,20 @@ with tab_ptf:
                     active_meta = json.load(f)
                 active_df = pd.read_csv(csv_path)
 
+                total_aum_val = float(pd.to_numeric(active_df["Value"], errors="coerce").sum()) if "Value" in active_df.columns else 0.0
+                aum_str = format_aum(total_aum_val)
+
                 rep_str = "Reported:" if current_lang == "EN" else "Zobrazen report:"
                 asof_str = "As of" if current_lang == "EN" else "Ke dni"
+                aum_lbl = "13F AUM:" if current_lang == "EN" else "Celkem ve správě (13F):"
                 last_str = "Last updated:" if current_lang == "EN" else "Naposledy staženo:"
-                st.info(f"**{vyber.split('(')[0].strip()}** | {rep_str} **{active_meta.get('kvartal', '')}** ({asof_str} {active_meta.get('report_date', '')}) | *{last_str} {active_meta.get('last_updated', '')}*")
+
+                st.info(
+                    f"**{vyber.split('(')[0].strip()}** | "
+                    f"{aum_lbl} **{aum_str}** | "
+                    f"{rep_str} **{active_meta.get('kvartal', '')}** ({asof_str} {active_meta.get('report_date', '')}) | "
+                    f"*{last_str} {active_meta.get('last_updated', '')}*"
+                )
 
                 df_disp = active_df.copy()
                 df_disp[" "] = ""
@@ -534,8 +567,8 @@ with tab_ai:
             datum_str = now_dt.strftime("%d. %m. %Y %H:%M")
             lang_instr = "v čisté češtině bez anglických frází" if current_lang == "CZ" else "in clean institutional English"
             prompt_13f = f"""Jsi Senior Equity Analyst & Portfolio Manager. Dnešní datum je {datum_str}.
-Na základě PŘESNĚ TĚCHTO 13F dat fondu {short_fund} (kvartál {active_meta.get('kvartal', '')}) vypracuj stručné institucionální shrnutí {lang_instr} (začni rovnou bodem 1):
-1. **KONCENTRACE & HLAVNÍ SÁZKY** (Top 5/10 koncentrace, klíčové pozice)
+Na základě PŘESNĚ TĚCHTO 13F dat fondu {short_fund} (kvartál {active_meta.get('kvartal', '')}, spravovaný objem {fund_summary_dict.get('total_13f_aum', 'N/A')}) vypracuj stručné institucionální shrnutí {lang_instr} (začni rovnou bodem 1, nepoužívej vymyšlená čísla ani cizí tickery):
+1. **KONCENTRACE & HLAVNÍ SÁZKY** (spravovaný objem, Top 5/10 koncentrace, klíčové pozice)
 2. **NEJDŮLEŽITĚJŠÍ NÁKUPY A NOVÉ POZICE** (kde manažer otevírá nové teze nebo výrazně navyšuje)
 3. **VÝRAZNÉ REDUKCE A PRODEJE** (kde vybírá zisky nebo snižuje expozici)
 4. **SEKTOROVÁ ROTACE & ZÁVĚR PRO INVESTORA** (hlavní signál z tohoto kvartálu + zajímavé příležitosti, kde je aktuální cena pod nahlášenou cenou)
@@ -657,12 +690,13 @@ Data 13F:
                     st.rerun()
 
 with tab_master:
-    funds_meta_list, df_own, df_buy, df_sell = build_master_13f_aggregation(ALL_FUNDS)
+    all_quarters, funds_meta_list, df_own, df_buy, df_sell = build_master_13f_aggregation(ALL_FUNDS)
 
     if not funds_meta_list:
         st.info(_["m_no_funds"])
     else:
-        st.caption(f"Agregováno **{len(funds_meta_list)}** stažených fondů ze složky `sec_data/`.")
+        active_q = all_quarters[0] if all_quarters else ""
+        st.caption(f"Agregováno **{len(funds_meta_list)}** fondů výhradně za nejnovější kvartál **{active_q}** ze složky `sec_data/`.")
         mc1, mc2, mc3 = st.columns(3)
         with mc1:
             st.markdown(f'<div class="sec-sec-label">{_["m_top_own"]}</div>', unsafe_allow_html=True)
@@ -684,25 +718,30 @@ with tab_master:
             if st.button(_["m_btn"], type="primary", use_container_width=True):
                 now_dt = datetime.now(ZoneInfo("Europe/Prague"))
                 datum_str = now_dt.strftime("%d. %m. %Y %H:%M")
-                quarters = sorted({f["quarter"] for f in funds_meta_list if f.get("quarter")})
-                q_label = quarters[-1] if quarters else now_dt.strftime("%Y")
+                q_label = active_q or now_dt.strftime("%Y")
 
                 master_payload = {
+                    "quarter": q_label,
                     "total_funds_analyzed": len(funds_meta_list),
-                    "quarters_covered": quarters,
                     "most_owned_consensus": df_own.head(15).to_dict(orient="records") if not df_own.empty else [],
                     "most_bought_or_new": df_buy.head(15).to_dict(orient="records") if not df_buy.empty else [],
                     "most_sold_or_reduced": df_sell.head(15).to_dict(orient="records") if not df_sell.empty else []
                 }
                 lang_instr = "v čisté češtině bez anglických frází" if current_lang == "CZ" else "in clean institutional English"
-                master_prompt = f"""Jsi Chief Investment Officer (CIO) a připravuješ čtvrtletní Master 13F report napříč {len(funds_meta_list)} sledovanými institucionálními fondy ({q_label}).
-Vypracuj strukturovaný podklad {lang_instr}, který půjde přímo použít pro týdenní tržní výhledy (začni rovnou bodem 1):
-1. **HLAVNÍ TRENDY SMART MONEY** (kam teče institucionální kapitál, jaké sektory a témata dominují)
-2. **KONSENZUÁLNÍ NÁKUPY A NOVÉ POZICE** (nejzajímavější tituly, kde nakupuje více fondů současně)
-3. **DISTRIBUCE A VÝBĚR ZISKŮ** (kde fondy nejvíce redukují nebo vystupují)
-4. **AKČNÍ VÝSTUP PRO TÝDENNÍ TRŽNÍ VÝHLED** (3–5 konkrétních bodů a tickerů k hlubšímu prověření v Terminálu)
+                master_prompt = f"""Jsi Chief Investment Officer (CIO) a připravuješ čtvrtletní Master 13F report napříč {len(funds_meta_list)} sledovanými fondy výhradně za kvartál {q_label}.
 
-Agregovaná 13F data:
+PŘÍSNÁ PRAVIDLA KONZISTENCE:
+- Nikdy si neprotiřeč: Pokud je akcie mezi nejčastěji drženými, ale má záporný Net Flow (více prodávajících než kupujících), napiš jasně, že jde o historicky drženou jádrovou pozici, ze které ale v {q_label} fondy vybírají zisky. Nikdy netvrď, že do ní kapitál přitéká, pokud je v tabulce prodejů.
+- Používej výhradně přesná čísla a názvy ze zadaného JSONu. Nevymýšlej si vlastní procenta ani cizí tickery (pokud si nejsi 100% jistý tickerem, napiš jen název firmy z dat).
+- Rozlišuj „Nová pozice (New/Buy)“ od „Navýšení (Add)“ – nikdy nespojuj 100% novou pozici s procentuálním navýšením u téhož fondu.
+- Piš {lang_instr}, začni rovnou bodem 1:
+
+1. **HLAVNÍ TRENDY SMART MONEY ({q_label})** (čistá rotace kapitálu podle Net Flow)
+2. **KONSENZUÁLNÍ NÁKUPY A NOVÉ POZICE** (tituly s nejvyšším počtem kupujících)
+3. **DISTRIBUCE A VÝBĚR ZISKŮ** (tituly s nejvyšším počtem prodávajících)
+4. **AKČNÍ VÝSTUP PRO TÝDENNÍ TRŽNÍ VÝHLED** (3–5 konkrétních bodů k prověření v Terminálu)
+
+Agregovaná 13F data za {q_label}:
 {json.dumps(master_payload, ensure_ascii=False, default=str)}"""
 
                 with st.spinner(_["m_spin"]):
