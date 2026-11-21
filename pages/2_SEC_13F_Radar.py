@@ -752,26 +752,26 @@ with tab_master:
 Celý výstup musí mít rozsah cca 700–800 slov, aby se bezpečně dokončil až do posledního slova bodu 5 bez useknutí (začni rovnou bodem 1).
 
 PŘÍSNÁ PRAVIDLA:
-1. JAZYK: Piš {lang_instr}. Nikdy nepoužívej cizí slova v hlavičkách tabulek (vždy „Titul“, nikdy „Título“).
-2. DEFINICE METRIK (ZÁKAZ ZÁMĚNY JEDNOTEK):
+1. JAZYK A OBDOBÍ: Piš {lang_instr}. Analyzuješ výhradně čtvrtletí {q_label} – vždy v celém textu uváděj přesně toto období ({q_label}) a nikdy ho nezaměňuj za jiné čtvrtletí. Nikdy nepoužívej cizí slova v hlavičkách tabulek (vždy „Titul“, nikdy „Título“).
+2. DEFINICE METRIK (ZÁKAZ ZÁMĚNY JEDNOTEK A ROLÍ):
    - „Čistý rozdíl počtu fondů“ (`Net_Fund_Count_Diff`) je POČET KUPUJÍCÍCH FONDŮ MÍNUS POČET PRODÁVAJÍCÍCH FONDŮ. NIKDY k němu nepřidávej znak %!
    - Procenta (%) uváděj POUZE u změny pozice konkrétního fondu nebo váhy v portfoliu.
    - Rozlišuj striktně „Buy 100 %“ (= otevření zcela nové pozice) od „Add“ (= navýšení již držené pozice, např. Add 435.53 % není nová pozice, ale navýšení).
-   - „NVDIA“ / „NVIDIA“ v seznamu subjektů = korporátní 13F hlášení samotné společnosti NVIDIA, nikoliv investiční fond.
-3. ZÁKAZ HALUCINACÍ: Nepoužívej zastaralé fráze („pandemie“, „metaverse“), neuváděj odhady AUM a nepopleť sektory (Alphabet, Apple, Amazon, Microsoft, NVIDIA = technologie/komunikace; Visa, Bank of America, Capital One, American Express = finance; GE Aerospace = průmysl; Humana = zdravotnictví).
-4. KONZISTENCE: Komentář v bodě 1 musí 100% odpovídat tabulkám v bodech 2 a 3. Pokud je akcie v tabulce prodejů (např. Visa, Moody's, Alphabet, NVIDIA), popiš ji jako historicky drženou jádrovou pozici, kde probíhá výběr zisků.
+   - Přísně rozlišuj SUBJEKT (manažer/firma podávající 13F hlášení) a TITUL (držená akcie v portfoliu). Pokud je podavatelem hlášení samotná firma (korporátní 13F), jde o její investiční portfolio, nikdy nepřipisuj držbu akcii samotné.
+3. ZÁKAZ HALUCINACÍ: Nepoužívej zastaralé fráze („pandemie“, „metaverse“), neuváděj odhady AUM a pečlivě ověřuj sektorové zařazení každé firmy (nezaměňuj zdravotnictví, energetiku, průmysl, finance a technologie).
+4. KONZISTENCE: Komentář v bodě 1 musí 100% odpovídat tabulkám v bodech 2 a 3. Pokud je akcie v tabulce prodejů, popiš ji v úvodu jako historicky drženou jádrovou pozici, kde probíhá výběr zisků.
 
 POŽADOVANÁ STRUKTURA VÝSTUPU:
 
 1. **MAKRO & SEKTOROVÉ TRENDY SMART MONEY ({q_label})**
-   - Ve 2–3 hutných odstavcích shrň hlavní rotaci kapitálu (odliv vs. příliv podle rozdílu v počtu fondů).
+   - Ve 2–3 hutných odstavcích shrň hlavní rotaci kapitálu za období {q_label} (odliv vs. příliv podle rozdílu v počtu fondů).
 
 2. **KONSENZUÁLNÍ NÁKUPY A NOVÉ POZICE**
    - Tabulka: | Titul | Počet kupujících fondů | Přehled aktivit (Manažer a změna) | (vyber 8 až 9 nejvýznamnějších titulů z dat včetně velkých technologických a tržních lídrů)
    - Pod tabulkou 3 stručné odrážky s interpretací nákupních trendů.
 
 3. **DISTRIBUCE, REDUKCE A VÝBĚR ZISKŮ**
-   - Tabulka: | Titul | Počet prodávajících fondů | Rozsah redukce a hlavní prodejci | (vyber 8 až 9 nejvýznamnějších titulů z dat včetně velkých technologických titulů jako Alphabet či NVIDIA, pokud jsou v datech)
+   - Tabulka: | Titul | Počet prodávajících fondů | Rozsah redukce a hlavní prodejci | (vyber 8 až 9 nejvýznamnějších titulů z dat včetně velkých technologických titulů, pokud jsou v datech)
    - Pod tabulkou 3 stručné odrážky k výběru zisků.
 
 4. **PŘEHLED KLÍČOVÝCH TAHŮ HLAVNÍCH SUBJEKTŮ**
