@@ -458,11 +458,27 @@ if final_tick != st.session_state.term_ai_ticker:
     st.session_state.term_ai_saved_id = None
     st.session_state.term_ai_chat = []
 
+@st.cache_data(ttl=3600, show_spinner=False)
+def get_groq_available_models(api_klic):
+    try:
+        req = urllib.request.Request(
+            "https://api.groq.com/openai/v1/models",
+            headers={"Authorization": f"Bearer {api_klic}", "User-Agent": random.choice(USER_AGENTS)}
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            items = json.loads(resp.read().decode("utf-8")).get("data", [])
+            skip = ("whisper", "tts", "guard", "prompt-guard", "orpheus")
+            return [m["id"] for m in items if m.get("id") and not any(s in m["id"].lower() for s in skip)]
+    except Exception:
+        return []
+
 def call_llm_api(messages, api_klic, provider, model_name, temperature=0.2, timeout=30, max_tokens=850):
     url = "https://api.groq.com/openai/v1/chat/completions" if provider == "Groq" else "https://api.openai.com/v1/chat/completions"
     models_to_try = [model_name]
-    if provider == "Groq" and model_name != "llama-3.3-70b-versatile":
-        models_to_try.append("llama-3.3-70b-versatile")
+    if provider == "Groq":
+        for m in get_groq_available_models(api_klic):
+            if m not in models_to_try:
+                models_to_try.append(m)
 
     last_err = ""
     for mdl in models_to_try:
@@ -483,7 +499,7 @@ def call_llm_api(messages, api_klic, provider, model_name, temperature=0.2, time
         except urllib.error.HTTPError as e:
             err_txt = e.read().decode("utf-8", errors="ignore")[:250]
             last_err = f"HTTP {e.code}: {err_txt}"
-            if e.code == 429 and mdl != models_to_try[-1]:
+            if e.code in (400, 404, 429) and mdl != models_to_try[-1]:
                 continue
             raise RuntimeError(last_err)
     raise RuntimeError(last_err)
