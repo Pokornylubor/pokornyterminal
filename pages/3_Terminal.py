@@ -1182,9 +1182,11 @@ Používej výhradně tato data:
                                 "typ": "INVESTIČNÍ MEMO",
                                 "tema": final_tick,
                                 "hlavni_nadpis": f"Investiční memo: {short_name} ({final_tick}) · {curr_price:,.2f} {trading_currency}",
-                                "obsah": memo_txt
+                                "obsah": memo_txt,
+                                "chat": []
                             }
                             st.session_state.term_ai_saved_id = None
+                            st.session_state.term_ai_chat = []
                         except Exception as e:
                             st.error(f"AI Error: {e}")
 
@@ -1198,13 +1200,28 @@ Používej výhradně tato data:
                     st.markdown(m_obj.get("obsah", m_obj.get("co_se_stalo", "")))
                     st.markdown('</div>', unsafe_allow_html=True)
 
-                    if st.session_state.term_ai_saved_id == m_obj["id"]:
+                    saved_chat_len = len(m_obj.get("chat", []))
+                    curr_chat_len = len(st.session_state.term_ai_chat)
+                    has_unsaved_chat = (st.session_state.term_ai_saved_id == m_obj["id"] and curr_chat_len != saved_chat_len)
+
+                    if st.session_state.term_ai_saved_id == m_obj["id"] and not has_unsaved_chat:
                         st.info(_["ai_already_saved"])
                     else:
-                        if st.button(f"💾 {_['ai_save']}"):
+                        btn_lbl = (
+                            f"💾 Aktualizovat Memo + Chat ({curr_chat_len} zpráv) na GitHub"
+                            if has_unsaved_chat else
+                            f"💾 {_['ai_save']}"
+                        )
+                        if st.button(btn_lbl):
                             memos = load_memos()
-                            memos.insert(0, m_obj)
-                            save_memos(memos, commit_msg=f"Terminal: Uloženo Memo {final_tick}")
+                            m_obj["chat"] = list(st.session_state.term_ai_chat)
+                            existing_idx = next((idx for idx, x in enumerate(memos) if x.get("id") == m_obj["id"]), None)
+                            if existing_idx is not None:
+                                memos[existing_idx] = m_obj
+                            else:
+                                memos.insert(0, m_obj)
+                            save_memos(memos, commit_msg=f"Terminal: Uloženo Memo + Chat {final_tick}")
+                            st.session_state.term_ai_memo_obj = m_obj
                             st.session_state.term_ai_saved_id = m_obj["id"]
                             st.success(_["ai_saved_ok"])
 
@@ -1220,7 +1237,8 @@ Používej výhradně tato data:
                     with st.chat_message("assistant"):
                         with st.spinner(_["ai_spin"]):
                             lang_reply = "Odpovídej čistou češtinou." if current_lang == "CZ" else "Answer in clean English."
-                            msgs = [{"role": "system", "content": f"Jsi Senior Equity Analyst. Máš přesná finanční data firmy {short_name} ({final_tick}): {kpi_json_str}. Odpovídej konkrétně a opírej se o čísla. {lang_reply}"}]
+                            memo_ctx = st.session_state.term_ai_memo_obj.get("obsah", "") if st.session_state.term_ai_memo_obj else ""
+                            msgs = [{"role": "system", "content": f"Jsi Senior Equity Analyst. Máš přesná finanční data firmy {short_name} ({final_tick}): {kpi_json_str}. Vygenerované investiční memo: {memo_ctx}. Odpovídej konkrétně a opírej se o čísla. {lang_reply}"}]
                             for m in st.session_state.term_ai_chat[:-1]:
                                 msgs.append({"role": m["role"], "content": m["content"]})
                             msgs.append({"role": "user", "content": q_term})
@@ -1229,23 +1247,28 @@ Používej výhradně tato data:
                             st.markdown(ans)
                     if not ans.startswith("⚠️"):
                         st.session_state.term_ai_chat.append({"role": "assistant", "content": ans})
+                        st.rerun()
 
                 saved_memos = [r for r in all_memos if str(r.get("tema", "")).upper() == final_tick]
                 if saved_memos:
                     st.markdown("---")
                     st.markdown(f'<div class="term-sec-label">{_["ai_saved_list"]} ({final_tick}) · {len(saved_memos)}</div>', unsafe_allow_html=True)
                     for sm in saved_memos:
+                        chat_cnt = len(sm.get("chat", []))
+                        chat_tag = f" · 💬 {chat_cnt}" if chat_cnt > 0 else ""
                         c_m1, c_m2, c_m3 = st.columns([5, 1, 1])
-                        c_m1.markdown(f"`{sm.get('datum', '')}` · **{sm.get('hlavni_nadpis', final_tick)}**")
+                        c_m1.markdown(f"`{sm.get('datum', '')}` · **{sm.get('hlavni_nadpis', final_tick)}**{chat_tag}")
                         if c_m2.button(_["ai_load_btn"], key=f"load_m_{sm.get('id')}", use_container_width=True):
                             st.session_state.term_ai_memo_obj = sm
                             st.session_state.term_ai_saved_id = sm.get("id")
+                            st.session_state.term_ai_chat = list(sm.get("chat", []))
                             st.rerun()
                         if c_m3.button(_["ai_del_btn"], key=f"del_m_{sm.get('id')}", use_container_width=True):
                             new_m = [r for r in all_memos if r.get("id") != sm.get("id")]
                             save_memos(new_m, commit_msg=f"Terminal: Smazáno Memo {final_tick}")
                             if st.session_state.term_ai_memo_obj and st.session_state.term_ai_memo_obj.get("id") == sm.get("id"):
                                 st.session_state.term_ai_memo_obj = None
+                                st.session_state.term_ai_chat = []
                             st.rerun()
 
         with tab_ana:
