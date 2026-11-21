@@ -3,7 +3,12 @@ import pandas as pd
 import json
 import os
 import sys
+import random
 import subprocess
+import urllib.request
+import urllib.error
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 # --- INITIAL SETUP ---
 st.set_page_config(page_title="POKORNY TERMINAL | 13F REPORTY", layout="wide", initial_sidebar_state="collapsed")
@@ -14,20 +19,68 @@ hlavni_slozka = os.path.dirname(aktualni_slozka) if os.path.basename(aktualni_sl
 sys.path.append(hlavni_slozka)
 WATCHLIST_FILE = os.path.join(hlavni_slozka, "watchlist.json")
 SEC_DATA_DIR = os.path.join(hlavni_slozka, "sec_data")
+ARCHIVE_13F_FILE = os.path.join(hlavni_slozka, "sec_13f_archive.json")
 
 try:
     import sec_updater
-except: pass
+except Exception:
+    pass
 
 import menu
-menu.vykresli_menu() 
+menu.vykresli_menu()
+
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:127.0) Gecko/20100101 Firefox/127.0"
+]
+
+# --- INSTITUTIONAL DARK CSS ---
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+.stApp { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+.sec-sec-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.74rem;
+    font-weight: 600;
+    color: #71717A;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin: 18px 0 10px 0;
+}
+.sec-memo-box {
+    width: 100%;
+    padding: 24px 28px;
+    background-color: #0D0F12;
+    border: 1px solid #1F2227;
+    border-radius: 6px;
+    margin: 14px 0 18px 0;
+}
+.sec-memo-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    color: #71717A;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #1F2227;
+}
+</style>
+""", unsafe_allow_html=True)
+
+current_lang = st.session_state.get("lang", "CZ")
 
 # --- DICTIONARY ---
 t = {
     "CZ": {
         "title": "SEC 13F REPORTY",
-        "desc": "BLESKOVÉ NAČÍTÁNÍ HISTORICKÝCH DAT PORTFOLIÍ PŘÍMO ZE SEC EDGAR.",
+        "desc": "BLESKOVÉ NAČÍTÁNÍ HISTORICKÝCH DAT PORTFOLIÍ ZE SEC EDGAR, AI ROZBOR A KONSENZUS SUPERINVESTORŮ.",
         "exp_db": "SPRÁVA DATABÁZE (PŘIDAT / UPRAVIT / SMAZAT)",
+        "tab_ptf": "PORTFOLIO (13F)",
+        "tab_ai": "AI ANALÝZA FONDU",
+        "tab_master": "SOUHRN VŠECH 13F (SMART MONEY)",
         "sel_inv": "VÝBĚR A VYHLEDÁVÁNÍ 13F REPORTU:",
         "cik_lbl": "CIK KÓD:",
         "name_lbl": "NÁZEV FONDU:",
@@ -37,12 +90,37 @@ t = {
         "succ_edit": "FOND BYL ÚSPĚŠNĚ UPRAVEN A ULOŽEN.",
         "btn_upd": "VYNUTIT AKTUALIZACI (SEC)",
         "spin_upd": "STAHOVÁNÍ ČERSTVÝCH DAT PŘÍMO ZE SEC...",
-        "warn_nodata": "DATA PRO TENTO REPORT NEJSOU STAŽENA. KLIKNĚTE NA 'VYNUTIT AKTUALIZACI'."
+        "warn_nodata": "DATA PRO TENTO REPORT NEJSOU STAŽENA. KLIKNĚTE NA 'VYNUTIT AKTUALIZACI'.",
+        "ai_no_key": "Pro AI analýzu nastavte GROQ_API_KEY v Secrets a vyberte model v Nastavení.",
+        "ai_sel_first": "Nejdříve vyberte fond v záložce PORTFOLIO (13F).",
+        "ai_gen_btn": "Vygenerovat AI 13F shrnutí fondu",
+        "ai_spin": "AI analyzuje 13F pozice, koncentraci a rotaci kapitálu...",
+        "ai_save": "Uložit do sec_13f_archive.json (GitHub)",
+        "ai_saved_ok": "Analýza uložena do sec_13f_archive.json a synchronizována na GitHub.",
+        "ai_already_saved": "Tato 13F analýza je již uložená.",
+        "ai_hide": "Skrýt analýzu",
+        "ai_chat_h": "KONZULTACE S AI NAD 13F REPORTEM",
+        "ai_chat_ph": "Vyhledat...",
+        "ai_new_chat": "Nový chat",
+        "ai_saved_list": "ULOŽENÉ 13F ANALÝZY",
+        "ai_load": "Načíst",
+        "ai_del": "Smazat",
+        "m_btn": "Vygenerovat Master 13F souhrn všech fondů (AI)",
+        "m_spin": "Agregace všech fondů a generování Master 13F reportu...",
+        "m_copy_lbl": "PODKLAD PRO TÝDENNÍ TRŽNÍ VÝHLED (KOPÍROVATELNÝ MARKDOWN)",
+        "m_saved_list": "ULOŽENÉ MASTER 13F SOUHRNY",
+        "m_no_funds": "Ve složce sec_data/ zatím nejsou staženy žádné 13F reporty.",
+        "m_top_own": "Nejčastěji držené akcie (Konsenzus)",
+        "m_top_buy": "Nejvíce nakupované / nové pozice",
+        "m_top_sell": "Nejvíce prodávané / redukované pozice"
     },
     "EN": {
         "title": "SEC 13F REPORTS",
-        "desc": "LIGHTNING FAST HISTORICAL PORTFOLIO DATA FROM SEC EDGAR.",
+        "desc": "HISTORICAL PORTFOLIO DATA FROM SEC EDGAR, AI FUND ANALYSIS & SUPERINVESTOR CONSENSUS.",
         "exp_db": "DATABASE MANAGEMENT (ADD / EDIT / DELETE)",
+        "tab_ptf": "PORTFOLIO (13F)",
+        "tab_ai": "AI FUND ANALYSIS",
+        "tab_master": "MASTER 13F SYNTHESIS",
         "sel_inv": "SELECT AND SEARCH 13F REPORT:",
         "cik_lbl": "CIK CODE:",
         "name_lbl": "FUND NAME:",
@@ -52,64 +130,282 @@ t = {
         "succ_edit": "FUND SUCCESSFULLY EDITED AND SAVED.",
         "btn_upd": "FORCE UPDATE (SEC)",
         "spin_upd": "DOWNLOADING FRESH DATA FROM SEC...",
-        "warn_nodata": "DATA FOR THIS REPORT NOT DOWNLOADED YET. CLICK 'FORCE UPDATE'."
+        "warn_nodata": "DATA FOR THIS REPORT NOT DOWNLOADED YET. CLICK 'FORCE UPDATE'.",
+        "ai_no_key": "Configure GROQ_API_KEY in Secrets and select a model in Settings.",
+        "ai_sel_first": "Select a fund in the PORTFOLIO (13F) tab first.",
+        "ai_gen_btn": "Generate AI 13F Fund Summary",
+        "ai_spin": "AI is analyzing 13F positions, concentration and capital rotation...",
+        "ai_save": "Save to sec_13f_archive.json (GitHub)",
+        "ai_saved_ok": "Analysis saved to sec_13f_archive.json and synced to GitHub.",
+        "ai_already_saved": "This 13F analysis is already saved.",
+        "ai_hide": "Hide analysis",
+        "ai_chat_h": "AI 13F CONSULTATION",
+        "ai_chat_ph": "Search...",
+        "ai_new_chat": "Clear chat",
+        "ai_saved_list": "SAVED 13F ANALYSES",
+        "ai_load": "Load",
+        "ai_del": "Delete",
+        "m_btn": "Generate Master 13F Synthesis Across All Funds (AI)",
+        "m_spin": "Aggregating all funds and generating Master 13F report...",
+        "m_copy_lbl": "EXPORT FOR WEEKLY MARKET OUTLOOK (COPYABLE MARKDOWN)",
+        "m_saved_list": "SAVED MASTER 13F SYNTHESES",
+        "m_no_funds": "No downloaded 13F reports found in sec_data/ yet.",
+        "m_top_own": "Most Owned Stocks (Consensus)",
+        "m_top_buy": "Most Bought / New Positions",
+        "m_top_sell": "Most Sold / Reduced Positions"
     }
 }
-_ = t.get(st.session_state.get("lang", "CZ"), t["CZ"])
+_ = t.get(current_lang, t["CZ"])
 
 st.title(_["title"])
 st.caption(_["desc"])
 
-def commit_watchlist_to_github():
+# --- GITHUB & DATA HELPERS ---
+def git_sync_file(file_path, commit_msg):
     try:
         if "GITHUB_TOKEN" in st.secrets:
             token = st.secrets["GITHUB_TOKEN"]
             owner = st.secrets["GITHUB_OWNER"]
             repo = st.secrets["GITHUB_REPO"]
             remote_url = f"https://{owner}:{token}@github.com/{owner}/{repo}.git"
-            
             subprocess.run(["git", "config", "--global", "user.email", "bot@pokornyterminal.cz"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             subprocess.run(["git", "config", "--global", "user.name", "Terminal Bot"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            subprocess.run(["git", "add", WATCHLIST_FILE], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            subprocess.run(["git", "commit", "-m", "Automatická úprava 13F watchlistu z mobilu"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(["git", "pull", "--rebase", remote_url, "main"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(["git", "add", file_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(["git", "commit", "-m", commit_msg], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             subprocess.run(["git", "push", remote_url, "HEAD:main"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except Exception:
-        pass 
+        pass
 
-def save_data(data):
-    with open(WATCHLIST_FILE, "w", encoding="utf-8") as f: 
-        json.dump(data, f, indent=4)
-    commit_watchlist_to_github() 
-
-def load_watchlist():
-    data = {"saved_ciks": {}}
+def load_full_watchlist():
     if os.path.exists(WATCHLIST_FILE):
         try:
-            with open(WATCHLIST_FILE, "r", encoding="utf-8") as f: 
-                loaded_data = json.load(f)
-                if "saved_ciks" in loaded_data: 
-                    data["saved_ciks"] = loaded_data["saved_ciks"]
-        except: pass
-    return data
+            with open(WATCHLIST_FILE, "r", encoding="utf-8") as f:
+                d = json.load(f)
+                if isinstance(d, dict):
+                    if "saved_ciks" not in d:
+                        d["saved_ciks"] = {}
+                    return d
+        except Exception:
+            pass
+    return {"portfolio": [], "watchlist": [], "saved_ciks": {}, "settings": {}}
 
-data = load_watchlist()
-ALL_FUNDS = data["saved_ciks"]
+def save_full_watchlist(data):
+    with open(WATCHLIST_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=4, ensure_ascii=False)
+    git_sync_file(WATCHLIST_FILE, "13F: Aktualizace seznamu fondu v watchlist.json")
+
+def load_13f_archive():
+    if os.path.exists(ARCHIVE_13F_FILE):
+        try:
+            with open(ARCHIVE_13F_FILE, "r", encoding="utf-8") as f:
+                d = json.load(f)
+                if isinstance(d, list):
+                    return d
+        except Exception:
+            pass
+    return []
+
+def save_13f_archive(archive_list, commit_msg="13F: Aktualizace sec_13f_archive.json"):
+    with open(ARCHIVE_13F_FILE, "w", encoding="utf-8") as f:
+        json.dump(archive_list, f, indent=4, ensure_ascii=False)
+    git_sync_file(ARCHIVE_13F_FILE, commit_msg)
+
+# --- GROQ / OPENAI DYNAMIC API ---
+@st.cache_data(ttl=3600, show_spinner=False)
+def get_groq_available_models(api_klic):
+    try:
+        req = urllib.request.Request(
+            "https://api.groq.com/openai/v1/models",
+            headers={"Authorization": f"Bearer {api_klic}", "User-Agent": random.choice(USER_AGENTS)}
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            items = json.loads(resp.read().decode("utf-8")).get("data", [])
+            skip = ("whisper", "tts", "guard", "prompt-guard", "orpheus")
+            return [m["id"] for m in items if m.get("id") and not any(s in m["id"].lower() for s in skip)]
+    except Exception:
+        return []
+
+def call_llm_api(messages, api_klic, provider, model_name, temperature=0.2, timeout=35, max_tokens=1100):
+    url = "https://api.groq.com/openai/v1/chat/completions" if provider == "Groq" else "https://api.openai.com/v1/chat/completions"
+    models_to_try = [model_name]
+    if provider == "Groq":
+        for m in get_groq_available_models(api_klic):
+            if m not in models_to_try:
+                models_to_try.append(m)
+
+    last_err = ""
+    for mdl in models_to_try:
+        payload = json.dumps({
+            "model": mdl,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            url, data=payload,
+            headers={"Authorization": f"Bearer {api_klic}", "Content-Type": "application/json", "User-Agent": random.choice(USER_AGENTS)},
+            method="POST"
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return json.loads(resp.read().decode("utf-8"))["choices"][0]["message"]["content"]
+        except urllib.error.HTTPError as e:
+            err_txt = e.read().decode("utf-8", errors="ignore")[:250]
+            last_err = f"HTTP {e.code}: {err_txt}"
+            if e.code in (400, 404, 429) and mdl != models_to_try[-1]:
+                continue
+            raise RuntimeError(last_err)
+    raise RuntimeError(last_err)
+
+# --- 13F DATA COMPACT EXTRACTOR ---
+def get_stock_col(df):
+    for c in ["Stock", "Ticker", "Symbol", "Company", "Issuer"]:
+        if c in df.columns:
+            return c
+    return df.columns[0]
+
+def extract_fund_summary_dict(fund_name, meta, df):
+    stock_col = get_stock_col(df)
+    df_c = df.copy()
+    if "% of Portfolio" in df_c.columns:
+        df_c["_pct"] = pd.to_numeric(df_c["% of Portfolio"], errors="coerce").fillna(0.0)
+        df_c = df_c.sort_values("_pct", ascending=False)
+    else:
+        df_c["_pct"] = 0.0
+
+    top5 = round(float(df_c["_pct"].head(5).sum()), 2)
+    top10 = round(float(df_c["_pct"].head(10).sum()), 2)
+
+    def row_to_item(r):
+        return {
+            "stock": str(r.get(stock_col, "")),
+            "pct_portfolio": round(float(r.get("_pct", 0.0)), 2),
+            "activity": str(r.get("RecentActivity", "")),
+            "value_usd": float(r["Value"]) if pd.notna(r.get("Value")) else None,
+            "vs_reported_pct": round(float(r["+/-Reported Price"]), 2) if pd.notna(r.get("+/-Reported Price")) else None
+        }
+
+    top_15 = [row_to_item(r) for _, r in df_c.head(15).iterrows()]
+
+    act_col = df_c["RecentActivity"].astype(str) if "RecentActivity" in df_c.columns else pd.Series([""] * len(df_c))
+    new_pos = [row_to_item(r) for _, r in df_c[act_col.str.contains("New|Buy", case=False, na=False)].head(10).iterrows()]
+    adds = [row_to_item(r) for _, r in df_c[act_col.str.contains("Add", case=False, na=False)].head(10).iterrows()]
+    reduces = [row_to_item(r) for _, r in df_c[act_col.str.contains("Reduce|Sell", case=False, na=False)].head(10).iterrows()]
+
+    return {
+        "fund": fund_name,
+        "quarter": meta.get("kvartal", "N/A"),
+        "report_date": meta.get("report_date", "N/A"),
+        "total_positions": int(len(df_c)),
+        "top5_concentration_pct": top5,
+        "top10_concentration_pct": top10,
+        "top_15_holdings": top_15,
+        "new_positions": new_pos,
+        "major_adds": adds,
+        "major_reduces_sells": reduces
+    }
+
+def build_master_13f_aggregation(all_funds_dict):
+    own_map = {}
+    buy_map = {}
+    sell_map = {}
+    funds_meta_list = []
+
+    for f_name, raw_cik in all_funds_dict.items():
+        cik = str(raw_cik).zfill(10)
+        csv_p = os.path.join(SEC_DATA_DIR, f"{cik}.csv")
+        meta_p = os.path.join(SEC_DATA_DIR, f"{cik}_meta.json")
+        if not (os.path.exists(csv_p) and os.path.exists(meta_p)):
+            continue
+        try:
+            with open(meta_p, "r", encoding="utf-8") as fm:
+                meta = json.load(fm)
+            df = pd.read_csv(csv_p)
+            if df.empty:
+                continue
+            stock_col = get_stock_col(df)
+            short_f = f_name.split("(")[0].strip()
+            funds_meta_list.append({"fund": short_f, "quarter": meta.get("kvartal", ""), "positions": len(df)})
+
+            for _, r in df.iterrows():
+                stk = str(r.get(stock_col, "")).strip()
+                if not stk or stk.lower() == "nan":
+                    continue
+                pct = float(r["% of Portfolio"]) if pd.notna(r.get("% of Portfolio")) else 0.0
+                act = str(r.get("RecentActivity", ""))
+
+                if stk not in own_map:
+                    own_map[stk] = {"Stock": stk, "Funds": 0, "Avg Weight %": 0.0, "_sum_w": 0.0, "Managers": []}
+                own_map[stk]["Funds"] += 1
+                own_map[stk]["_sum_w"] += pct
+                if len(own_map[stk]["Managers"]) < 5:
+                    own_map[stk]["Managers"].append(short_f)
+
+                if any(k in act for k in ("Buy", "Add", "New")):
+                    if stk not in buy_map:
+                        buy_map[stk] = {"Stock": stk, "Buy/Add Count": 0, "Managers": []}
+                    buy_map[stk]["Buy/Add Count"] += 1
+                    buy_map[stk]["Managers"].append(f"{short_f} ({act})")
+                elif any(k in act for k in ("Reduce", "Sell")):
+                    if stk not in sell_map:
+                        sell_map[stk] = {"Stock": stk, "Sell/Reduce Count": 0, "Managers": []}
+                    sell_map[stk]["Sell/Reduce Count"] += 1
+                    sell_map[stk]["Managers"].append(f"{short_f} ({act})")
+        except Exception:
+            continue
+
+    for v in own_map.values():
+        v["Avg Weight %"] = round(v["_sum_w"] / max(1, v["Funds"]), 2)
+        v["Managers"] = ", ".join(v["Managers"])
+        del v["_sum_w"]
+    for v in buy_map.values():
+        v["Managers"] = ", ".join(v["Managers"][:5])
+    for v in sell_map.values():
+        v["Managers"] = ", ".join(v["Managers"][:5])
+
+    df_own = pd.DataFrame(sorted(own_map.values(), key=lambda x: (x["Funds"], x["Avg Weight %"]), reverse=True)[:20])
+    df_buy = pd.DataFrame(sorted(buy_map.values(), key=lambda x: x["Buy/Add Count"], reverse=True)[:20])
+    df_sell = pd.DataFrame(sorted(sell_map.values(), key=lambda x: x["Sell/Reduce Count"], reverse=True)[:20])
+
+    return funds_meta_list, df_own, df_buy, df_sell
+
+# --- LOAD DATA & SETTINGS ---
+app_data = load_full_watchlist()
+ALL_FUNDS = app_data.get("saved_ciks", {})
 fund_names = sorted(list(ALL_FUNDS.keys()))
+saved_settings = app_data.get("settings", {})
+
+api_key = str(st.secrets.get("GROQ_API_KEY", "")).strip()
+model_provider = st.session_state.get("ai_provider", saved_settings.get("ai_provider", "Groq"))
+selected_model = st.session_state.get("ai_model", saved_settings.get("ai_model", ""))
+
+# --- SESSION STATE ---
+for k, v in [
+    ("sec_sel_fund", None),
+    ("sec_ai_memo", None),
+    ("sec_ai_saved_id", None),
+    ("sec_ai_chat", []),
+    ("sec_master_obj", None),
+    ("sec_master_saved_id", None)
+]:
+    if k not in st.session_state:
+        st.session_state[k] = v
 
 # --- SEKCE SPRÁVY DATABÁZE ---
 with st.expander(_["exp_db"], expanded=False):
     akce = st.radio("Zvolte operaci:", ["Přidat", "Upravit", "Smazat"], horizontal=True, label_visibility="collapsed")
     st.markdown("---")
-    
+
     if akce == "Přidat":
         cik_input = st.text_input(_["cik_lbl"], "").strip()
         novy_nazev = st.text_input(_["name_lbl"], "").strip()
         if cik_input and novy_nazev and st.button(_["save_new"], use_container_width=True):
-            data["saved_ciks"][novy_nazev] = cik_input
-            save_data(data)
+            app_data["saved_ciks"][novy_nazev] = cik_input
+            save_full_watchlist(app_data)
             st.success(_["succ_save"])
             st.rerun()
-            
+
     elif akce == "Upravit":
         if not fund_names:
             st.info("Databáze je prázdná.")
@@ -122,100 +418,355 @@ with st.expander(_["exp_db"], expanded=False):
                 if st.button(_["edit_btn"], use_container_width=True):
                     if novy_nazev and novy_cik:
                         if novy_nazev != fond_k_uprave:
-                            del data["saved_ciks"][fond_k_uprave]
-                        data["saved_ciks"][novy_nazev] = novy_cik
-                        save_data(data)
+                            del app_data["saved_ciks"][fond_k_uprave]
+                        app_data["saved_ciks"][novy_nazev] = novy_cik
+                        save_full_watchlist(app_data)
                         st.success(_["succ_edit"])
                         st.rerun()
                     else:
                         st.warning("Název i CIK musí být vyplněny.")
-                        
+
     elif akce == "Smazat":
         if not fund_names:
             st.info("Databáze je prázdná.")
         else:
             fond_k_odstraneni = st.selectbox("Vyber fond k odstranění:", options=fund_names)
             if st.button("TRVALE SMAZAT FOND", use_container_width=True):
-                del data["saved_ciks"][fond_k_odstraneni]
-                save_data(data)
+                del app_data["saved_ciks"][fond_k_odstraneni]
+                save_full_watchlist(app_data)
                 st.success(f"Fond '{fond_k_odstraneni}' byl odstraněn.")
                 st.rerun()
 
 st.markdown("---")
 
-# --- HLAVNÍ SEKCE ZOBRAZENÍ 13F PORTFOLIA ---
-if not fund_names:
-    st.info("Databáze je prázdná. Přidejte fond v sekci 'SPRÁVA DATABÁZE'.")
-else:
-    ph_search = "Vyhledat..." if st.session_state.get("lang", "CZ") == "CZ" else "Search..."
-    vyber = st.selectbox(
-        _["sel_inv"], 
-        options=fund_names, 
-        index=None, 
-        placeholder=ph_search
-    )
+# --- MAIN TABS ---
+tab_ptf, tab_ai, tab_master = st.tabs([_["tab_ptf"], _["tab_ai"], _["tab_master"]])
 
-    if vyber:
-        cik = str(ALL_FUNDS[vyber]).zfill(10)
-        csv_path = os.path.join(SEC_DATA_DIR, f"{cik}.csv")
-        meta_path = os.path.join(SEC_DATA_DIR, f"{cik}_meta.json")
-        
-        st.markdown("<br>", unsafe_allow_html=True)
-        c_upd = st.columns([4, 1])[1]
-        with c_upd:
-            if st.button(_["btn_upd"], use_container_width=True):
-                with st.spinner(_["spin_upd"]):
-                    sec_updater.update_sec_funds(target_cik=cik)
-                    try:
-                        if "GITHUB_TOKEN" in st.secrets:
-                            token = st.secrets["GITHUB_TOKEN"]
-                            owner = st.secrets["GITHUB_OWNER"]
-                            repo = st.secrets["GITHUB_REPO"]
-                            remote_url = f"https://{owner}:{token}@github.com/{owner}/{repo}.git"
-                            
-                            subprocess.run(["git", "config", "--global", "user.email", "bot@pokornyterminal.cz"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                            subprocess.run(["git", "config", "--global", "user.name", "Terminal Bot"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                            subprocess.run(["git", "add", "sec_data/"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                            subprocess.run(["git", "commit", "-m", f"Okamžité stažení 13F reportu (CIK: {cik}) z mobilu"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                            subprocess.run(["git", "push", remote_url, "HEAD:main"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                    except Exception: pass
+active_fund_name = None
+active_cik = None
+active_meta = None
+active_df = None
+
+with tab_ptf:
+    if not fund_names:
+        st.info("Databáze je prázdná. Přidejte fond v sekci 'SPRÁVA DATABÁZE'.")
+    else:
+        ph_search = "Vyhledat..." if current_lang == "CZ" else "Search..."
+        vyber = st.selectbox(_["sel_inv"], options=fund_names, index=None, placeholder=ph_search)
+
+        if vyber != st.session_state.sec_sel_fund:
+            st.session_state.sec_sel_fund = vyber
+            st.session_state.sec_ai_memo = None
+            st.session_state.sec_ai_saved_id = None
+            st.session_state.sec_ai_chat = []
+
+        if vyber:
+            active_fund_name = vyber
+            active_cik = str(ALL_FUNDS[vyber]).zfill(10)
+            csv_path = os.path.join(SEC_DATA_DIR, f"{active_cik}.csv")
+            meta_path = os.path.join(SEC_DATA_DIR, f"{active_cik}_meta.json")
+
+            c_upd = st.columns([4, 1])[1]
+            with c_upd:
+                if st.button(_["btn_upd"], use_container_width=True):
+                    with st.spinner(_["spin_upd"]):
+                        sec_updater.update_sec_funds(target_cik=active_cik)
+                        git_sync_file("sec_data/", f"Okamžité stažení 13F reportu (CIK: {active_cik})")
+                    st.rerun()
+
+            if os.path.exists(csv_path) and os.path.exists(meta_path):
+                with open(meta_path, "r", encoding="utf-8") as f:
+                    active_meta = json.load(f)
+                active_df = pd.read_csv(csv_path)
+
+                rep_str = "Reported:" if current_lang == "EN" else "Zobrazen report:"
+                asof_str = "As of" if current_lang == "EN" else "Ke dni"
+                last_str = "Last updated:" if current_lang == "EN" else "Naposledy staženo:"
+                st.info(f"**{vyber.split('(')[0].strip()}** | {rep_str} **{active_meta.get('kvartal', '')}** ({asof_str} {active_meta.get('report_date', '')}) | *{last_str} {active_meta.get('last_updated', '')}*")
+
+                df_disp = active_df.copy()
+                df_disp[" "] = ""
+
+                def style_df(row):
+                    styles = [''] * len(row)
+                    act_val = str(row.get('RecentActivity', ''))
+                    if "Buy" in act_val or "Add" in act_val or "New" in act_val:
+                        styles[2] = 'color: #26A69A; font-weight: bold;'
+                    elif "Reduce" in act_val or "Sell" in act_val:
+                        styles[2] = 'color: #EF5350; font-weight: bold;'
+                    if pd.notnull(row.get('+/-Reported Price')):
+                        try:
+                            val = float(row['+/-Reported Price'])
+                            if val > 0: styles[8] = 'color: #26A69A;'
+                            elif val < 0: styles[8] = 'color: #EF5350;'
+                        except Exception:
+                            pass
+                    return styles
+
+                styled_df = df_disp.style.apply(style_df, axis=1).format({
+                    "% of Portfolio": "{:.2f}%",
+                    "Shares": "{:,.0f}",
+                    "ReportedPrice*": "${:,.2f}",
+                    "Value": "${:,.0f}",
+                    "Current Price": lambda x: f"${x:,.2f}" if pd.notnull(x) else "",
+                    "+/-Reported Price": lambda x: f"{x:+.2f}%" if pd.notnull(x) else "",
+                    "52Week Low": lambda x: f"${x:,.2f}" if pd.notnull(x) else "",
+                    "52Week High": lambda x: f"${x:,.2f}" if pd.notnull(x) else ""
+                })
+                st.dataframe(styled_df, use_container_width=True, hide_index=True, height=650)
+            else:
+                st.warning(_["warn_nodata"])
+
+all_13f_archive = load_13f_archive()
+
+with tab_ai:
+    if not api_key or not selected_model:
+        st.warning(_["ai_no_key"])
+    elif not active_fund_name or active_df is None or active_meta is None:
+        st.info(_["ai_sel_first"])
+    else:
+        short_fund = active_fund_name.split("(")[0].strip()
+        fund_summary_dict = extract_fund_summary_dict(short_fund, active_meta, active_df)
+        fund_json_str = json.dumps(fund_summary_dict, ensure_ascii=False, default=str)
+
+        if st.button(_["ai_gen_btn"], type="primary", use_container_width=True):
+            now_dt = datetime.now(ZoneInfo("Europe/Prague"))
+            datum_str = now_dt.strftime("%d. %m. %Y %H:%M")
+            lang_instr = "v čisté češtině bez anglických frází" if current_lang == "CZ" else "in clean institutional English"
+            prompt_13f = f"""Jsi Senior Equity Analyst & Portfolio Manager. Dnešní datum je {datum_str}.
+Na základě PŘESNĚ TĚCHTO 13F dat fondu {short_fund} (kvartál {active_meta.get('kvartal', '')}) vypracuj stručné institucionální shrnutí {lang_instr} (začni rovnou bodem 1):
+1. **KONCENTRACE & HLAVNÍ SÁZKY** (Top 5/10 koncentrace, klíčové pozice)
+2. **NEJDŮLEŽITĚJŠÍ NÁKUPY A NOVÉ POZICE** (kde manažer otevírá nové teze nebo výrazně navyšuje)
+3. **VÝRAZNÉ REDUKCE A PRODEJE** (kde vybírá zisky nebo snižuje expozici)
+4. **SEKTOROVÁ ROTACE & ZÁVĚR PRO INVESTORA** (hlavní signál z tohoto kvartálu + zajímavé příležitosti, kde je aktuální cena pod nahlášenou cenou)
+
+Data 13F:
+{fund_json_str}"""
+            with st.spinner(_["ai_spin"]):
+                try:
+                    memo_txt = call_llm_api([{"role": "user", "content": prompt_13f}], api_key, model_provider, selected_model, temperature=0.2, timeout=35, max_tokens=1100)
+                    rep_id = f"{now_dt.strftime('%Y%m%d_%H%M%S')}_13F_{active_cik}"
+                    st.session_state.sec_ai_memo = {
+                        "id": rep_id,
+                        "datum": datum_str,
+                        "typ": "13F FOND",
+                        "cik": active_cik,
+                        "fond": short_fund,
+                        "kvartal": active_meta.get("kvartal", ""),
+                        "hlavni_nadpis": f"13F Analýza: {short_fund} ({active_meta.get('kvartal', '')})",
+                        "obsah": memo_txt,
+                        "chat": []
+                    }
+                    st.session_state.sec_ai_saved_id = None
+                    st.session_state.sec_ai_chat = []
+                except Exception as e:
+                    st.error(f"AI Error: {e}")
+
+        if st.session_state.sec_ai_memo:
+            m_obj = st.session_state.sec_ai_memo
+            st.markdown(
+                f'<div class="sec-memo-box">'
+                f'<div class="sec-memo-meta">{m_obj.get("datum", "")}  ·  13F ANALÝZA  ·  {m_obj.get("fond", "")} ({m_obj.get("kvartal", "")})</div>',
+                unsafe_allow_html=True
+            )
+            st.markdown(m_obj.get("obsah", ""))
+            st.markdown('</div>', unsafe_allow_html=True)
+
+            saved_chat_len = len(m_obj.get("chat", []))
+            curr_chat_len = len(st.session_state.sec_ai_chat)
+            has_unsaved_chat = (st.session_state.sec_ai_saved_id == m_obj["id"] and curr_chat_len != saved_chat_len)
+
+            c_a1, c_a2 = st.columns([4, 1.2])
+            with c_a1:
+                if st.session_state.sec_ai_saved_id == m_obj["id"] and not has_unsaved_chat:
+                    st.info(_["ai_already_saved"])
+                else:
+                    btn_lbl = (
+                        f"Aktualizovat 13F Analýzu + Chat ({curr_chat_len} zpráv) na GitHub"
+                        if has_unsaved_chat else _["ai_save"]
+                    )
+                    if st.button(btn_lbl, key="save_13f_btn"):
+                        arch = load_13f_archive()
+                        m_obj["chat"] = list(st.session_state.sec_ai_chat)
+                        idx_ex = next((i for i, x in enumerate(arch) if x.get("id") == m_obj["id"]), None)
+                        if idx_ex is not None:
+                            arch[idx_ex] = m_obj
+                        else:
+                            arch.insert(0, m_obj)
+                        save_13f_archive(arch, commit_msg=f"13F: Uložena analýza {short_fund} ({m_obj.get('kvartal', '')})")
+                        st.session_state.sec_ai_memo = m_obj
+                        st.session_state.sec_ai_saved_id = m_obj["id"]
+                        st.success(_["ai_saved_ok"])
+            with c_a2:
+                if st.button(_["ai_hide"], use_container_width=True, key="hide_13f_btn"):
+                    st.session_state.sec_ai_memo = None
+                    st.session_state.sec_ai_saved_id = None
+                    st.rerun()
+
+        c_ch1, c_ch2 = st.columns([5, 1.2])
+        c_ch1.markdown(f'<div class="sec-sec-label">{_["ai_chat_h"]}</div>', unsafe_allow_html=True)
+        if st.session_state.sec_ai_chat:
+            if c_ch2.button(_["ai_new_chat"], use_container_width=True, key="clr_13f_chat"):
+                st.session_state.sec_ai_chat = []
                 st.rerun()
-                
-        if os.path.exists(csv_path) and os.path.exists(meta_path):
-            with open(meta_path, "r", encoding="utf-8") as f: meta = json.load(f)
-            
-            rep_str = "Reported:" if st.session_state.get("lang") == "EN" else "Zobrazen report:"
-            asof_str = "As of" if st.session_state.get("lang") == "EN" else "Ke dni"
-            last_str = "Last updated:" if st.session_state.get("lang") == "EN" else "Naposledy staženo:"
-            
-            st.info(f"**{vyber.split('(')[0].strip()}** | {rep_str} **{meta['kvartal']}** ({asof_str} {meta['report_date']}) | *{last_str} {meta['last_updated']}*")
-            
-            df = pd.read_csv(csv_path)
-            df[" "] = "" 
-            
-            def style_df(row):
-                styles = [''] * len(row)
-                act_val = str(row['RecentActivity'])
-                if "Buy" in act_val or "Add" in act_val or "New" in act_val: styles[2] = 'color: #26A69A; font-weight: bold;'
-                elif "Reduce" in act_val or "Sell" in act_val: styles[2] = 'color: #EF5350; font-weight: bold;'
-                if pd.notnull(row['+/-Reported Price']):
+
+        for msg in st.session_state.sec_ai_chat:
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
+
+        if q_13f := st.chat_input(_["ai_chat_ph"], key="sec_13f_chat_input"):
+            st.session_state.sec_ai_chat.append({"role": "user", "content": q_13f})
+            with st.chat_message("user"):
+                st.markdown(q_13f)
+            with st.chat_message("assistant"):
+                with st.spinner(_["ai_spin"]):
+                    lang_reply = "Odpovídej čistou češtinou, stručně a k věci." if current_lang == "CZ" else "Answer in clean, concise English."
+                    msgs = [{"role": "system", "content": f"Jsi Senior Equity Analyst. Máš přesný výtah 13F portfolia fondu {short_fund}: {fund_json_str}. {lang_reply}"}]
+                    for m in st.session_state.sec_ai_chat[-6:-1]:
+                        msgs.append({"role": m["role"], "content": m["content"]})
+                    msgs.append({"role": "user", "content": q_13f})
                     try:
-                        val = float(row['+/-Reported Price'])
-                        if val > 0: styles[8] = 'color: #26A69A;' 
-                        elif val < 0: styles[8] = 'color: #EF5350;'
-                    except: pass
-                return styles
-                
-            styled_df = df.style.apply(style_df, axis=1).format({
-                "% of Portfolio": "{:.2f}%",
-                "Shares": "{:,.0f}",
-                "ReportedPrice*": "${:,.2f}",
-                "Value": "${:,.0f}",
-                "Current Price": lambda x: f"${x:,.2f}" if pd.notnull(x) else "",
-                "+/-Reported Price": lambda x: f"{x:+.2f}%" if pd.notnull(x) else "",
-                "52Week Low": lambda x: f"${x:,.2f}" if pd.notnull(x) else "",
-                "52Week High": lambda x: f"${x:,.2f}" if pd.notnull(x) else ""
-            })
-            st.dataframe(styled_df, use_container_width=True, hide_index=True, height=650)
+                        ans = call_llm_api(msgs, api_key, model_provider, selected_model, temperature=0.25, timeout=25, max_tokens=650)
+                    except Exception as e:
+                        ans = f"AI Error ({e})."
+                    st.markdown(ans)
+            if not ans.startswith("AI Error"):
+                st.session_state.sec_ai_chat.append({"role": "assistant", "content": ans})
+                st.rerun()
+
+        saved_fund_memos = [r for r in all_13f_archive if r.get("typ") == "13F FOND" and r.get("cik") == active_cik]
+        if saved_fund_memos:
+            st.markdown("---")
+            st.markdown(f'<div class="sec-sec-label">{_["ai_saved_list"]} ({short_fund}) · {len(saved_fund_memos)}</div>', unsafe_allow_html=True)
+            for sm in saved_fund_memos:
+                chat_cnt = len(sm.get("chat", []))
+                chat_tag = f" · {chat_cnt} zpráv" if chat_cnt > 0 else ""
+                c1, c2, c3 = st.columns([5, 1, 1])
+                c1.markdown(f"`{sm.get('datum', '')}` · **{sm.get('hlavni_nadpis', '')}**{chat_tag}")
+                if c2.button(_["ai_load"], key=f"load_13f_{sm.get('id')}", use_container_width=True):
+                    st.session_state.sec_ai_memo = sm
+                    st.session_state.sec_ai_saved_id = sm.get("id")
+                    st.session_state.sec_ai_chat = list(sm.get("chat", []))
+                    st.rerun()
+                if c3.button(_["ai_del"], key=f"del_13f_{sm.get('id')}", use_container_width=True):
+                    new_arch = [r for r in all_13f_archive if r.get("id") != sm.get("id")]
+                    save_13f_archive(new_arch, commit_msg=f"13F: Smazána analýza {short_fund}")
+                    if st.session_state.sec_ai_memo and st.session_state.sec_ai_memo.get("id") == sm.get("id"):
+                        st.session_state.sec_ai_memo = None
+                        st.session_state.sec_ai_chat = []
+                    st.rerun()
+
+with tab_master:
+    funds_meta_list, df_own, df_buy, df_sell = build_master_13f_aggregation(ALL_FUNDS)
+
+    if not funds_meta_list:
+        st.info(_["m_no_funds"])
+    else:
+        st.caption(f"Agregováno **{len(funds_meta_list)}** stažených fondů ze složky `sec_data/`.")
+        mc1, mc2, mc3 = st.columns(3)
+        with mc1:
+            st.markdown(f'<div class="sec-sec-label">{_["m_top_own"]}</div>', unsafe_allow_html=True)
+            if not df_own.empty:
+                st.dataframe(df_own, use_container_width=True, hide_index=True, height=320)
+        with mc2:
+            st.markdown(f'<div class="sec-sec-label">{_["m_top_buy"]}</div>', unsafe_allow_html=True)
+            if not df_buy.empty:
+                st.dataframe(df_buy, use_container_width=True, hide_index=True, height=320)
+        with mc3:
+            st.markdown(f'<div class="sec-sec-label">{_["m_top_sell"]}</div>', unsafe_allow_html=True)
+            if not df_sell.empty:
+                st.dataframe(df_sell, use_container_width=True, hide_index=True, height=320)
+
+        st.markdown("---")
+        if not api_key or not selected_model:
+            st.warning(_["ai_no_key"])
         else:
-            st.warning(_["warn_nodata"])
+            if st.button(_["m_btn"], type="primary", use_container_width=True):
+                now_dt = datetime.now(ZoneInfo("Europe/Prague"))
+                datum_str = now_dt.strftime("%d. %m. %Y %H:%M")
+                quarters = sorted({f["quarter"] for f in funds_meta_list if f.get("quarter")})
+                q_label = quarters[-1] if quarters else now_dt.strftime("%Y")
+
+                master_payload = {
+                    "total_funds_analyzed": len(funds_meta_list),
+                    "quarters_covered": quarters,
+                    "most_owned_consensus": df_own.head(15).to_dict(orient="records") if not df_own.empty else [],
+                    "most_bought_or_new": df_buy.head(15).to_dict(orient="records") if not df_buy.empty else [],
+                    "most_sold_or_reduced": df_sell.head(15).to_dict(orient="records") if not df_sell.empty else []
+                }
+                lang_instr = "v čisté češtině bez anglických frází" if current_lang == "CZ" else "in clean institutional English"
+                master_prompt = f"""Jsi Chief Investment Officer (CIO) a připravuješ čtvrtletní Master 13F report napříč {len(funds_meta_list)} sledovanými institucionálními fondy ({q_label}).
+Vypracuj strukturovaný podklad {lang_instr}, který půjde přímo použít pro týdenní tržní výhledy (začni rovnou bodem 1):
+1. **HLAVNÍ TRENDY SMART MONEY** (kam teče institucionální kapitál, jaké sektory a témata dominují)
+2. **KONSENZUÁLNÍ NÁKUPY A NOVÉ POZICE** (nejzajímavější tituly, kde nakupuje více fondů současně)
+3. **DISTRIBUCE A VÝBĚR ZISKŮ** (kde fondy nejvíce redukují nebo vystupují)
+4. **AKČNÍ VÝSTUP PRO TÝDENNÍ TRŽNÍ VÝHLED** (3–5 konkrétních bodů a tickerů k hlubšímu prověření v Terminálu)
+
+Agregovaná 13F data:
+{json.dumps(master_payload, ensure_ascii=False, default=str)}"""
+
+                with st.spinner(_["m_spin"]):
+                    try:
+                        master_txt = call_llm_api([{"role": "user", "content": master_prompt}], api_key, model_provider, selected_model, temperature=0.2, timeout=40, max_tokens=1300)
+                        rep_id = f"{now_dt.strftime('%Y%m%d_%H%M%S')}_MASTER_13F"
+                        st.session_state.sec_master_obj = {
+                            "id": rep_id,
+                            "datum": datum_str,
+                            "typ": "MASTER 13F",
+                            "kvartal": q_label,
+                            "pocet_fondu": len(funds_meta_list),
+                            "hlavni_nadpis": f"Master 13F Souhrn ({q_label} · {len(funds_meta_list)} fondů)",
+                            "obsah": master_txt
+                        }
+                        st.session_state.sec_master_saved_id = None
+                    except Exception as e:
+                        st.error(f"AI Error: {e}")
+
+            if st.session_state.sec_master_obj:
+                mo = st.session_state.sec_master_obj
+                st.markdown(
+                    f'<div class="sec-memo-box">'
+                    f'<div class="sec-memo-meta">{mo.get("datum", "")}  ·  MASTER 13F SOUHRN  ·  {mo.get("kvartal", "")} ({mo.get("pocet_fondu", "")} fondů)</div>',
+                    unsafe_allow_html=True
+                )
+                st.markdown(mo.get("obsah", ""))
+                st.markdown('</div>', unsafe_allow_html=True)
+
+                cm1, cm2 = st.columns([4, 1.2])
+                with cm1:
+                    if st.session_state.sec_master_saved_id == mo["id"]:
+                        st.info(_["ai_already_saved"])
+                    else:
+                        if st.button(_["ai_save"], key="save_master_13f"):
+                            arch = load_13f_archive()
+                            arch.insert(0, mo)
+                            save_13f_archive(arch, commit_msg=f"13F: Uložen Master 13F souhrn ({mo.get('kvartal', '')})")
+                            st.session_state.sec_master_saved_id = mo["id"]
+                            st.success(_["ai_saved_ok"])
+                with cm2:
+                    if st.button(_["ai_hide"], use_container_width=True, key="hide_master_13f"):
+                        st.session_state.sec_master_obj = None
+                        st.session_state.sec_master_saved_id = None
+                        st.rerun()
+
+                with st.expander(_["m_copy_lbl"], expanded=False):
+                    export_md = f"# {mo.get('hlavni_nadpis', '')}\nDatum: {mo.get('datum', '')}\n\n{mo.get('obsah', '')}"
+                    st.code(export_md, language="markdown")
+
+            saved_masters = [r for r in all_13f_archive if r.get("typ") == "MASTER 13F"]
+            if saved_masters:
+                st.markdown("---")
+                st.markdown(f'<div class="sec-sec-label">{_["m_saved_list"]} · {len(saved_masters)}</div>', unsafe_allow_html=True)
+                for sm in saved_masters:
+                    c1, c2, c3 = st.columns([5, 1, 1])
+                    c1.markdown(f"`{sm.get('datum', '')}` · **{sm.get('hlavni_nadpis', '')}**")
+                    if c2.button(_["ai_load"], key=f"load_m13f_{sm.get('id')}", use_container_width=True):
+                        st.session_state.sec_master_obj = sm
+                        st.session_state.sec_master_saved_id = sm.get("id")
+                        st.rerun()
+                    if c3.button(_["ai_del"], key=f"del_m13f_{sm.get('id')}", use_container_width=True):
+                        new_arch = [r for r in all_13f_archive if r.get("id") != sm.get("id")]
+                        save_13f_archive(new_arch, commit_msg="13F: Smazán Master 13F souhrn")
+                        if st.session_state.sec_master_obj and st.session_state.sec_master_obj.get("id") == sm.get("id"):
+                            st.session_state.sec_master_obj = None
+                        st.rerun()
