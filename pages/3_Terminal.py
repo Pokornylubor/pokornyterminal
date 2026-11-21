@@ -1232,28 +1232,43 @@ Používej výhradně tato data:
                     curr_chat_len = len(st.session_state.term_ai_chat)
                     has_unsaved_chat = (st.session_state.term_ai_saved_id == m_obj["id"] and curr_chat_len != saved_chat_len)
 
-                    if st.session_state.term_ai_saved_id == m_obj["id"] and not has_unsaved_chat:
-                        st.info(_["ai_already_saved"])
-                    else:
-                        btn_lbl = (
-                            f"💾 Aktualizovat Memo + Chat ({curr_chat_len} zpráv) na GitHub"
-                            if has_unsaved_chat else
-                            f"💾 {_['ai_save']}"
-                        )
-                        if st.button(btn_lbl):
-                            memos = load_memos()
-                            m_obj["chat"] = list(st.session_state.term_ai_chat)
-                            existing_idx = next((idx for idx, x in enumerate(memos) if x.get("id") == m_obj["id"]), None)
-                            if existing_idx is not None:
-                                memos[existing_idx] = m_obj
-                            else:
-                                memos.insert(0, m_obj)
-                            save_memos(memos, commit_msg=f"Terminal: Uloženo Memo + Chat {final_tick}")
-                            st.session_state.term_ai_memo_obj = m_obj
-                            st.session_state.term_ai_saved_id = m_obj["id"]
-                            st.success(_["ai_saved_ok"])
+                    c_act1, c_act2 = st.columns([4, 1.2])
+                    with c_act1:
+                        if st.session_state.term_ai_saved_id == m_obj["id"] and not has_unsaved_chat:
+                            st.info(_["ai_already_saved"])
+                        else:
+                            btn_lbl = (
+                                f"💾 Aktualizovat Memo + Chat ({curr_chat_len} zpráv) na GitHub"
+                                if has_unsaved_chat else
+                                f"💾 {_['ai_save']}"
+                            )
+                            if st.button(btn_lbl):
+                                memos = load_memos()
+                                m_obj["chat"] = list(st.session_state.term_ai_chat)
+                                existing_idx = next((idx for idx, x in enumerate(memos) if x.get("id") == m_obj["id"]), None)
+                                if existing_idx is not None:
+                                    memos[existing_idx] = m_obj
+                                else:
+                                    memos.insert(0, m_obj)
+                                save_memos(memos, commit_msg=f"Terminal: Uloženo Memo + Chat {final_tick}")
+                                st.session_state.term_ai_memo_obj = m_obj
+                                st.session_state.term_ai_saved_id = m_obj["id"]
+                                st.success(_["ai_saved_ok"])
+                    with c_act2:
+                        hide_lbl = "✖️ Skrýt memo" if current_lang == "CZ" else "✖️ Hide memo"
+                        if st.button(hide_lbl, use_container_width=True):
+                            st.session_state.term_ai_memo_obj = None
+                            st.session_state.term_ai_saved_id = None
+                            st.rerun()
 
-                st.markdown(f'<div class="term-sec-label">{_["ai_chat_h"]}</div>', unsafe_allow_html=True)
+                c_ch1, c_ch2 = st.columns([5, 1.2])
+                c_ch1.markdown(f'<div class="term-sec-label">{_["ai_chat_h"]}</div>', unsafe_allow_html=True)
+                if st.session_state.term_ai_chat:
+                    clr_lbl = "🧹 Nový chat" if current_lang == "CZ" else "🧹 Clear chat"
+                    if c_ch2.button(clr_lbl, use_container_width=True):
+                        st.session_state.term_ai_chat = []
+                        st.rerun()
+
                 for msg in st.session_state.term_ai_chat:
                     with st.chat_message(msg["role"]):
                         st.markdown(msg["content"])
