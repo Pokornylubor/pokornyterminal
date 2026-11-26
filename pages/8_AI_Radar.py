@@ -42,14 +42,14 @@ def get_headers(is_html=False):
         "Accept-Language": "en-US,en;q=0.9"
     }
 
-# --- EDITORIAL DARK CSS (MOODIX + TERMINAL STYLE) ---
+# --- EDITORIAL DARK CSS ---
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 .stApp { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
 
-.mdx-card {
+.news-card {
     width: 100%;
     margin: 10px 0 18px 0;
     padding: 24px 28px;
@@ -57,13 +57,13 @@ st.markdown("""
     border: 1px solid #1F2227;
     border-radius: 8px;
 }
-.mdx-time {
+.news-time {
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.78rem;
     color: #71717A;
     margin-bottom: 8px;
 }
-.mdx-title {
+.news-title {
     font-family: 'Inter', sans-serif;
     font-size: 1.55rem;
     font-weight: 700;
@@ -72,25 +72,25 @@ st.markdown("""
     letter-spacing: -0.015em;
     margin: 0 0 8px 0;
 }
-.mdx-sub {
+.news-sub {
     font-size: 0.78rem;
     color: #71717A;
     margin-bottom: 14px;
 }
-.mdx-body {
+.news-body {
     font-size: 0.96rem;
     line-height: 1.68;
     color: #D4D4D8;
     margin: 0 0 16px 0;
 }
-.mdx-pill-row {
+.news-pill-row {
     display: flex;
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
     margin-bottom: 8px;
 }
-.mdx-cat-pill {
+.news-cat-pill {
     font-family: 'Inter', sans-serif;
     font-size: 0.76rem;
     font-weight: 600;
@@ -100,26 +100,26 @@ st.markdown("""
     padding: 3px 10px;
     border-radius: 5px;
 }
-.mdx-score-pill {
+.news-score-pill {
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.78rem;
     font-weight: 600;
     padding: 3px 10px;
     border-radius: 5px;
 }
-.mdx-caption {
+.news-caption {
     font-size: 0.80rem;
     color: #71717A;
     margin-bottom: 16px;
 }
-.mdx-ai-box {
+.news-ai-box {
     background-color: #12151A;
     border: 1px solid #22262E;
     border-radius: 6px;
     padding: 18px 22px;
     margin-top: 10px;
 }
-.mdx-ai-hdr {
+.news-ai-hdr {
     font-size: 0.92rem;
     font-weight: 700;
     color: #F4F4F5;
@@ -128,7 +128,7 @@ st.markdown("""
     align-items: center;
     gap: 8px;
 }
-.mdx-ai-tag {
+.news-ai-tag {
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.68rem;
     font-weight: 600;
@@ -137,7 +137,7 @@ st.markdown("""
     padding: 2px 7px;
     border-radius: 4px;
 }
-.mdx-sec-lbl {
+.news-sec-lbl {
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.72rem;
     font-weight: 600;
@@ -146,17 +146,17 @@ st.markdown("""
     letter-spacing: 0.08em;
     margin: 12px 0 4px 0;
 }
-.mdx-sec-txt {
+.news-sec-txt {
     font-size: 0.93rem;
     line-height: 1.62;
     color: #E4E4E7;
     margin: 0;
 }
-.mdx-feed-row {
+.news-feed-row {
     padding: 12px 14px;
     border-bottom: 1px solid #1F2227;
 }
-.mdx-feed-title {
+.news-feed-title {
     font-size: 1.01rem;
     font-weight: 600;
     color: #F4F4F5;
@@ -224,9 +224,9 @@ ARCHIVE_FILE = os.path.join(hlavni_slozka, "ai_radar_archive.json")
 # --- DICTIONARY ---
 t = {
     "CZ": {
-        "title": "AI NEWS & SENTIMENT RADAR",
+        "title": "AI ZPRÁVY & SENTIMENT",
         "desc": "ŽIVÝ MONITOR TRŽNÍCH ZPRÁV, S&P 500 RISK-ON / RISK-OFF SKÓRE, 30MIN MINUTOVÁ REAKCE TRHU A SYNTÉZY.",
-        "tab_live": "ŽIVÝ RADAR (MOODIX FEED)",
+        "tab_live": "ŽIVÝ RADAR",
         "tab_gen": "MARKET BRIEF (SOUHRN)",
         "tab_lib": "ARCHIV REPORTŮ",
         "refresh_btn": "Obnovit zprávy",
@@ -236,7 +236,7 @@ t = {
         "open_card": "AI Vysvětlení →",
         "back_feed": "← Zpět na živý přehled zpráv",
         "orig_exp": "Zobrazit originál článku",
-        "score_desc": "Změřený dopad na S&P 500 sentiment. Kladné hodnoty podporují RiskOn, záporné RiskOff.",
+        "score_desc": "Změřený dopad na S&P 500 sentiment. Kladné hodnoty podporují Risk-On, záporné Risk-Off.",
         "ai_expl_hdr": "AI vysvětlení",
         "what_happened": "CO SE STALO",
         "why_sp500": "PROČ TO HÝBE TRHEM S&P 500",
@@ -278,7 +278,7 @@ t = {
         "lib_all": "Vše",
         "lib_macro_lbl": "MARKET BRIEF",
         "lib_stock_lbl": "AKCIE",
-        "lib_card_lbl": "MOODIX KARTA",
+        "lib_card_lbl": "ZPRÁVA (AI)",
         "lib_saved_h": "ULOŽENÉ ZPRÁVY A REPORTY",
         "lib_search": "HLEDAT V ARCHIVU",
         "lib_search_ph": "Ticker, téma nebo klíčové slovo...",
@@ -295,9 +295,9 @@ t = {
         }
     },
     "EN": {
-        "title": "AI NEWS & SENTIMENT RADAR",
+        "title": "AI NEWS & SENTIMENT",
         "desc": "REAL-TIME MARKET NEWS MONITOR, S&P 500 RISK-ON / RISK-OFF SCORE & 30-MIN MARKET REACTION.",
-        "tab_live": "LIVE RADAR (MOODIX FEED)",
+        "tab_live": "LIVE RADAR",
         "tab_gen": "MARKET BRIEF (SYNTHESIS)",
         "tab_lib": "REPORT ARCHIVE",
         "refresh_btn": "Refresh News",
@@ -307,7 +307,7 @@ t = {
         "open_card": "AI Explanation →",
         "back_feed": "← Back to live news feed",
         "orig_exp": "Show original article",
-        "score_desc": "Measured impact on S&P 500 sentiment. Positive values support RiskOn, negative RiskOff.",
+        "score_desc": "Measured impact on S&P 500 sentiment. Positive values support Risk-On, negative Risk-Off.",
         "ai_expl_hdr": "AI Explanation",
         "what_happened": "WHAT HAPPENED",
         "why_sp500": "WHY IT MOVES THE S&P 500",
@@ -349,7 +349,7 @@ t = {
         "lib_all": "All",
         "lib_macro_lbl": "MARKET BRIEF",
         "lib_stock_lbl": "EQUITY",
-        "lib_card_lbl": "MOODIX CARD",
+        "lib_card_lbl": "AI NEWS CARD",
         "lib_saved_h": "SAVED NEWS & REPORTS",
         "lib_search": "SEARCH ARCHIVE",
         "lib_search_ph": "Ticker, topic, or keyword...",
@@ -573,7 +573,6 @@ def fetch_live_wire_feed(user_tickers_tuple):
     for src_name, url, tag in WIRE_FEEDS:
         tasks.append((src_name, url, tag, None))
 
-    # Přidáme sledované tickery z portfolia a watchlistu (max 12 nejaktuálnějších dotazů)
     for tkr in list(user_tickers_tuple)[:12]:
         q_enc = requests.utils.quote(f"{tkr} stock earnings OR guidance OR news when:2d")
         gn_url = f"https://news.google.com/rss/search?q={q_enc}&hl=en-US&gl=US&ceid=US:en"
@@ -587,11 +586,9 @@ def fetch_live_wire_feed(user_tickers_tuple):
 
     raw_all.sort(key=lambda x: x["_ts"], reverse=True)
 
-    # Deduplikace titulků (preferujeme přímé wire zdroje před Google News redirectem)
     deduped = []
     for cand in raw_all:
         c_low = cand["title"].lower()
-        # Odfiltrujeme clickbait šum
         if any(noise in c_low for noise in ("why ", "3 stocks to", "2 stocks to", "motley fool", "investorplace", "prediction:")):
             continue
         is_dup = False
@@ -599,7 +596,6 @@ def fetch_live_wire_feed(user_tickers_tuple):
             sim = SequenceMatcher(None, c_low[:75], ex_item["title"].lower()[:75]).ratio()
             if sim > 0.72:
                 is_dup = True
-                # Pokud existující položka je Google News a nová je přímý wire (CNBC/MarketWatch/Yahoo), nahradíme link i summary
                 if "news.google.com" in ex_item["link"] and "news.google.com" not in cand["link"]:
                     ex_item["link"] = cand["link"]
                     ex_item["source"] = cand["source"]
@@ -636,13 +632,14 @@ def scrape_article_body(url, fallback_summary):
 # --- 1-MINUTE MARKET REACTION ENGINE (T0 vs T0 + 30 MIN) ---
 @st.cache_data(ttl=300, show_spinner=False)
 def get_30min_market_reaction(pub_utc_iso, primary_ticker=None, lang="CZ"):
+    pending_msg = t.get(lang, t["CZ"])["react_pending"]
     try:
         pub_utc = datetime.fromisoformat(pub_utc_iso)
         now_utc = datetime.now(ZoneInfo("UTC"))
         elapsed_min = (now_utc - pub_utc).total_seconds() / 60.0
 
         if elapsed_min < 30:
-            return _("react_pending")
+            return pending_msg
 
         ny_tz = ZoneInfo("America/New_York")
         t0_ny = pub_utc.astimezone(ny_tz)
@@ -665,7 +662,6 @@ def get_30min_market_reaction(pub_utc_iso, primary_ticker=None, lang="CZ"):
             after_t30 = df_1m[df_1m.index >= t30_ny]
             if after_t0.empty or after_t30.empty:
                 return None
-            # Ověříme, že první svíčka není vzdálená víc než 15 minut (jinak šlo o víkend/noc mimo trading)
             if (after_t0.index[0] - t0_ny).total_seconds() > 900:
                 return None
             p0 = float(after_t0["Open"].iloc[0])
@@ -687,12 +683,12 @@ def get_30min_market_reaction(pub_utc_iso, primary_ticker=None, lang="CZ"):
             return " | ".join(parts) + "."
         return "Zpráva vyšla mimo aktivní obchodní hodiny US burzy (víkend / noční pauza)." if lang == "CZ" else "Published outside active US market hours."
     except Exception:
-        return _("react_pending")
+        return pending_msg
 
-# --- AI MOODIX CARD ANALYZER ---
-def analyze_single_news_moodix(item, full_text, api_klic, provider, model_name, lang):
+# --- AI NEWS CARD ANALYZER ---
+def analyze_single_news(item, full_text, api_klic, provider, model_name, lang):
     lang_instr = "Piš 100% čistou, spisovnou češtinou bez anglických frází." if lang == "CZ" else "Write in clean, institutional English."
-    prompt = f"""Jsi hlavní kvantitativní a makroekonomický analytik (styl Moodix News Sentiment Engine).
+    prompt = f"""Jsi hlavní kvantitativní a makroekonomický analytik.
 Analyzuj níže uvedenou zprávu a vyhodnoť její reálný dopad na index S&P 500 (Risk-On vs. Risk-Off).
 {lang_instr}
 
@@ -731,7 +727,7 @@ Struktura JSON:
     except Exception as e:
         return {"error": str(e)}
 
-def render_moodix_card(card_obj):
+def render_news_card(card_obj):
     score = float(card_obj.get("sentiment_score", 0.0))
     if score > 0.005:
         sc_bg, sc_fg = "rgba(34,197,94,0.16)", "#22C55E"
@@ -745,24 +741,24 @@ def render_moodix_card(card_obj):
     cat_full = f"{cat_lbl} · {tkr_lbl}" if tkr_lbl else cat_lbl
 
     html = (
-        f'<div class="mdx-card">'
-        f'<div class="mdx-time">{card_obj.get("pub_cz", "")}  ·  {card_obj.get("source", "")}</div>'
-        f'<div class="mdx-title">{card_obj.get("titulek_cz", card_obj.get("title", ""))}</div>'
-        f'<div class="mdx-sub">Strojový překlad & AI extrakce  ·  <a href="{card_obj.get("link", "#")}" target="_blank" style="color:#60A5FA; text-decoration:none;">Otevřít zdrojový článek ↗</a></div>'
-        f'<p class="mdx-body">{card_obj.get("preklad_shrnuti", "")}</p>'
-        f'<div class="mdx-pill-row">'
-        f'<span class="mdx-cat-pill">{cat_full}</span>'
-        f'<span class="mdx-score-pill" style="background:{sc_bg}; color:{sc_fg};">{score:+.4f}</span>'
+        f'<div class="news-card">'
+        f'<div class="news-time">{card_obj.get("pub_cz", "")}  ·  {card_obj.get("source", "")}</div>'
+        f'<div class="news-title">{card_obj.get("titulek_cz", card_obj.get("title", ""))}</div>'
+        f'<div class="news-sub">Strojový překlad & AI extrakce  ·  <a href="{card_obj.get("link", "#")}" target="_blank" style="color:#60A5FA; text-decoration:none;">Otevřít zdrojový článek ↗</a></div>'
+        f'<p class="news-body">{card_obj.get("preklad_shrnuti", "")}</p>'
+        f'<div class="news-pill-row">'
+        f'<span class="news-cat-pill">{cat_full}</span>'
+        f'<span class="news-score-pill" style="background:{sc_bg}; color:{sc_fg};">{score:+.4f}</span>'
         f'</div>'
-        f'<div class="mdx-caption">{_["score_desc"]}</div>'
-        f'<div class="mdx-ai-box">'
-        f'<div class="mdx-ai-hdr">✦ {_["ai_expl_hdr"]} <span class="mdx-ai-tag">AI</span></div>'
-        f'<div class="mdx-sec-lbl">{_["what_happened"]}</div>'
-        f'<p class="mdx-sec-txt">{card_obj.get("co_se_stalo", "")}</p>'
-        f'<div class="mdx-sec-lbl">{_["why_sp500"]}</div>'
-        f'<p class="mdx-sec-txt">{card_obj.get("proc_to_hybe_trhem", "")}</p>'
-        f'<div class="mdx-sec-lbl">{_["how_reacted"]}</div>'
-        f'<p class="mdx-sec-txt" style="color:#A1A1AA;">{card_obj.get("reakce_trhu", _("react_pending"))}</p>'
+        f'<div class="news-caption">{_["score_desc"]}</div>'
+        f'<div class="news-ai-box">'
+        f'<div class="news-ai-hdr">✦ {_["ai_expl_hdr"]} <span class="news-ai-tag">AI</span></div>'
+        f'<div class="news-sec-lbl">{_["what_happened"]}</div>'
+        f'<p class="news-sec-txt">{card_obj.get("co_se_stalo", "")}</p>'
+        f'<div class="news-sec-lbl">{_["why_sp500"]}</div>'
+        f'<p class="news-sec-txt">{card_obj.get("proc_to_hybe_trhem", "")}</p>'
+        f'<div class="news-sec-lbl">{_["how_reacted"]}</div>'
+        f'<p class="news-sec-txt" style="color:#A1A1AA;">{card_obj.get("reakce_trhu", _["react_pending"])}</p>'
         f'</div>'
         f'</div>'
     )
@@ -772,7 +768,7 @@ def render_moodix_card(card_obj):
         st.markdown(f"**{card_obj.get('title', '')}**")
         st.write(card_obj.get("full_text") or card_obj.get("summary") or "")
 
-# --- LEGACY MARKET BRIEF GENERATOR ---
+# --- MARKET BRIEF GENERATOR ---
 @st.cache_data(ttl=900, show_spinner=False)
 def fetch_brief_news(query_str, is_ticker=True):
     news_list = []
@@ -848,8 +844,8 @@ def chat_s_ai(otazka, context_str, historie, api_klic, provider, model_name, lan
         return f"⚠️ AI Error ({e})."
 
 def vykresli_report_kartu(rep):
-    if rep.get("typ") == "MOODIX KARTA":
-        render_moodix_card(rep)
+    if rep.get("typ") in ("ZPRÁVA (AI)", "AI NEWS CARD", "MOODIX KARTA"):
+        render_news_card(rep)
         return
 
     skore = float(rep.get("sentiment_skore", 0.0))
@@ -901,18 +897,18 @@ with tab_live:
         if item_id not in st.session_state.live_analyzed_cache:
             with st.spinner(_["spin_ai"]):
                 full_body = scrape_article_body(raw_item["link"], raw_item["summary"])
-                ai_res = analyze_single_news_moodix(raw_item, full_body, api_key, model_provider, selected_model, current_lang)
+                ai_res = analyze_single_news(raw_item, full_body, api_key, model_provider, selected_model, current_lang)
                 if "error" not in ai_res:
                     det_tkr = (ai_res.get("hlavni_ticker") or raw_item.get("ticker") or "").strip().upper()
                     react_txt = get_30min_market_reaction(raw_item["pub_utc_iso"], det_tkr, current_lang)
                     now_dt = datetime.now(ZoneInfo("Europe/Prague"))
                     card_data = {
-                        "id": f"{now_dt.strftime('%Y%m%d_%H%M%S')}_MDX_{item_id}",
+                        "id": f"{now_dt.strftime('%Y%m%d_%H%M%S')}_NEWS_{item_id}",
                         "raw_id": item_id,
                         "datum": raw_item["pub_cz"],
                         "pub_cz": raw_item["pub_cz"],
                         "pub_utc_iso": raw_item["pub_utc_iso"],
-                        "typ": "MOODIX KARTA",
+                        "typ": "ZPRÁVA (AI)",
                         "tema": det_tkr if det_tkr else ai_res.get("kategorie", "Trh"),
                         "source": raw_item["source"],
                         "link": raw_item["link"],
@@ -937,18 +933,17 @@ with tab_live:
 
         if item_id in st.session_state.live_analyzed_cache:
             card_obj = st.session_state.live_analyzed_cache[item_id]
-            # Aktualizujeme 30min reakci, pokud mezitím uplynulo 30 minut
-            if card_obj.get("reakce_trhu") == _("react_pending"):
+            if card_obj.get("reakce_trhu") == _["react_pending"]:
                 card_obj["reakce_trhu"] = get_30min_market_reaction(card_obj["pub_utc_iso"], card_obj.get("hlavni_ticker"), current_lang)
                 st.session_state.live_analyzed_cache[item_id] = card_obj
 
-            render_moodix_card(card_obj)
+            render_news_card(card_obj)
 
-            if st.button(_["save_card"], key=f"save_mdx_{item_id}"):
+            if st.button(_["save_card"], key=f"save_news_{item_id}"):
                 arch = load_archive()
                 if not any(x.get("raw_id") == item_id for x in arch):
                     arch.insert(0, card_obj)
-                    save_archive(arch, commit_msg=f"AI Radar: Uložena Moodix karta ({card_obj['tema']})")
+                    save_archive(arch, commit_msg=f"AI Radar: Uložena zpráva ({card_obj['tema']})")
                 st.success(_["saved_ok"])
 
             st.markdown("---")
@@ -960,7 +955,7 @@ with tab_live:
                 with st.chat_message(m["role"]):
                     st.markdown(m["content"])
 
-            if q_news := st.chat_input(_["ask_news_ph"], key=f"chat_mdx_{item_id}"):
+            if q_news := st.chat_input(_["ask_news_ph"], key=f"chat_news_{item_id}"):
                 chat_list.append({"role": "user", "content": q_news})
                 with st.chat_message("user"):
                     st.markdown(q_news)
@@ -992,7 +987,6 @@ with tab_live:
         with st.spinner(_["spin_search"]):
             wire_items = fetch_live_wire_feed(tuple(tickers))
 
-        # Agregovaný denní sentiment z již analyzovaných karet v relaci
         if st.session_state.live_analyzed_cache:
             tot_sc = sum(float(c.get("sentiment_score", 0.0)) for c in st.session_state.live_analyzed_cache.values())
             cnt_sc = len(st.session_state.live_analyzed_cache)
@@ -1028,9 +1022,9 @@ with tab_live:
                 r1, r2 = st.columns([5.5, 1.2])
                 with r1:
                     st.markdown(
-                        f'<div class="mdx-feed-row">'
-                        f'<div class="mdx-time" style="margin-bottom:2px;">{it["pub_cz"]}  ·  {it["source"]}{tkr_badge}{sc_html}</div>'
-                        f'<div class="mdx-feed-title">{disp_title}</div>'
+                        f'<div class="news-feed-row">'
+                        f'<div class="news-time" style="margin-bottom:2px;">{it["pub_cz"]}  ·  {it["source"]}{tkr_badge}{sc_html}</div>'
+                        f'<div class="news-feed-title">{disp_title}</div>'
                         f'</div>',
                         unsafe_allow_html=True
                     )
@@ -1176,7 +1170,7 @@ with tab_lib:
             filtered = []
             for r in archive:
                 r_typ = r.get("typ", "")
-                if typ_filtr == _["lib_card_lbl"] and r_typ != "MOODIX KARTA":
+                if typ_filtr == _["lib_card_lbl"] and r_typ not in ("ZPRÁVA (AI)", "AI NEWS CARD", "MOODIX KARTA"):
                     continue
                 if typ_filtr == _["lib_macro_lbl"] and r_typ != "MARKET BRIEF":
                     continue
