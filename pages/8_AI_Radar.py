@@ -1138,7 +1138,8 @@ with tab_live:
                     m1, m2 = st.columns([5.2, 1.2])
                     sc_v = float(c_obj.get("sentiment_score", 0.0))
                     tag_ex = "" if is_in else f" *{_['sent_excluded_tag']}*"
-                    m1.markdown(f"`{sc_v:+.4f}` · **{c_obj.get('hlavni_nadpis', c_obj.get('title', ''))}**{tag_ex}")
+                    disp_mgr_title = c_obj.get("hlavni_nadpis") if c_obj.get("lang") == current_lang else c_obj.get("title", c_obj.get("hlavni_nadpis", ""))
+                    m1.markdown(f"`{sc_v:+.4f}` · **{disp_mgr_title}**{tag_ex}")
                     tog_lbl = _["sent_remove"] if is_in else "+ Zahrnout" if current_lang == "CZ" else "+ Include"
                     if m2.button(tog_lbl, key=f"mgr_sent_{rid}", use_container_width=True):
                         if is_in:
