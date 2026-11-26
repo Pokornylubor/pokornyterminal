@@ -232,10 +232,18 @@ t = {
         "refresh_btn": "Obnovit zprávy",
         "filter_lbl": "FILTR ZPRÁV",
         "search_lbl": "HLEDAT VE ZPRÁVÁCH",
-        "search_ph": "Ticker, firma, Fed, cla, ropa...",
+        "search_ph": "Vyhledat...",
+        "noise_exp": "Filtr šumu (blokovaná slova a skryté zprávy)",
+        "noise_inp": "Vlastní blokovaná slova (oddělená čárkou):",
+        "noise_ph": "např. 401(k), BMW, Moneyist, Buy the Dip",
+        "noise_reset": "Obnovit skryté zprávy",
+        "session_stats": "Analyzováno v této relaci: **{cnt}** zpráv | Kumulativní S&P 500 Sentiment: **{reg} ({sc:+.4f})**",
         "open_card": "AI Vysvětlení →",
+        "open_cached": "Otevřít kartu →",
         "back_feed": "← Zpět na živý přehled zpráv",
         "orig_exp": "Zobrazit originál článku",
+        "card_sub": "Strojový překlad & AI extrakce",
+        "card_src_link": "Otevřít zdrojový článek ↗",
         "score_desc": "Změřený dopad na S&P 500 sentiment. Kladné hodnoty podporují Risk-On, záporné Risk-Off.",
         "ai_expl_hdr": "AI vysvětlení",
         "what_happened": "CO SE STALO",
@@ -281,11 +289,20 @@ t = {
         "lib_card_lbl": "ZPRÁVA (AI)",
         "lib_saved_h": "ULOŽENÉ ZPRÁVY A REPORTY",
         "lib_search": "HLEDAT V ARCHIVU",
-        "lib_search_ph": "Ticker, téma nebo klíčové slovo...",
+        "lib_search_ph": "Vyhledat...",
         "lib_open": "Číst →",
         "lib_del": "Smazat",
         "lib_deleted": "Odstraněno z Archivu.",
         "lib_back": "← Zpět do Archivu",
+        "filter_map": {
+            "ALL": "Vše",
+            "WATCHLIST": "Moje Portfolio & Watchlist",
+            "EQUITIES": "Firmy",
+            "TRADE": "Obchodní války & Geopolitika",
+            "MACRO": "Makro & Centrální banky",
+            "COMMODITIES": "Komodity",
+            "MARKET": "Trh"
+        },
         "presets": {
             "US Trh & Indexy (S&P 500, Nasdaq)": "S&P 500 Nasdaq stock market Wall Street",
             "FED, Inflace & Dluhopisy": "Federal Reserve interest rates CPI inflation treasury yields",
@@ -303,10 +320,18 @@ t = {
         "refresh_btn": "Refresh News",
         "filter_lbl": "NEWS FILTER",
         "search_lbl": "SEARCH NEWS",
-        "search_ph": "Ticker, company, Fed, tariffs, oil...",
+        "search_ph": "Search...",
+        "noise_exp": "Noise filter (blocked keywords & hidden news)",
+        "noise_inp": "Custom blocked keywords (comma-separated):",
+        "noise_ph": "e.g. 401(k), BMW, Moneyist, Buy the Dip",
+        "noise_reset": "Restore hidden news",
+        "session_stats": "Analyzed in this session: **{cnt}** news | Cumulative S&P 500 Sentiment: **{reg} ({sc:+.4f})**",
         "open_card": "AI Explanation →",
+        "open_cached": "Open Card →",
         "back_feed": "← Back to live news feed",
         "orig_exp": "Show original article",
+        "card_sub": "AI Summary & Extraction",
+        "card_src_link": "Open source article ↗",
         "score_desc": "Measured impact on S&P 500 sentiment. Positive values support Risk-On, negative Risk-Off.",
         "ai_expl_hdr": "AI Explanation",
         "what_happened": "WHAT HAPPENED",
@@ -352,11 +377,20 @@ t = {
         "lib_card_lbl": "AI NEWS CARD",
         "lib_saved_h": "SAVED NEWS & REPORTS",
         "lib_search": "SEARCH ARCHIVE",
-        "lib_search_ph": "Ticker, topic, or keyword...",
+        "lib_search_ph": "Search...",
         "lib_open": "Read →",
         "lib_del": "Delete",
         "lib_deleted": "Removed from Archive.",
         "lib_back": "← Back to Archive",
+        "filter_map": {
+            "ALL": "All",
+            "WATCHLIST": "My Portfolio & Watchlist",
+            "EQUITIES": "Equities",
+            "TRADE": "Trade Wars & Geopolitics",
+            "MACRO": "Macro & Central Banks",
+            "COMMODITIES": "Commodities",
+            "MARKET": "Market"
+        },
         "presets": {
             "US Market & Indices (S&P 500, Nasdaq)": "S&P 500 Nasdaq stock market Wall Street",
             "FED, Inflation & Bonds": "Federal Reserve interest rates CPI inflation treasury yields",
@@ -430,6 +464,8 @@ for key, default in [
     ("live_selected_item", None),
     ("live_analyzed_cache", {}),
     ("live_chat_history", {}),
+    ("live_hidden_ids", set()),
+    ("live_custom_block", ""),
     ("lab_current_report", None),
     ("lab_chat", []),
     ("lab_saved_id", None),
@@ -494,14 +530,21 @@ def call_llm_api(messages, api_klic, provider, model_name, temperature=0.15, tim
 
 # --- MULTI-SOURCE REAL-TIME NEWS ENGINE ---
 WIRE_FEEDS = [
-    ("CNBC Top News", "https://www.cnbc.com/id/100003114/device/rss/rss.html", "Trh"),
-    ("CNBC Finance", "https://www.cnbc.com/id/10000664/device/rss/rss.html", "Firmy"),
-    ("CNBC Economy", "https://www.cnbc.com/id/20910258/device/rss/rss.html", "Makro"),
-    ("CNBC Earnings", "https://www.cnbc.com/id/15839135/device/rss/rss.html", "Firmy"),
-    ("MarketWatch", "https://feeds.marketwatch.com/marketwatch/topstories/", "Trh"),
-    ("MarketWatch Bulletins", "https://feeds.marketwatch.com/marketwatch/realtimeheadlines/", "Trh"),
-    ("Yahoo Finance", "https://finance.yahoo.com/news/rssindex", "Trh")
+    ("CNBC Top News", "https://www.cnbc.com/id/100003114/device/rss/rss.html", "MARKET"),
+    ("CNBC Finance", "https://www.cnbc.com/id/10000664/device/rss/rss.html", "EQUITIES"),
+    ("CNBC Economy", "https://www.cnbc.com/id/20910258/device/rss/rss.html", "MACRO"),
+    ("CNBC Earnings", "https://www.cnbc.com/id/15839135/device/rss/rss.html", "EQUITIES"),
+    ("MarketWatch", "https://feeds.marketwatch.com/marketwatch/topstories/", "MARKET"),
+    ("MarketWatch Bulletins", "https://feeds.marketwatch.com/marketwatch/realtimeheadlines/", "MARKET"),
+    ("Yahoo Finance", "https://finance.yahoo.com/news/rssindex", "MARKET")
 ]
+
+DEFAULT_NOISE_PATTERNS = (
+    "why ", "3 stocks to", "2 stocks to", "motley fool", "investorplace", "prediction:",
+    "401(k)", "i'm in my", "should i ", "am i a ", "my son", "my daughter", "my husband",
+    "my wife", "inheritance", "is it time to buy", "24/7 wall st", "buyer beware",
+    "i hate that", "the moneyist", "retire at", "retirement savings"
+)
 
 CZ_DAYS = {0: "po", 1: "út", 2: "st", 3: "čt", 4: "pá", 5: "so", 6: "ne"}
 
@@ -516,18 +559,18 @@ def clean_html_text(raw_html):
     soup = BeautifulSoup(raw_html, "lxml")
     return re.sub(r"\s+", " ", soup.get_text(" ", strip=True)).strip()
 
-def classify_topic_hint(title_lower, default_tag):
+def classify_topic_key(title_lower, default_key):
     if any(k in title_lower for k in ("tariff", "trade war", "sanction", "china", "export control", "ustr", "customs", "geopolit", "iran", "russia", "ukraine", "israel")):
-        return "Obchodní války & Geopolitika"
+        return "TRADE"
     if any(k in title_lower for k in ("fed ", "federal reserve", "powell", "fomc", "cpi", "inflation", "pce", "payroll", "unemployment", "gdp", "treasury", "yield", "interest rate", "ecb")):
-        return "Makro & Centrální banky"
+        return "MACRO"
     if any(k in title_lower for k in ("oil", "crude", "wti", "brent", "gold", "xau", "copper", "natural gas", "opec", "commodity")):
-        return "Komodity"
+        return "COMMODITIES"
     if any(k in title_lower for k in ("earnings", "revenue", "eps", "guidance", "quarter", "q1", "q2", "q3", "q4", "shares", "stock", "ceo", "merger", "buyback", "ai ", "nvidia", "apple", "dell", "amazon", "google", "microsoft", "meta", "tesla")):
-        return "Firmy"
-    return default_tag
+        return "EQUITIES"
+    return default_key
 
-def parse_single_rss(source_name, url, default_tag, matched_ticker=None):
+def parse_single_rss(source_name, url, default_key, matched_ticker=None):
     items_out = []
     try:
         resp = requests.get(url, headers=get_headers(is_html=False), timeout=7)
@@ -549,7 +592,7 @@ def parse_single_rss(source_name, url, default_tag, matched_ticker=None):
 
             ts_unix = dt_parsed.timestamp()
             uid = hashlib.md5(f"{title[:70]}_{int(ts_unix // 3600)}".encode("utf-8")).hexdigest()[:12]
-            topic_tag = classify_topic_hint(title.lower(), default_tag)
+            topic_key = classify_topic_key(title.lower(), default_key)
 
             items_out.append({
                 "id": uid,
@@ -557,7 +600,7 @@ def parse_single_rss(source_name, url, default_tag, matched_ticker=None):
                 "summary": summary,
                 "link": link,
                 "source": source_name,
-                "topic_tag": topic_tag,
+                "topic_key": topic_key,
                 "ticker": matched_ticker,
                 "pub_utc_iso": dt_parsed.isoformat(),
                 "pub_cz": format_cz_timestamp(dt_parsed),
@@ -570,13 +613,13 @@ def parse_single_rss(source_name, url, default_tag, matched_ticker=None):
 @st.cache_data(ttl=300, show_spinner=False)
 def fetch_live_wire_feed(user_tickers_tuple):
     tasks = []
-    for src_name, url, tag in WIRE_FEEDS:
-        tasks.append((src_name, url, tag, None))
+    for src_name, url, tkey in WIRE_FEEDS:
+        tasks.append((src_name, url, tkey, None))
 
     for tkr in list(user_tickers_tuple)[:12]:
         q_enc = requests.utils.quote(f"{tkr} stock earnings OR guidance OR news when:2d")
         gn_url = f"https://news.google.com/rss/search?q={q_enc}&hl=en-US&gl=US&ceid=US:en"
-        tasks.append((f"Watchlist ({tkr})", gn_url, "Firmy", tkr))
+        tasks.append((f"Watchlist ({tkr})", gn_url, "EQUITIES", tkr))
 
     raw_all = []
     with ThreadPoolExecutor(max_workers=10) as ex:
@@ -589,7 +632,7 @@ def fetch_live_wire_feed(user_tickers_tuple):
     deduped = []
     for cand in raw_all:
         c_low = cand["title"].lower()
-        if any(noise in c_low for noise in ("why ", "3 stocks to", "2 stocks to", "motley fool", "investorplace", "prediction:")):
+        if any(noise in c_low for noise in DEFAULT_NOISE_PATTERNS):
             continue
         is_dup = False
         for ex_item in deduped:
@@ -674,10 +717,11 @@ def get_30min_market_reaction(pub_utc_iso, primary_ticker=None, lang="CZ"):
         tkr_chg = calc_ticker_move(primary_ticker) if (primary_ticker and primary_ticker != "SPY") else None
 
         parts = []
+        suffix = "za 30 min" if lang == "CZ" else "in 30 min"
         if spy_chg is not None:
-            parts.append(f"S&P 500 (SPY): {spy_chg:+.2f} % za 30 min")
+            parts.append(f"S&P 500 (SPY): {spy_chg:+.2f} % {suffix}")
         if tkr_chg is not None:
-            parts.append(f"{primary_ticker}: {tkr_chg:+.2f} % za 30 min")
+            parts.append(f"{primary_ticker}: {tkr_chg:+.2f} % {suffix}")
 
         if parts:
             return " | ".join(parts) + "."
@@ -688,6 +732,7 @@ def get_30min_market_reaction(pub_utc_iso, primary_ticker=None, lang="CZ"):
 # --- AI NEWS CARD ANALYZER ---
 def analyze_single_news(item, full_text, api_klic, provider, model_name, lang):
     lang_instr = "Piš 100% čistou, spisovnou češtinou bez anglických frází." if lang == "CZ" else "Write in clean, institutional English."
+    cat_opts = '"Firmy" nebo "Obchodní války" nebo "Makro" nebo "Centrální banky" nebo "Komodity" nebo "Geopolitika"' if lang == "CZ" else '"Equities" or "Trade Wars" or "Macro" or "Central Banks" or "Commodities" or "Geopolitics"'
     prompt = f"""Jsi hlavní kvantitativní a makroekonomický analytik.
 Analyzuj níže uvedenou zprávu a vyhodnoť její reálný dopad na index S&P 500 (Risk-On vs. Risk-Off).
 {lang_instr}
@@ -699,7 +744,7 @@ PRAVIDLA PRO SKÓRE (`sentiment_score`):
 - Makro / Fed / Inflace / Cla / Obchodní války / Geopolitika: -0.8000 až +0.8000 (např. nové plošné tarify = -0.4400).
 
 PŘÍSNÁ PRAVIDLA PRO TEXT:
-- V `preklad_shrnuti` přelož a věcně shrň celý článek s přesnými čísly (tržby, EPS, backlog, marže, sazby, cla).
+- V `preklad_shrnuti` věcně shrň celý článek s přesnými čísly (tržby, EPS, backlog, marže, sazby, cla).
 - V `co_se_stalo` shrň fakta ve 3–4 hutných větách.
 - V `proc_to_hybe_trhem` vysvětli konkrétní dopad na S&P 500, ziskové marže, AI cyklus nebo úrokové sazby.
 - Vrať VÝHRADNĚ platný JSON bez jakéhokoli dalšího textu.
@@ -711,9 +756,9 @@ Text článku:
 
 Struktura JSON:
 {{
-    "titulek_cz": "Přesný český překlad titulku",
-    "preklad_shrnuti": "Podrobný český překlad a shrnutí zprávy se všemi tvrdými čísly",
-    "kategorie": "Firmy" nebo "Obchodní války" nebo "Makro" nebo "Centrální banky" nebo "Komodity" nebo "Geopolitika",
+    "titulek_cz": "Přesný titulek ve zvoleném jazyce",
+    "preklad_shrnuti": "Podrobné shrnutí zprávy se všemi tvrdými čísly",
+    "kategorie": {cat_opts},
     "sentiment_score": 0.0450,
     "hlavni_ticker": "DELL" nebo "",
     "co_se_stalo": "3–4 věcné věty co přesně se stalo",
@@ -736,7 +781,7 @@ def render_news_card(card_obj):
     else:
         sc_bg, sc_fg = "rgba(161,161,170,0.16)", "#A1A1AA"
 
-    cat_lbl = card_obj.get("kategorie", "Trh")
+    cat_lbl = card_obj.get("kategorie", _["filter_map"]["MARKET"])
     tkr_lbl = card_obj.get("hlavni_ticker", "")
     cat_full = f"{cat_lbl} · {tkr_lbl}" if tkr_lbl else cat_lbl
 
@@ -744,7 +789,7 @@ def render_news_card(card_obj):
         f'<div class="news-card">'
         f'<div class="news-time">{card_obj.get("pub_cz", "")}  ·  {card_obj.get("source", "")}</div>'
         f'<div class="news-title">{card_obj.get("titulek_cz", card_obj.get("title", ""))}</div>'
-        f'<div class="news-sub">Strojový překlad & AI extrakce  ·  <a href="{card_obj.get("link", "#")}" target="_blank" style="color:#60A5FA; text-decoration:none;">Otevřít zdrojový článek ↗</a></div>'
+        f'<div class="news-sub">{_["card_sub"]}  ·  <a href="{card_obj.get("link", "#")}" target="_blank" style="color:#60A5FA; text-decoration:none;">{_["card_src_link"]}</a></div>'
         f'<p class="news-body">{card_obj.get("preklad_shrnuti", "")}</p>'
         f'<div class="news-pill-row">'
         f'<span class="news-cat-pill">{cat_full}</span>'
@@ -908,8 +953,8 @@ with tab_live:
                         "datum": raw_item["pub_cz"],
                         "pub_cz": raw_item["pub_cz"],
                         "pub_utc_iso": raw_item["pub_utc_iso"],
-                        "typ": "ZPRÁVA (AI)",
-                        "tema": det_tkr if det_tkr else ai_res.get("kategorie", "Trh"),
+                        "typ": _["lib_card_lbl"],
+                        "tema": det_tkr if det_tkr else ai_res.get("kategorie", _["filter_map"]["MARKET"]),
                         "source": raw_item["source"],
                         "link": raw_item["link"],
                         "title": raw_item["title"],
@@ -918,7 +963,7 @@ with tab_live:
                         "hlavni_nadpis": ai_res.get("titulek_cz", raw_item["title"]),
                         "titulek_cz": ai_res.get("titulek_cz", raw_item["title"]),
                         "preklad_shrnuti": ai_res.get("preklad_shrnuti", raw_item["summary"]),
-                        "kategorie": ai_res.get("kategorie", raw_item["topic_tag"]),
+                        "kategorie": ai_res.get("kategorie", _["filter_map"].get(raw_item["topic_key"], _["filter_map"]["MARKET"])),
                         "hlavni_ticker": det_tkr,
                         "sentiment_score": float(ai_res.get("sentiment_score", 0.0)),
                         "sentiment_skore": float(ai_res.get("sentiment_score", 0.0)),
@@ -976,13 +1021,34 @@ with tab_live:
                     chat_list.append({"role": "assistant", "content": ans})
                     st.rerun()
     else:
+        fmap = _["filter_map"]
+        filter_keys = ["ALL", "WATCHLIST", "EQUITIES", "TRADE", "MACRO", "COMMODITIES"]
+
         c_top1, c_top2, c_top3 = st.columns([1.4, 2.2, 0.9])
-        filter_opts = ["Vše", "Moje Portfolio & Watchlist", "Firmy", "Obchodní války & Geopolitika", "Makro & Centrální banky", "Komodity"]
-        sel_filter = c_top1.selectbox(_["filter_lbl"], filter_opts, label_visibility="collapsed")
+        sel_filter_key = c_top1.selectbox(
+            _["filter_lbl"],
+            filter_keys,
+            format_func=lambda k: fmap[k],
+            label_visibility="collapsed"
+        )
         q_filter = c_top2.text_input(_["search_lbl"], placeholder=_["search_ph"], label_visibility="collapsed").strip().lower()
         if c_top3.button(_["refresh_btn"], use_container_width=True):
             fetch_live_wire_feed.clear()
             st.rerun()
+
+        with st.expander(_["noise_exp"], expanded=False):
+            cn1, cn2 = st.columns([4, 1.2])
+            st.session_state.live_custom_block = cn1.text_input(
+                _["noise_inp"],
+                value=st.session_state.live_custom_block,
+                placeholder=_["noise_ph"]
+            )
+            if st.session_state.live_hidden_ids:
+                with cn2:
+                    st.markdown('<div style="padding-top:28px;"></div>', unsafe_allow_html=True)
+                    if st.button(_["noise_reset"], use_container_width=True):
+                        st.session_state.live_hidden_ids = set()
+                        st.rerun()
 
         with st.spinner(_["spin_search"]):
             wire_items = fetch_live_wire_feed(tuple(tickers))
@@ -991,13 +1057,19 @@ with tab_live:
             tot_sc = sum(float(c.get("sentiment_score", 0.0)) for c in st.session_state.live_analyzed_cache.values())
             cnt_sc = len(st.session_state.live_analyzed_cache)
             reg_lbl = "RISK-ON" if tot_sc > 0.02 else ("RISK-OFF" if tot_sc < -0.02 else "NEUTRAL")
-            st.info(f"Analyzováno v této relaci: **{cnt_sc}** zpráv | Kumulativní S&P 500 Sentiment: **{reg_lbl} ({tot_sc:+.4f})**")
+            st.info(_["session_stats"].format(cnt=cnt_sc, reg=reg_lbl, sc=tot_sc))
+
+        custom_blocks = [w.strip().lower() for w in st.session_state.live_custom_block.split(",") if w.strip()]
 
         filtered_wire = []
         for it in wire_items:
-            if sel_filter == "Moje Portfolio & Watchlist" and not it.get("ticker"):
+            if it["id"] in st.session_state.live_hidden_ids:
                 continue
-            elif sel_filter not in ("Vše", "Moje Portfolio & Watchlist") and it.get("topic_tag") != sel_filter:
+            if custom_blocks and any(b in it["title"].lower() for b in custom_blocks):
+                continue
+            if sel_filter_key == "WATCHLIST" and not it.get("ticker"):
+                continue
+            elif sel_filter_key not in ("ALL", "WATCHLIST") and it.get("topic_key") != sel_filter_key:
                 continue
             if q_filter:
                 hay = f"{it['title']} {it['summary']} {it.get('ticker') or ''} {it['source']}".lower()
@@ -1017,9 +1089,10 @@ with tab_live:
                     sc_col = "#22C55E" if sc > 0.005 else ("#EF4444" if sc < -0.005 else "#A1A1AA")
                     sc_html = f' · <span style="color:{sc_col}; font-weight:600;">{cached_c["kategorie"]} {sc:+.4f}</span>'
                 else:
-                    sc_html = f' · <span style="color:#A1A1AA;">{it["topic_tag"]}</span>'
+                    topic_lbl = fmap.get(it.get("topic_key", "MARKET"), fmap["MARKET"])
+                    sc_html = f' · <span style="color:#A1A1AA;">{topic_lbl}</span>'
 
-                r1, r2 = st.columns([5.5, 1.2])
+                r1, r2, r3 = st.columns([5.2, 1.2, 0.35])
                 with r1:
                     st.markdown(
                         f'<div class="news-feed-row">'
@@ -1030,9 +1103,14 @@ with tab_live:
                     )
                 with r2:
                     st.markdown('<div style="padding-top:14px;"></div>', unsafe_allow_html=True)
-                    btn_txt = "Otevřít kartu →" if cached_c else _["open_card"]
+                    btn_txt = _["open_cached"] if cached_c else _["open_card"]
                     if st.button(btn_txt, key=f"open_wire_{it['id']}", use_container_width=True):
                         st.session_state.live_selected_item = it
+                        st.rerun()
+                with r3:
+                    st.markdown('<div style="padding-top:14px;"></div>', unsafe_allow_html=True)
+                    if st.button("✕", key=f"hide_wire_{it['id']}", use_container_width=True):
+                        st.session_state.live_hidden_ids.add(it["id"])
                         st.rerun()
 
 with tab_gen:
