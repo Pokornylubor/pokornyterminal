@@ -237,10 +237,16 @@ t = {
         "noise_inp": "Vlastní blokovaná slova (oddělená čárkou):",
         "noise_ph": "např. 401(k), BMW, Moneyist, Buy the Dip",
         "noise_reset": "Obnovit skryté zprávy",
-        "session_stats": "Analyzováno v této relaci: **{cnt}** zpráv | Kumulativní S&P 500 Sentiment: **{reg} ({sc:+.4f})**",
+        "session_stats": "Započítáno v sentimentu: **{cnt}** zpráv | Kumulativní S&P 500 Sentiment: **{reg} ({sc:+.4f})**",
+        "sent_mgr_exp": "Spravovat zprávy v celkovém sentimentu",
+        "sent_include": "Započítat do celkového S&P 500 sentimentu",
+        "sent_remove": "Odebrat",
+        "sent_excluded_tag": "(vypnuto ze sentimentu)",
         "open_card": "AI Vysvětlení →",
         "open_cached": "Otevřít kartu →",
         "back_feed": "← Zpět na živý přehled zpráv",
+        "btn_tr_other": "Strojový překlad → EN",
+        "btn_tr_back": "Zpět do CZ",
         "orig_exp": "Zobrazit originál článku",
         "card_sub": "Strojový překlad & AI extrakce",
         "card_src_link": "Otevřít zdrojový článek ↗",
@@ -325,10 +331,16 @@ t = {
         "noise_inp": "Custom blocked keywords (comma-separated):",
         "noise_ph": "e.g. 401(k), BMW, Moneyist, Buy the Dip",
         "noise_reset": "Restore hidden news",
-        "session_stats": "Analyzed in this session: **{cnt}** news | Cumulative S&P 500 Sentiment: **{reg} ({sc:+.4f})**",
+        "session_stats": "Included in sentiment: **{cnt}** news | Cumulative S&P 500 Sentiment: **{reg} ({sc:+.4f})**",
+        "sent_mgr_exp": "Manage news in cumulative sentiment",
+        "sent_include": "Include in cumulative S&P 500 sentiment",
+        "sent_remove": "Remove",
+        "sent_excluded_tag": "(excluded from sentiment)",
         "open_card": "AI Explanation →",
         "open_cached": "Open Card →",
         "back_feed": "← Back to live news feed",
+        "btn_tr_other": "Machine Translation → CZ",
+        "btn_tr_back": "Back to EN",
         "orig_exp": "Show original article",
         "card_sub": "AI Summary & Extraction",
         "card_src_link": "Open source article ↗",
@@ -462,7 +474,9 @@ if not api_key or not selected_model:
 # --- SESSION STATE ---
 for key, default in [
     ("live_selected_item", None),
-    ("live_analyzed_cache", {}),
+    ("live_analyzed_cache", {}),       # key: f"{item_id}_{lang}"
+    ("live_card_lang_override", {}),   # key: item_id -> "CZ" / "EN"
+    ("live_excluded_sentiment", set()),
     ("live_chat_history", {}),
     ("live_hidden_ids", set()),
     ("live_custom_block", ""),
@@ -547,9 +561,13 @@ DEFAULT_NOISE_PATTERNS = (
 )
 
 CZ_DAYS = {0: "po", 1: "út", 2: "st", 3: "čt", 4: "pá", 5: "so", 6: "ne"}
+EN_DAYS = {0: "Mon", 1: "Tue", 2: "Wed", 3: "Thu", 4: "Fri", 5: "Sat", 6: "Sun"}
 
-def format_cz_timestamp(dt_utc):
+def format_timestamp(dt_utc, lang="CZ"):
     dt_prg = dt_utc.astimezone(ZoneInfo("Europe/Prague"))
+    if lang == "EN":
+        day_abbr = EN_DAYS.get(dt_prg.weekday(), "")
+        return f"{day_abbr} {dt_prg.strftime('%Y-%m-%d %H:%M')} CET"
     day_abbr = CZ_DAYS.get(dt_prg.weekday(), "")
     return f"{day_abbr} {dt_prg.day}. {dt_prg.month}. {dt_prg.year} {dt_prg.strftime('%H:%M')} SEČ"
 
@@ -603,7 +621,8 @@ def parse_single_rss(source_name, url, default_key, matched_ticker=None):
                 "topic_key": topic_key,
                 "ticker": matched_ticker,
                 "pub_utc_iso": dt_parsed.isoformat(),
-                "pub_cz": format_cz_timestamp(dt_parsed),
+                "pub_cz": format_timestamp(dt_parsed, "CZ"),
+                "pub_en": format_timestamp(dt_parsed, "EN"),
                 "_ts": ts_unix
             })
     except Exception:
@@ -725,44 +744,50 @@ def get_30min_market_reaction(pub_utc_iso, primary_ticker=None, lang="CZ"):
 
         if parts:
             return " | ".join(parts) + "."
-        return "Zpráva vyšla mimo aktivní obchodní hodiny US burzy (víkend / noční pauza)." if lang == "CZ" else "Published outside active US market hours."
+        return "Zpráva vyšla mimo aktivní obchodní hodiny US burzy (víkend / noční pauza)." if lang == "CZ" else "Published outside active US market hours (weekend / overnight)."
     except Exception:
         return pending_msg
 
 # --- AI NEWS CARD ANALYZER ---
 def analyze_single_news(item, full_text, api_klic, provider, model_name, lang):
-    lang_instr = "Piš 100% čistou, spisovnou češtinou bez anglických frází." if lang == "CZ" else "Write in clean, institutional English."
-    cat_opts = '"Firmy" nebo "Obchodní války" nebo "Makro" nebo "Centrální banky" nebo "Komodity" nebo "Geopolitika"' if lang == "CZ" else '"Equities" or "Trade Wars" or "Macro" or "Central Banks" or "Commodities" or "Geopolitics"'
-    prompt = f"""Jsi hlavní kvantitativní a makroekonomický analytik.
-Analyzuj níže uvedenou zprávu a vyhodnoť její reálný dopad na index S&P 500 (Risk-On vs. Risk-Off).
+    if lang == "CZ":
+        lang_instr = "Piš 100% čistou, spisovnou češtinou bez anglických frází."
+        cat_opts = '"Firmy" nebo "Obchodní války" nebo "Makro" nebo "Centrální banky" nebo "Komodity" nebo "Geopolitika"'
+    else:
+        lang_instr = "Write 100% pure, concise, institutional English. Do NOT use Czech words."
+        cat_opts = '"Equities" or "Trade Wars" or "Macro" or "Central Banks" or "Commodities" or "Geopolitics"'
+
+    prompt = f"""You are a senior quantitative & macro market analyst.
+Analyze the news article below and evaluate its real impact on the S&P 500 index (Risk-On vs. Risk-Off).
 {lang_instr}
 
-PRAVIDLA PRO SKÓRE (`sentiment_score`):
-- Rozsah je od -1.0000 do +1.0000 (uveď přesně na 4 desetinná místa).
-- Jednotlivá firma (výsledky, zakázky, výhled): obvykle -0.1000 až +0.1000 (např. +0.0450).
-- Sektorová / velká megacap zpráva: -0.2500 až +0.2500.
-- Makro / Fed / Inflace / Cla / Obchodní války / Geopolitika: -0.8000 až +0.8000 (např. nové plošné tarify = -0.4400).
+SCORING RULES (`sentiment_score`):
+- Range from -1.0000 to +1.0000 (4 decimal places).
+- Single company (earnings, orders, guidance): typically -0.1000 to +0.1000 (e.g. +0.0450).
+- Sector / megacap news: -0.2500 to +0.2500.
+- Macro / Fed / Inflation / Tariffs / Trade Wars / Geopolitics: -0.8000 to +0.8000 (e.g. broad tariffs = -0.4400).
 
-PŘÍSNÁ PRAVIDLA PRO TEXT:
-- V `preklad_shrnuti` věcně shrň celý článek s přesnými čísly (tržby, EPS, backlog, marže, sazby, cla).
-- V `co_se_stalo` shrň fakta ve 3–4 hutných větách.
-- V `proc_to_hybe_trhem` vysvětli konkrétní dopad na S&P 500, ziskové marže, AI cyklus nebo úrokové sazby.
-- Vrať VÝHRADNĚ platný JSON bez jakéhokoli dalšího textu.
+STRICT RULES:
+- Return ONLY valid JSON with no extra text.
+- `titulek`: Headline in target language.
+- `preklad_shrnuti`: Concise summary of the article in target language with all hard numbers.
+- `co_se_stalo`: 3-4 factual sentences on what happened in target language.
+- `proc_to_hybe_trhem`: 2-3 sentences on why and how it moves the S&P 500 in target language.
 
-Originální titulek: {item['title']}
-Zdroj: {item['source']}
-Text článku:
+Original headline: {item['title']}
+Source: {item['source']}
+Article text:
 {full_text or item['summary']}
 
-Struktura JSON:
+JSON structure:
 {{
-    "titulek_cz": "Přesný titulek ve zvoleném jazyce",
-    "preklad_shrnuti": "Podrobné shrnutí zprávy se všemi tvrdými čísly",
+    "titulek": "...",
+    "preklad_shrnuti": "...",
     "kategorie": {cat_opts},
     "sentiment_score": 0.0450,
-    "hlavni_ticker": "DELL" nebo "",
-    "co_se_stalo": "3–4 věcné věty co přesně se stalo",
-    "proc_to_hybe_trhem": "2–3 věty proč a jakým mechanismem to hýbe indexem S&P 500"
+    "hlavni_ticker": "DELL" or "",
+    "co_se_stalo": "...",
+    "proc_to_hybe_trhem": "..."
 }}"""
     try:
         raw_out = call_llm_api([{"role": "user", "content": prompt}], api_klic, provider, model_name, temperature=0.1, timeout=30, max_tokens=1200).strip()
@@ -772,7 +797,61 @@ Struktura JSON:
     except Exception as e:
         return {"error": str(e)}
 
+def get_or_create_card(raw_item, target_lang):
+    cache_key = f"{raw_item['id']}_{target_lang}"
+    if cache_key in st.session_state.live_analyzed_cache:
+        card_obj = st.session_state.live_analyzed_cache[cache_key]
+        pending_txt = t.get(target_lang, t["CZ"])["react_pending"]
+        if card_obj.get("reakce_trhu") == pending_txt:
+            card_obj["reakce_trhu"] = get_30min_market_reaction(card_obj["pub_utc_iso"], card_obj.get("hlavni_ticker"), target_lang)
+            st.session_state.live_analyzed_cache[cache_key] = card_obj
+        return card_obj, None
+
+    full_body = scrape_article_body(raw_item["link"], raw_item["summary"])
+    ai_res = analyze_single_news(raw_item, full_body, api_key, model_provider, selected_model, target_lang)
+    if "error" in ai_res:
+        return None, ai_res["error"]
+
+    det_tkr = (ai_res.get("hlavni_ticker") or raw_item.get("ticker") or "").strip().upper()
+    react_txt = get_30min_market_reaction(raw_item["pub_utc_iso"], det_tkr, target_lang)
+    now_dt = datetime.now(ZoneInfo("Europe/Prague"))
+    t_loc = t.get(target_lang, t["CZ"])
+    pub_disp = raw_item.get("pub_en" if target_lang == "EN" else "pub_cz", raw_item.get("pub_cz", ""))
+    score_val = float(ai_res.get("sentiment_score", 0.0))
+
+    card_data = {
+        "id": f"{now_dt.strftime('%Y%m%d_%H%M%S')}_NEWS_{raw_item['id']}_{target_lang}",
+        "raw_id": raw_item["id"],
+        "lang": target_lang,
+        "datum": pub_disp,
+        "pub_disp": pub_disp,
+        "pub_utc_iso": raw_item["pub_utc_iso"],
+        "typ": t_loc["lib_card_lbl"],
+        "tema": det_tkr if det_tkr else ai_res.get("kategorie", t_loc["filter_map"]["MARKET"]),
+        "source": raw_item["source"],
+        "link": raw_item["link"],
+        "title": raw_item["title"],
+        "summary": raw_item["summary"],
+        "full_text": full_body,
+        "hlavni_nadpis": ai_res.get("titulek", raw_item["title"]),
+        "titulek_cz": ai_res.get("titulek", raw_item["title"]),
+        "preklad_shrnuti": ai_res.get("preklad_shrnuti", raw_item["summary"]),
+        "kategorie": ai_res.get("kategorie", t_loc["filter_map"].get(raw_item["topic_key"], t_loc["filter_map"]["MARKET"])),
+        "hlavni_ticker": det_tkr,
+        "sentiment_score": score_val,
+        "sentiment_skore": score_val,
+        "rezim": "RISK-ON" if score_val > 0.005 else ("RISK-OFF" if score_val < -0.005 else "NEUTRAL"),
+        "co_se_stalo": ai_res.get("co_se_stalo", ""),
+        "proc_to_hybe_trhem": ai_res.get("proc_to_hybe_trhem", ""),
+        "reakce_trhu": react_txt
+    }
+    st.session_state.live_analyzed_cache[cache_key] = card_data
+    return card_data, None
+
 def render_news_card(card_obj):
+    card_lang = card_obj.get("lang", current_lang)
+    t_loc = t.get(card_lang, t["CZ"])
+
     score = float(card_obj.get("sentiment_score", 0.0))
     if score > 0.005:
         sc_bg, sc_fg = "rgba(34,197,94,0.16)", "#22C55E"
@@ -781,35 +860,36 @@ def render_news_card(card_obj):
     else:
         sc_bg, sc_fg = "rgba(161,161,170,0.16)", "#A1A1AA"
 
-    cat_lbl = card_obj.get("kategorie", _["filter_map"]["MARKET"])
+    cat_lbl = card_obj.get("kategorie", t_loc["filter_map"]["MARKET"])
     tkr_lbl = card_obj.get("hlavni_ticker", "")
     cat_full = f"{cat_lbl} · {tkr_lbl}" if tkr_lbl else cat_lbl
+    pub_show = card_obj.get("pub_disp", card_obj.get("pub_cz", card_obj.get("datum", "")))
 
     html = (
         f'<div class="news-card">'
-        f'<div class="news-time">{card_obj.get("pub_cz", "")}  ·  {card_obj.get("source", "")}</div>'
-        f'<div class="news-title">{card_obj.get("titulek_cz", card_obj.get("title", ""))}</div>'
-        f'<div class="news-sub">{_["card_sub"]}  ·  <a href="{card_obj.get("link", "#")}" target="_blank" style="color:#60A5FA; text-decoration:none;">{_["card_src_link"]}</a></div>'
+        f'<div class="news-time">{pub_show}  ·  {card_obj.get("source", "")}</div>'
+        f'<div class="news-title">{card_obj.get("hlavni_nadpis", card_obj.get("titulek_cz", card_obj.get("title", "")))}</div>'
+        f'<div class="news-sub">{t_loc["card_sub"]}  ·  <a href="{card_obj.get("link", "#")}" target="_blank" style="color:#60A5FA; text-decoration:none;">{t_loc["card_src_link"]}</a></div>'
         f'<p class="news-body">{card_obj.get("preklad_shrnuti", "")}</p>'
         f'<div class="news-pill-row">'
         f'<span class="news-cat-pill">{cat_full}</span>'
         f'<span class="news-score-pill" style="background:{sc_bg}; color:{sc_fg};">{score:+.4f}</span>'
         f'</div>'
-        f'<div class="news-caption">{_["score_desc"]}</div>'
+        f'<div class="news-caption">{t_loc["score_desc"]}</div>'
         f'<div class="news-ai-box">'
-        f'<div class="news-ai-hdr">✦ {_["ai_expl_hdr"]} <span class="news-ai-tag">AI</span></div>'
-        f'<div class="news-sec-lbl">{_["what_happened"]}</div>'
+        f'<div class="news-ai-hdr">✦ {t_loc["ai_expl_hdr"]} <span class="news-ai-tag">AI</span></div>'
+        f'<div class="news-sec-lbl">{t_loc["what_happened"]}</div>'
         f'<p class="news-sec-txt">{card_obj.get("co_se_stalo", "")}</p>'
-        f'<div class="news-sec-lbl">{_["why_sp500"]}</div>'
+        f'<div class="news-sec-lbl">{t_loc["why_sp500"]}</div>'
         f'<p class="news-sec-txt">{card_obj.get("proc_to_hybe_trhem", "")}</p>'
-        f'<div class="news-sec-lbl">{_["how_reacted"]}</div>'
-        f'<p class="news-sec-txt" style="color:#A1A1AA;">{card_obj.get("reakce_trhu", _["react_pending"])}</p>'
+        f'<div class="news-sec-lbl">{t_loc["how_reacted"]}</div>'
+        f'<p class="news-sec-txt" style="color:#A1A1AA;">{card_obj.get("reakce_trhu", t_loc["react_pending"])}</p>'
         f'</div>'
         f'</div>'
     )
     st.markdown(html, unsafe_allow_html=True)
 
-    with st.expander(_["orig_exp"], expanded=False):
+    with st.expander(t_loc["orig_exp"], expanded=False):
         st.markdown(f"**{card_obj.get('title', '')}**")
         st.write(card_obj.get("full_text") or card_obj.get("summary") or "")
 
@@ -934,62 +1014,45 @@ with tab_live:
     if st.session_state.live_selected_item:
         raw_item = st.session_state.live_selected_item
         item_id = raw_item["id"]
+        other_lang = "EN" if current_lang == "CZ" else "CZ"
+        active_card_lang = st.session_state.live_card_lang_override.get(item_id, current_lang)
 
-        if st.button(_["back_feed"]):
-            st.session_state.live_selected_item = None
-            st.rerun()
+        cb1, cb2 = st.columns([4, 1.5])
+        with cb1:
+            if st.button(_["back_feed"]):
+                st.session_state.live_selected_item = None
+                st.rerun()
+        with cb2:
+            tr_btn_lbl = _["btn_tr_back"] if active_card_lang != current_lang else _["btn_tr_other"]
+            if st.button(tr_btn_lbl, use_container_width=True, key=f"tr_toggle_{item_id}"):
+                st.session_state.live_card_lang_override[item_id] = current_lang if active_card_lang != current_lang else other_lang
+                st.rerun()
 
-        if item_id not in st.session_state.live_analyzed_cache:
-            with st.spinner(_["spin_ai"]):
-                full_body = scrape_article_body(raw_item["link"], raw_item["summary"])
-                ai_res = analyze_single_news(raw_item, full_body, api_key, model_provider, selected_model, current_lang)
-                if "error" not in ai_res:
-                    det_tkr = (ai_res.get("hlavni_ticker") or raw_item.get("ticker") or "").strip().upper()
-                    react_txt = get_30min_market_reaction(raw_item["pub_utc_iso"], det_tkr, current_lang)
-                    now_dt = datetime.now(ZoneInfo("Europe/Prague"))
-                    card_data = {
-                        "id": f"{now_dt.strftime('%Y%m%d_%H%M%S')}_NEWS_{item_id}",
-                        "raw_id": item_id,
-                        "datum": raw_item["pub_cz"],
-                        "pub_cz": raw_item["pub_cz"],
-                        "pub_utc_iso": raw_item["pub_utc_iso"],
-                        "typ": _["lib_card_lbl"],
-                        "tema": det_tkr if det_tkr else ai_res.get("kategorie", _["filter_map"]["MARKET"]),
-                        "source": raw_item["source"],
-                        "link": raw_item["link"],
-                        "title": raw_item["title"],
-                        "summary": raw_item["summary"],
-                        "full_text": full_body,
-                        "hlavni_nadpis": ai_res.get("titulek_cz", raw_item["title"]),
-                        "titulek_cz": ai_res.get("titulek_cz", raw_item["title"]),
-                        "preklad_shrnuti": ai_res.get("preklad_shrnuti", raw_item["summary"]),
-                        "kategorie": ai_res.get("kategorie", _["filter_map"].get(raw_item["topic_key"], _["filter_map"]["MARKET"])),
-                        "hlavni_ticker": det_tkr,
-                        "sentiment_score": float(ai_res.get("sentiment_score", 0.0)),
-                        "sentiment_skore": float(ai_res.get("sentiment_score", 0.0)),
-                        "rezim": "RISK-ON" if float(ai_res.get("sentiment_score", 0.0)) > 0.005 else ("RISK-OFF" if float(ai_res.get("sentiment_score", 0.0)) < -0.005 else "NEUTRAL"),
-                        "co_se_stalo": ai_res.get("co_se_stalo", ""),
-                        "proc_to_hybe_trhem": ai_res.get("proc_to_hybe_trhem", ""),
-                        "reakce_trhu": react_txt
-                    }
-                    st.session_state.live_analyzed_cache[item_id] = card_data
-                else:
-                    st.error(f"{_['err_ai']} {ai_res['error']}")
+        with st.spinner(_["spin_ai"]):
+            card_obj, err_msg = get_or_create_card(raw_item, active_card_lang)
 
-        if item_id in st.session_state.live_analyzed_cache:
-            card_obj = st.session_state.live_analyzed_cache[item_id]
-            if card_obj.get("reakce_trhu") == _["react_pending"]:
-                card_obj["reakce_trhu"] = get_30min_market_reaction(card_obj["pub_utc_iso"], card_obj.get("hlavni_ticker"), current_lang)
-                st.session_state.live_analyzed_cache[item_id] = card_obj
-
+        if err_msg:
+            st.error(f"{_['err_ai']} {err_msg}")
+        elif card_obj:
             render_news_card(card_obj)
 
-            if st.button(_["save_card"], key=f"save_news_{item_id}"):
-                arch = load_archive()
-                if not any(x.get("raw_id") == item_id for x in arch):
-                    arch.insert(0, card_obj)
-                    save_archive(arch, commit_msg=f"AI Radar: Uložena zpráva ({card_obj['tema']})")
-                st.success(_["saved_ok"])
+            cs1, cs2 = st.columns([2.5, 2.5])
+            with cs1:
+                is_included = item_id not in st.session_state.live_excluded_sentiment
+                new_inc = st.checkbox(_["sent_include"], value=is_included, key=f"inc_sent_{item_id}")
+                if new_inc and item_id in st.session_state.live_excluded_sentiment:
+                    st.session_state.live_excluded_sentiment.remove(item_id)
+                    st.rerun()
+                elif not new_inc and item_id not in st.session_state.live_excluded_sentiment:
+                    st.session_state.live_excluded_sentiment.add(item_id)
+                    st.rerun()
+            with cs2:
+                if st.button(_["save_card"], key=f"save_news_{item_id}", use_container_width=True):
+                    arch = load_archive()
+                    if not any(x.get("raw_id") == item_id and x.get("lang") == active_card_lang for x in arch):
+                        arch.insert(0, card_obj)
+                        save_archive(arch, commit_msg=f"AI Radar: Uložena zpráva ({card_obj['tema']})")
+                    st.success(_["saved_ok"])
 
             st.markdown("---")
             st.markdown(f"**{_['ask_news_h']}**")
@@ -1007,7 +1070,7 @@ with tab_live:
                 with st.chat_message("assistant"):
                     with st.spinner(_["spin_chat"]):
                         ctx = json.dumps({
-                            "titulek": card_obj["titulek_cz"],
+                            "titulek": card_obj["hlavni_nadpis"],
                             "clanek": card_obj["full_text"][:2500],
                             "skore_sp500": card_obj["sentiment_score"],
                             "co_se_stalo": card_obj["co_se_stalo"],
@@ -1015,7 +1078,7 @@ with tab_live:
                             "reakce_trhu": card_obj["reakce_trhu"],
                             "moje_portfolio": portfolio_tickers
                         }, ensure_ascii=False)
-                        ans = chat_s_ai(q_news, ctx, chat_list[:-1], api_key, model_provider, selected_model, current_lang)
+                        ans = chat_s_ai(q_news, ctx, chat_list[:-1], api_key, model_provider, selected_model, active_card_lang)
                         st.markdown(ans)
                 if not ans.startswith("⚠️"):
                     chat_list.append({"role": "assistant", "content": ans})
@@ -1053,11 +1116,36 @@ with tab_live:
         with st.spinner(_["spin_search"]):
             wire_items = fetch_live_wire_feed(tuple(tickers))
 
-        if st.session_state.live_analyzed_cache:
-            tot_sc = sum(float(c.get("sentiment_score", 0.0)) for c in st.session_state.live_analyzed_cache.values())
-            cnt_sc = len(st.session_state.live_analyzed_cache)
+        # Unikátní analyzované zprávy (preferujeme aktuální jazyk, jinak jiný uložený)
+        unique_analyzed = {}
+        for k_cache, c_val in st.session_state.live_analyzed_cache.items():
+            rid = c_val.get("raw_id")
+            if not rid:
+                continue
+            if rid not in unique_analyzed or c_val.get("lang") == current_lang:
+                unique_analyzed[rid] = c_val
+
+        if unique_analyzed:
+            included_cards = [c for rid, c in unique_analyzed.items() if rid not in st.session_state.live_excluded_sentiment]
+            tot_sc = sum(float(c.get("sentiment_score", 0.0)) for c in included_cards)
+            cnt_sc = len(included_cards)
             reg_lbl = "RISK-ON" if tot_sc > 0.02 else ("RISK-OFF" if tot_sc < -0.02 else "NEUTRAL")
             st.info(_["session_stats"].format(cnt=cnt_sc, reg=reg_lbl, sc=tot_sc))
+
+            with st.expander(_["sent_mgr_exp"], expanded=False):
+                for rid, c_obj in unique_analyzed.items():
+                    is_in = rid not in st.session_state.live_excluded_sentiment
+                    m1, m2 = st.columns([5.2, 1.2])
+                    sc_v = float(c_obj.get("sentiment_score", 0.0))
+                    tag_ex = "" if is_in else f" *{_['sent_excluded_tag']}*"
+                    m1.markdown(f"`{sc_v:+.4f}` · **{c_obj.get('hlavni_nadpis', c_obj.get('title', ''))}**{tag_ex}")
+                    tog_lbl = _["sent_remove"] if is_in else "+ Zahrnout" if current_lang == "CZ" else "+ Include"
+                    if m2.button(tog_lbl, key=f"mgr_sent_{rid}", use_container_width=True):
+                        if is_in:
+                            st.session_state.live_excluded_sentiment.add(rid)
+                        else:
+                            st.session_state.live_excluded_sentiment.remove(rid)
+                        st.rerun()
 
         custom_blocks = [w.strip().lower() for w in st.session_state.live_custom_block.split(",") if w.strip()]
 
@@ -1081,13 +1169,15 @@ with tab_live:
             st.info(_["err_news"])
         else:
             for it in filtered_wire:
-                cached_c = st.session_state.live_analyzed_cache.get(it["id"])
-                disp_title = cached_c["titulek_cz"] if cached_c else it["title"]
+                cached_c = st.session_state.live_analyzed_cache.get(f"{it['id']}_{current_lang}") or unique_analyzed.get(it["id"])
+                disp_title = cached_c["hlavni_nadpis"] if (cached_c and cached_c.get("lang") == current_lang) else it["title"]
+                pub_show = it["pub_en"] if current_lang == "EN" else it["pub_cz"]
                 tkr_badge = f" · `{it['ticker']}`" if it.get("ticker") else ""
                 if cached_c:
                     sc = float(cached_c["sentiment_score"])
                     sc_col = "#22C55E" if sc > 0.005 else ("#EF4444" if sc < -0.005 else "#A1A1AA")
-                    sc_html = f' · <span style="color:{sc_col}; font-weight:600;">{cached_c["kategorie"]} {sc:+.4f}</span>'
+                    ex_note = f' <span style="color:#71717A;">{_["sent_excluded_tag"]}</span>' if it["id"] in st.session_state.live_excluded_sentiment else ""
+                    sc_html = f' · <span style="color:{sc_col}; font-weight:600;">{cached_c["kategorie"]} {sc:+.4f}</span>{ex_note}'
                 else:
                     topic_lbl = fmap.get(it.get("topic_key", "MARKET"), fmap["MARKET"])
                     sc_html = f' · <span style="color:#A1A1AA;">{topic_lbl}</span>'
@@ -1096,7 +1186,7 @@ with tab_live:
                 with r1:
                     st.markdown(
                         f'<div class="news-feed-row">'
-                        f'<div class="news-time" style="margin-bottom:2px;">{it["pub_cz"]}  ·  {it["source"]}{tkr_badge}{sc_html}</div>'
+                        f'<div class="news-time" style="margin-bottom:2px;">{pub_show}  ·  {it["source"]}{tkr_badge}{sc_html}</div>'
                         f'<div class="news-feed-title">{disp_title}</div>'
                         f'</div>',
                         unsafe_allow_html=True
