@@ -26,7 +26,7 @@ t = {
         "tab_chart": "CHARTING", "tab_set": "SYSTÉMOVÁ KONFIGURACE", "curr_pos": "AKTUÁLNÍ POZICE", 
         "radar": "RADAR", "no_data": "ŽÁDNÁ DATA", "err": "ERR", "port_tickers": "TICKERY (PORTFOLIO)", 
         "watch_tickers": "TICKERY (WATCHLIST)", "commit": "ULOŽIT ZMĚNY", "success": "SYSTÉM AKTUALIZOVÁN A ULOŽEN NA GITHUB",
-        "db_select": "DATABÁZE", "custom_tick": "VLASTNÍ TICKER", "chart_type": "TYP GRAFU",
+        "db_select": "DATABÁZE", "custom_tick": "VLASTNÍ TICKER", "search_ph": "Vyhledat...", "chart_type": "TYP GRAFU",
         "interval": "INTERVAL", "loading": "STAHOVÁNÍ DAT...", "err_data": "DATA NEJSOU DOSTUPNÁ."
     },
     "EN": {
@@ -34,7 +34,7 @@ t = {
         "tab_chart": "CHARTING", "tab_set": "SYSTEM CONFIG", "curr_pos": "CURRENT POSITIONS", 
         "radar": "RADAR", "no_data": "NO DATA AVAILABLE", "err": "ERR", "port_tickers": "PORTFOLIO TICKERS", 
         "watch_tickers": "WATCHLIST TICKERS", "commit": "COMMIT CHANGES", "success": "SYSTEM UPDATED AND SAVED TO GITHUB",
-        "db_select": "DATABASE", "custom_tick": "CUSTOM TICKER", "chart_type": "CHART TYPE",
+        "db_select": "DATABASE", "custom_tick": "CUSTOM TICKER", "search_ph": "Search...", "chart_type": "CHART TYPE",
         "interval": "INTERVAL", "loading": "LOADING DATA...", "err_data": "DATA NOT AVAILABLE."
     }
 }
@@ -118,7 +118,7 @@ with tab3:
     
     c1, c2, c3, c4 = st.columns([2, 2, 1, 1])
     sel_tick = c1.selectbox(_["db_select"], [""] + all_tickers)
-    custom_tick = c2.text_input(_["custom_tick"], value="")
+    custom_tick = c2.text_input(_["custom_tick"], value="", placeholder=_["search_ph"])
     
     final_tick = custom_tick.upper().strip() if custom_tick.strip() else sel_tick
     
